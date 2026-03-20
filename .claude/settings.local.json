@@ -17,7 +17,8 @@
       "Bash(cat /Users/alin/Github/valuescope/src/app/api/valuation/[ticker]/route.ts)",
       "mcp__Desktop_Commander__list_directory",
       "Bash(head -60 /Users/alin/Github/valuescope/src/app/[ticker]/page.tsx)",
-      "Bash(wc -l /Users/alin/Github/valuescope/src/lib/valuation/*.ts)"
+      "Bash(wc -l /Users/alin/Github/valuescope/src/lib/valuation/*.ts)",
+      "Bash(git pull:*)"
     ]
   }
 }
