@@ -10,7 +10,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provi
 - **Database**: Supabase (PostgreSQL 17) — project ID: `kbvldznefhrxnbxgvktw`
 - **Styling**: Tailwind CSS 4 + shadcn/ui + Recharts 3
 - **Deployment**: Vercel (ISR + Cron)
-- **External APIs**: FMP (financials), FRED (Treasury yields), SEC EDGAR (future)
+- **External APIs**: FMP Stable API (financials), FRED (Treasury yields), SEC EDGAR (future)
 
 ## Architecture Principles
 - **Simplicity first**: 3 services only — Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
@@ -71,17 +71,23 @@ src/
 - ISR revalidation: 1 hour for stock pages
 - All prices in USD
 
+## FMP API Notes
+- Uses `/stable/` endpoints (legacy `/api/v3` deprecated after 2025-08-31)
+- Current plan max `limit=5` for financial statement endpoints
+- Ticker passed as `?symbol=` query param (not path param)
+- Seed Mag 7 only: `DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config src/lib/data/seed-mag7.ts`
+
 ## Commands
 ```bash
-npm run dev          # Start dev server (port 3000)
+npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
 ```
 
 ## Phase Plan
-- **Phase 1 (Current)**: Data layer (Supabase schema + FMP/FRED seeding) + Valuation engine
-- **Phase 2**: Frontend pages (ticker detail, homepage, search)
-- **Phase 3**: Daily cron updates + Price vs Intrinsic Value chart
+- **Phase 1 (Done)**: Data layer (Supabase schema + FMP/FRED seeding) + Valuation engine
+- **Phase 2 (Done)**: Frontend pages (ticker detail, homepage, search)
+- **Phase 3 (Current)**: Daily cron updates + Price vs Intrinsic Value chart
 - **Phase 4**: Auth + Watchlist
 - **Phase 5**: SEO (sitemap, JSON-LD, meta)
 - **Phase 6**: Stripe monetization (future)

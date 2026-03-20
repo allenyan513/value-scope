@@ -1,9 +1,9 @@
 // ============================================================
-// Financial Modeling Prep (FMP) API Client
+// Financial Modeling Prep (FMP) API Client — Stable API
 // Docs: https://site.financialmodelingprep.com/developer/docs
 // ============================================================
 
-const FMP_BASE = "https://financialmodelingprep.com/api/v3";
+const FMP_BASE = "https://financialmodelingprep.com/stable";
 
 function apiKey(): string {
   const key = process.env.FMP_API_KEY;
@@ -18,7 +18,12 @@ async function fmpFetch<T>(path: string, params: Record<string, string> = {}): P
     url.searchParams.set(k, v);
   }
 
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  const fetchOptions: RequestInit = {};
+  // next.revalidate is only available in Next.js runtime
+  if (typeof globalThis.process?.env?.NEXT_RUNTIME === "string") {
+    (fetchOptions as Record<string, unknown>).next = { revalidate: 3600 };
+  }
+  const res = await fetch(url.toString(), fetchOptions);
   if (!res.ok) {
     throw new Error(`FMP API error: ${res.status} ${res.statusText} for ${path}`);
   }
@@ -31,24 +36,30 @@ interface FMPProfile {
   companyName: string;
   sector: string;
   industry: string;
-  mktCap: number;
+  marketCap: number;
   beta: number;
   price: number;
-  sharesOutstanding: number; // from key-metrics or calculated
   exchange: string;
   description: string;
   image: string;
 }
 
 export async function getCompanyProfile(ticker: string): Promise<FMPProfile | null> {
-  const data = await fmpFetch<FMPProfile[]>(`/profile/${ticker}`);
-  return data?.[0] ?? null;
+  const data = await fmpFetch<FMPProfile[]>("/profile", { symbol: ticker });
+  if (!data?.[0]) return null;
+  const p = data[0];
+  // Normalize to match legacy field names used by seed scripts
+  return {
+    ...p,
+    mktCap: p.marketCap,
+  } as FMPProfile & { mktCap: number };
 }
 
 // --- Income Statement ---
 interface FMPIncomeStatement {
   date: string;
   period: string; // "FY" or "Q1"–"Q4"
+  fiscalYear: string;
   calendarYear: string;
   revenue: number;
   costOfRevenue: number;
@@ -62,7 +73,7 @@ interface FMPIncomeStatement {
   netIncome: number;
   ebitda: number;
   eps: number;
-  epsdiluted: number;
+  epsDiluted: number;
   weightedAverageShsOut: number;
   weightedAverageShsOutDil: number;
 }
@@ -72,16 +83,24 @@ export async function getIncomeStatements(
   period: "annual" | "quarter" = "annual",
   limit = 10
 ): Promise<FMPIncomeStatement[]> {
-  return fmpFetch<FMPIncomeStatement[]>(`/income-statement/${ticker}`, {
+  const data = await fmpFetch<FMPIncomeStatement[]>("/income-statement", {
+    symbol: ticker,
     period,
     limit: String(limit),
   });
+  // Stable API uses fiscalYear, normalize to calendarYear for seed compatibility
+  return data.map((d) => ({
+    ...d,
+    calendarYear: d.calendarYear || d.fiscalYear,
+    epsdiluted: d.epsDiluted,
+  })) as (FMPIncomeStatement & { epsdiluted: number })[];
 }
 
 // --- Balance Sheet ---
 interface FMPBalanceSheet {
   date: string;
   period: string;
+  fiscalYear: string;
   calendarYear: string;
   totalAssets: number;
   totalLiabilities: number;
@@ -101,16 +120,22 @@ export async function getBalanceSheets(
   period: "annual" | "quarter" = "annual",
   limit = 10
 ): Promise<FMPBalanceSheet[]> {
-  return fmpFetch<FMPBalanceSheet[]>(`/balance-sheet-statement/${ticker}`, {
+  const data = await fmpFetch<FMPBalanceSheet[]>("/balance-sheet-statement", {
+    symbol: ticker,
     period,
     limit: String(limit),
   });
+  return data.map((d) => ({
+    ...d,
+    calendarYear: d.calendarYear || d.fiscalYear,
+  }));
 }
 
 // --- Cash Flow Statement ---
 interface FMPCashFlow {
   date: string;
   period: string;
+  fiscalYear: string;
   calendarYear: string;
   operatingCashFlow: number;
   capitalExpenditure: number;
@@ -124,22 +149,28 @@ export async function getCashFlowStatements(
   period: "annual" | "quarter" = "annual",
   limit = 10
 ): Promise<FMPCashFlow[]> {
-  return fmpFetch<FMPCashFlow[]>(`/cash-flow-statement/${ticker}`, {
+  const data = await fmpFetch<FMPCashFlow[]>("/cash-flow-statement", {
+    symbol: ticker,
     period,
     limit: String(limit),
   });
+  return data.map((d) => ({
+    ...d,
+    calendarYear: d.calendarYear || d.fiscalYear,
+  }));
 }
 
 // --- Analyst Estimates ---
 interface FMPAnalystEstimate {
   date: string;
-  estimatedRevenueAvg: number;
-  estimatedRevenueLow: number;
-  estimatedRevenueHigh: number;
-  estimatedEpsAvg: number;
-  estimatedEpsLow: number;
-  estimatedEpsHigh: number;
-  numberAnalystEstimatedRevenue: number;
+  revenueAvg: number;
+  revenueLow: number;
+  revenueHigh: number;
+  epsAvg: number;
+  epsLow: number;
+  epsHigh: number;
+  numAnalystsRevenue: number;
+  numAnalystsEps: number;
 }
 
 export async function getAnalystEstimates(
@@ -147,10 +178,30 @@ export async function getAnalystEstimates(
   period: "annual" | "quarter" = "annual",
   limit = 5
 ): Promise<FMPAnalystEstimate[]> {
-  return fmpFetch<FMPAnalystEstimate[]>(`/analyst-estimates/${ticker}`, {
+  const data = await fmpFetch<FMPAnalystEstimate[]>("/analyst-estimates", {
+    symbol: ticker,
     period,
     limit: String(limit),
   });
+  // Normalize field names for seed compatibility
+  return data.map((d) => ({
+    ...d,
+    estimatedRevenueAvg: d.revenueAvg,
+    estimatedRevenueLow: d.revenueLow,
+    estimatedRevenueHigh: d.revenueHigh,
+    estimatedEpsAvg: d.epsAvg,
+    estimatedEpsLow: d.epsLow,
+    estimatedEpsHigh: d.epsHigh,
+    numberAnalystEstimatedRevenue: d.numAnalystsRevenue,
+  })) as (FMPAnalystEstimate & {
+    estimatedRevenueAvg: number;
+    estimatedRevenueLow: number;
+    estimatedRevenueHigh: number;
+    estimatedEpsAvg: number;
+    estimatedEpsLow: number;
+    estimatedEpsHigh: number;
+    numberAnalystEstimatedRevenue: number;
+  })[];
 }
 
 // --- Historical Daily Prices ---
@@ -160,24 +211,19 @@ interface FMPHistoricalPrice {
   volume: number;
 }
 
-interface FMPHistoricalResponse {
-  symbol: string;
-  historical: FMPHistoricalPrice[];
-}
-
 export async function getHistoricalPrices(
   ticker: string,
   from?: string,
   to?: string
 ): Promise<FMPHistoricalPrice[]> {
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = { symbol: ticker };
   if (from) params.from = from;
   if (to) params.to = to;
-  const data = await fmpFetch<FMPHistoricalResponse>(
-    `/historical-price-full/${ticker}`,
+  const data = await fmpFetch<FMPHistoricalPrice[]>(
+    "/historical-price-eod/full",
     params
   );
-  return data?.historical ?? [];
+  return data ?? [];
 }
 
 // --- S&P 500 Constituents ---
@@ -189,15 +235,20 @@ interface FMPConstituent {
 }
 
 export async function getSP500Constituents(): Promise<FMPConstituent[]> {
-  return fmpFetch<FMPConstituent[]>("/sp500_constituent");
+  return fmpFetch<FMPConstituent[]>("/sp500-constituent");
 }
 
 // --- Industry Peers ---
+interface FMPPeer {
+  symbol: string;
+  companyName: string;
+  price: number;
+  mktCap: number;
+}
+
 export async function getIndustryPeers(ticker: string): Promise<string[]> {
-  const data = await fmpFetch<Array<{ peersList: string[] }>>(
-    `/stock_peers?symbol=${ticker}`
-  );
-  return data?.[0]?.peersList ?? [];
+  const data = await fmpFetch<FMPPeer[]>("/stock-peers", { symbol: ticker });
+  return (data ?? []).map((p) => p.symbol);
 }
 
 // --- Key Metrics (for ratios) ---
@@ -215,7 +266,8 @@ export async function getKeyMetrics(
   period: "annual" | "quarter" = "annual",
   limit = 5
 ): Promise<FMPKeyMetrics[]> {
-  return fmpFetch<FMPKeyMetrics[]>(`/key-metrics/${ticker}`, {
+  return fmpFetch<FMPKeyMetrics[]>("/key-metrics", {
+    symbol: ticker,
     period,
     limit: String(limit),
   });
@@ -226,13 +278,15 @@ interface FMPQuote {
   symbol: string;
   price: number;
   marketCap: number;
-  sharesOutstanding: number;
-  pe: number;
+  exchange: string;
+  volume: number;
   eps: number;
+  pe: number;
+  previousClose: number;
 }
 
 export async function getQuote(ticker: string): Promise<FMPQuote | null> {
-  const data = await fmpFetch<FMPQuote[]>(`/quote/${ticker}`);
+  const data = await fmpFetch<FMPQuote[]>("/quote", { symbol: ticker });
   return data?.[0] ?? null;
 }
 
@@ -245,25 +299,37 @@ export async function getBatchQuotes(tickers: string[]): Promise<FMPQuote[]> {
   }
   const results: FMPQuote[] = [];
   for (const chunk of chunks) {
-    const data = await fmpFetch<FMPQuote[]>(`/quote/${chunk.join(",")}`);
+    const data = await fmpFetch<FMPQuote[]>("/quote", {
+      symbol: chunk.join(","),
+    });
     results.push(...data);
   }
   return results;
 }
 
-// --- Enterprise Value ---
+// --- Enterprise Value (via key-metrics) ---
 interface FMPEnterpriseValue {
   date: string;
   enterpriseValue: number;
-  marketCapitalization: number;
-  numberOfShares: number;
+  marketCap: number;
 }
 
 export async function getEnterpriseValue(
   ticker: string,
   limit = 5
 ): Promise<FMPEnterpriseValue[]> {
-  return fmpFetch<FMPEnterpriseValue[]>(`/enterprise-values/${ticker}`, {
+  const data = await fmpFetch<
+    Array<{ date: string; enterpriseValue: number; marketCap: number }>
+  >("/key-metrics", {
+    symbol: ticker,
+    period: "annual",
     limit: String(limit),
   });
+  return (data ?? []).map((d) => ({
+    date: d.date,
+    enterpriseValue: d.enterpriseValue,
+    marketCap: d.marketCap,
+    marketCapitalization: d.marketCap,
+    numberOfShares: 0,
+  }));
 }
