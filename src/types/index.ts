@@ -184,6 +184,34 @@ export interface WACCResult {
   total_equity: number;
 }
 
+// --- Company Classification ---
+export type CompanyArchetype =
+  | "high_growth"
+  | "profitable_growth"
+  | "mature_stable"
+  | "dividend_payer"
+  | "cyclical"
+  | "turnaround"
+  | "asset_heavy"
+  | "loss_making";
+
+export interface ModelApplicability {
+  model_type: string;
+  applicable: boolean;
+  reason: string;
+  confidence: "high" | "medium" | "low";
+  role: "primary" | "cross_check" | "sanity_check" | "not_applicable";
+}
+
+export interface CompanyClassification {
+  archetype: CompanyArchetype;
+  label: string;
+  description: string;
+  traits: string[];
+  model_weights: Record<string, number>;
+  model_applicability: ModelApplicability[];
+}
+
 // --- Valuation Summary ---
 export interface ValuationSummary {
   ticker: string;
@@ -191,8 +219,14 @@ export interface ValuationSummary {
   current_price: number;
   primary_fair_value: number; // DCF Growth Exit 5Y
   primary_upside: number;
+  // Weighted consensus across all applicable models
+  consensus_fair_value: number;
+  consensus_low: number;
+  consensus_high: number;
+  consensus_upside: number;
   models: ValuationResult[];
   wacc: WACCResult;
+  classification: CompanyClassification;
   verdict: "undervalued" | "fairly_valued" | "overvalued";
   verdict_text: string;
   computed_at: string;

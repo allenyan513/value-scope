@@ -2,8 +2,9 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { ValuationResult } from "@/types";
+import type { ValuationResult, ModelApplicability } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
+import { TVBreakdown } from "./tv-breakdown";
 
 const MODEL_NAMES: Record<string, string> = {
   dcf_growth_exit_5y: "DCF — Growth Exit (5Y)",
@@ -13,6 +14,13 @@ const MODEL_NAMES: Record<string, string> = {
   pe_multiples: "P/E Multiples",
   ev_ebitda_multiples: "EV/EBITDA Multiples",
   peter_lynch: "Peter Lynch Fair Value",
+};
+
+const ROLE_STYLES: Record<string, { border: string; label: string }> = {
+  primary: { border: "border-l-4 border-l-blue-500", label: "Primary Model" },
+  cross_check: { border: "border-l-4 border-l-slate-400", label: "Cross-Check" },
+  sanity_check: { border: "border-l-4 border-l-slate-300", label: "Sanity Check" },
+  not_applicable: { border: "border-l-4 border-l-slate-200", label: "Not Applicable" },
 };
 
 function formatLargeNumber(n: number): string {
@@ -25,15 +33,19 @@ function formatLargeNumber(n: number): string {
 interface Props {
   model: ValuationResult;
   currentPrice: number;
+  applicability?: ModelApplicability;
 }
 
-export function ModelCard({ model, currentPrice }: Props) {
+export function ModelCard({ model, currentPrice, applicability }: Props) {
   const isNA = model.fair_value === 0;
   const naNote = (model.assumptions as Record<string, unknown>)?.note as string | undefined;
+  const role = applicability?.role ?? "cross_check";
+  const roleStyle = ROLE_STYLES[role] ?? ROLE_STYLES.cross_check;
+  const isDCF = model.model_type.startsWith("dcf_");
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <Card className={`p-6 ${roleStyle.border}`}>
+      <div className="flex items-center justify-between mb-1">
         <h3 className="font-semibold text-lg">
           {MODEL_NAMES[model.model_type] ?? model.model_type}
         </h3>
@@ -44,6 +56,36 @@ export function ModelCard({ model, currentPrice }: Props) {
           </Badge>
         )}
       </div>
+
+      {/* Role + confidence tag */}
+      {applicability && (
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            {roleStyle.label}
+          </span>
+          {applicability.confidence && (
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${
+                applicability.confidence === "high"
+                  ? "border-green-300 text-green-700"
+                  : applicability.confidence === "medium"
+                    ? "border-amber-300 text-amber-700"
+                    : "border-red-300 text-red-700"
+              }`}
+            >
+              {applicability.confidence} confidence
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Applicability reason */}
+      {applicability?.reason && (
+        <p className="text-xs text-muted-foreground mb-4 italic">
+          {applicability.reason}
+        </p>
+      )}
 
       {isNA ? (
         <p className="text-muted-foreground text-sm">{naNote || "Not applicable for this company."}</p>
@@ -94,6 +136,21 @@ export function ModelCard({ model, currentPrice }: Props) {
             </div>
           </div>
 
+          {/* DCF: TV Breakdown */}
+          {isDCF && model.details && "pv_terminal_value" in model.details && (
+            <div className="mb-6">
+              <h4 className="text-sm font-medium mb-2">Value Composition</h4>
+              <TVBreakdown
+                pvFCFTotal={(model.details as Record<string, unknown>).pv_fcf_total as number}
+                pvTerminalValue={(model.details as Record<string, unknown>).pv_terminal_value as number}
+                enterpriseValue={(model.details as Record<string, unknown>).enterprise_value as number}
+                netDebt={(model.details as Record<string, unknown>).net_debt as number}
+                equityValue={(model.details as Record<string, unknown>).equity_value as number}
+                fairValue={model.fair_value}
+              />
+            </div>
+          )}
+
           {/* DCF: Projection table */}
           {model.details &&
             "projections" in model.details &&
@@ -140,21 +197,6 @@ export function ModelCard({ model, currentPrice }: Props) {
                       ))}
                     </tbody>
                   </table>
-                </div>
-
-                {/* Enterprise value breakdown */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
-                  {[
-                    { label: "PV of FCFs", value: (model.details as Record<string, unknown>).pv_fcf_total as number },
-                    { label: "PV of Terminal Value", value: (model.details as Record<string, unknown>).pv_terminal_value as number },
-                    { label: "Enterprise Value", value: (model.details as Record<string, unknown>).enterprise_value as number },
-                    { label: "Equity Value", value: (model.details as Record<string, unknown>).equity_value as number },
-                  ].map((item) => (
-                    <div key={item.label} className="p-2 rounded bg-muted/50">
-                      <div className="text-xs text-muted-foreground">{item.label}</div>
-                      <div className="font-mono font-medium">{formatLargeNumber(item.value)}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
