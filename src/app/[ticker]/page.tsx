@@ -106,11 +106,35 @@ export default async function StockValuationPage({ params }: Props) {
     riskFreeRate,
   });
 
+  // JSON-LD structured data for SEO
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FinancialProduct",
+    name: `${upperTicker} Stock Valuation — ${company.name}`,
+    description: `Intrinsic value analysis for ${company.name} (${upperTicker}) using 7 valuation models.`,
+    provider: {
+      "@type": "Organization",
+      name: "ValuScope",
+      url: "https://valuscope.com",
+    },
+    offers: {
+      "@type": "Offer",
+      price: currentPrice.toFixed(2),
+      priceCurrency: "USD",
+    },
+  };
+
   return (
-    <StockValuationClient
-      summary={summary}
-      company={company}
-      ticker={upperTicker}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <StockValuationClient
+        summary={summary}
+        company={company}
+        ticker={upperTicker}
+      />
+    </>
   );
 }
