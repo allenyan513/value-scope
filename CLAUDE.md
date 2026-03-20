@@ -30,23 +30,42 @@ SUPABASE_SERVICE_ROLE_KEY
 FMP_API_KEY
 FRED_API_KEY
 CRON_SECRET
+STRIPE_SECRET_KEY              # Stripe API secret key
+STRIPE_WEBHOOK_SECRET          # Stripe webhook signing secret
+STRIPE_PRO_PRICE_ID            # Stripe Price ID for Pro plan
+STRIPE_API_PRICE_ID            # Stripe Price ID for API plan
 ```
 
 ## Project Structure
 ```
 src/
 ├── app/                    # Next.js App Router pages
-│   ├── [ticker]/           # Dynamic stock page (ISR 1hr)
-│   ├── api/                # API routes (search, valuation, cron)
-│   └── auth/               # Supabase Auth flows
+│   ├── [ticker]/           # Dynamic stock page (ISR 1hr) + JSON-LD
+│   ├── methodology/        # Valuation methodology explanation
+│   ├── pricing/            # Pricing plans (Free / Pro / API)
+│   ├── watchlist/          # User's watchlist (requires auth)
+│   ├── auth/               # Supabase Auth flows (login, signup, callback)
+│   ├── api/
+│   │   ├── search/         # Ticker/company search
+│   │   ├── valuation/      # On-demand valuation compute
+│   │   ├── history/        # Price vs intrinsic value history
+│   │   ├── cron/           # Daily update cron job
+│   │   ├── watchlist/      # Watchlist CRUD (GET/POST/DELETE)
+│   │   └── stripe/         # Stripe checkout, webhook, billing portal
+│   ├── sitemap.ts          # Dynamic sitemap (all tickers)
+│   └── robots.ts           # robots.txt
 ├── lib/
+│   ├── auth/               # Supabase auth client helpers
 │   ├── data/               # External API clients (fmp.ts, fred.ts, seed.ts)
-│   ├── db/                 # Supabase client + query helpers
-│   └── valuation/          # 7 valuation model engines
+│   ├── db/                 # Supabase client + query helpers + migrations
+│   ├── valuation/          # 7 valuation model engines
+│   └── stripe.ts           # Stripe client + plan definitions
 ├── components/
+│   ├── auth/               # AuthProvider context
 │   ├── charts/             # Price vs Intrinsic Value chart
 │   ├── valuation/          # Model cards, summary, sensitivity heatmap
-│   ├── layout/             # Header, footer
+│   ├── watchlist/          # Add to Watchlist button
+│   ├── layout/             # Header (with auth), footer
 │   └── ui/                 # shadcn/ui primitives
 ├── types/                  # All TypeScript interfaces
 └── scripts/                # Migration runner (legacy, prefer MCP)
@@ -78,10 +97,30 @@ npm run build        # Production build
 npm run lint         # ESLint
 ```
 
+## API Routes
+| Route | Method | Auth | Description |
+|-------|--------|------|-------------|
+| `/api/search?q=` | GET | No | Ticker/company autocomplete search |
+| `/api/valuation/[ticker]` | GET | No | Compute or return cached valuation |
+| `/api/history/[ticker]?days=` | GET | No | Price vs intrinsic value history |
+| `/api/cron/daily-update` | GET | Bearer CRON_SECRET | Daily price + valuation refresh |
+| `/api/watchlist` | GET/POST/DELETE | Bearer JWT | User watchlist CRUD |
+| `/api/stripe/checkout` | POST | Bearer JWT | Create Stripe checkout session |
+| `/api/stripe/webhook` | POST | Stripe signature | Stripe event webhook |
+| `/api/stripe/portal` | POST | Bearer JWT | Create billing portal session |
+
+## Cron Jobs
+- **Daily Update**: `/api/cron/daily-update` — Runs weekdays at 10:30 PM ET via Vercel Cron (`vercel.json`)
+  - Updates stock prices, recomputes all 7 models, stores valuation history snapshots
+
+## Database Tables
+`companies`, `financial_statements`, `daily_prices`, `analyst_estimates`, `valuations`, `valuation_history`, `watchlists`, `usage_tracking`, `subscriptions`
+
 ## Phase Plan
-- **Phase 1 (Current)**: Data layer (Supabase schema + FMP/FRED seeding) + Valuation engine
-- **Phase 2**: Frontend pages (ticker detail, homepage, search)
-- **Phase 3**: Daily cron updates + Price vs Intrinsic Value chart
-- **Phase 4**: Auth + Watchlist
-- **Phase 5**: SEO (sitemap, JSON-LD, meta)
-- **Phase 6**: Stripe monetization (future)
+- **Phase 1**: Data layer (Supabase schema + FMP/FRED seeding) + Valuation engine ✅
+- **Phase 2**: Frontend pages (ticker detail, homepage, search) ✅
+- **Phase 3**: Daily cron updates + Price vs Intrinsic Value chart ✅
+- **Phase 4**: Auth + Watchlist ✅
+- **Phase 5**: SEO (sitemap, JSON-LD, robots.txt, meta) ✅
+- **Phase 6**: Stripe monetization (checkout, webhook, billing portal) ✅
+- **Remaining**: Data seeding (run seed script), Stripe Price IDs configuration, domain setup

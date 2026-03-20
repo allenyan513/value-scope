@@ -6,6 +6,7 @@ import { SummaryCard } from "@/components/valuation/summary-card";
 import { ModelCard } from "@/components/valuation/model-card";
 import { WACCCard } from "@/components/valuation/wacc-card";
 import { PriceValueChart } from "@/components/charts/price-value-chart";
+import { AddToWatchlistButton } from "@/components/watchlist/add-to-watchlist-button";
 import type { ValuationSummary, Company } from "@/types";
 
 interface Props {
@@ -48,6 +49,7 @@ export function StockValuationClient({ summary, company, ticker }: Props) {
             <span>{company.sector}</span>
             <span>{company.industry}</span>
             <span>{company.exchange}</span>
+            <AddToWatchlistButton ticker={ticker} />
           </div>
         </div>
         <div className="text-right">

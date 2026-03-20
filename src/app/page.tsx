@@ -1,8 +1,26 @@
 import { TickerSearch } from "@/components/ticker-search";
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "ValuScope",
+  url: "https://valuscope.com",
+  description:
+    "Free stock intrinsic value calculator. DCF, Trading Multiples, Peter Lynch models with transparent assumptions.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://valuscope.com/{ticker}",
+    "query-input": "required name=ticker",
+  },
+};
+
 export default function HomePage() {
   return (
     <div className="flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero Section */}
       <section className="py-20 sm:py-32">
         <div className="container mx-auto px-4 text-center">
