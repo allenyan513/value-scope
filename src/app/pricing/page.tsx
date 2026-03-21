@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Check } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Pricing — Free for S&P 500",
@@ -65,34 +66,34 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+    <div className="container mx-auto px-4 py-20">
+      <div className="text-center mb-14">
+        <h1 className="text-4xl font-bold mb-4 tracking-tight">Simple, Transparent Pricing</h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           Start free with full access to S&P 500 valuations. Upgrade when you
           need broader coverage.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {plans.map((plan) => (
           <div
             key={plan.name}
-            className={`rounded-lg border p-8 flex flex-col ${
+            className={`rounded-xl border bg-card p-8 flex flex-col transition-all ${
               plan.highlighted
-                ? "border-primary shadow-lg relative"
-                : ""
+                ? "border-brand shadow-lg shadow-brand/10 relative ring-1 ring-brand/20"
+                : "hover:shadow-md hover:border-brand/20"
             }`}
           >
             {plan.badge && (
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-brand-foreground hover:bg-brand/90">
                 {plan.badge}
               </Badge>
             )}
             <div className="mb-6">
               <h2 className="text-xl font-bold mb-2">{plan.name}</h2>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold">{plan.price}</span>
+                <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
                 <span className="text-muted-foreground">{plan.period}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
@@ -102,20 +103,8 @@ export default function PricingPage() {
 
             <ul className="space-y-3 mb-8 flex-1">
               {plan.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-2 text-sm">
-                  <svg
-                    className="w-4 h-4 text-primary mt-0.5 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
+                <li key={feature} className="flex items-start gap-2.5 text-sm">
+                  <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
                   {feature}
                 </li>
               ))}
@@ -124,7 +113,7 @@ export default function PricingPage() {
             {plan.ctaHref === "#" ? (
               <Button
                 variant={plan.highlighted ? "default" : "outline"}
-                className="w-full"
+                className={`w-full ${plan.highlighted ? "bg-brand hover:bg-brand/90 text-brand-foreground" : ""}`}
                 disabled
               >
                 {plan.cta}
@@ -143,10 +132,10 @@ export default function PricingPage() {
         ))}
       </div>
 
-      <div className="text-center mt-12 text-sm text-muted-foreground">
+      <div className="text-center mt-14 text-sm text-muted-foreground">
         <p>
           Pro and API plans are coming soon.{" "}
-          <Link href="/" className="underline hover:text-foreground">
+          <Link href="/" className="text-brand hover:underline font-medium">
             Start free
           </Link>{" "}
           today with full S&P 500 coverage.
