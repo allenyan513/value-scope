@@ -8,7 +8,8 @@ const MODEL_LABELS: Record<string, string> = {
   dcf_ebitda_exit_5y: "DCF EBITDA 5Y",
   dcf_ebitda_exit_10y: "DCF EBITDA 10Y",
   pe_multiples: "P/E Multiples",
-  ev_ebitda_multiples: "EV/EBITDA",
+  ps_multiples: "P/S Multiples",
+  pb_multiples: "P/B Multiples",
   peter_lynch: "Peter Lynch",
 };
 

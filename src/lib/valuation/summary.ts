@@ -16,7 +16,8 @@ import { calculateWACC, buildWACCInputs } from "./wacc";
 import { calculateDCF, type DCFFCFEInputs } from "./dcf";
 import {
   calculatePEMultiples,
-  calculateEVEBITDAMultiples,
+  calculatePSMultiples,
+  calculatePBMultiples,
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePeterLynch } from "./peter-lynch";
@@ -101,7 +102,8 @@ export function computeFullValuation(
   };
 
   models.push(calculatePEMultiples(tradingInputs));
-  models.push(calculateEVEBITDAMultiples(tradingInputs));
+  models.push(calculatePSMultiples(tradingInputs));
+  models.push(calculatePBMultiples(tradingInputs));
 
   // Peter Lynch
   models.push(
