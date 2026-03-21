@@ -7,7 +7,8 @@ import type { ValuationResult } from "@/types";
 const MODEL_NAMES: Record<string, string> = {
   dcf_growth_exit_5y: "DCF Valuation",
   pe_multiples: "P/E Multiples",
-  ev_ebitda_multiples: "EV/EBITDA Multiples",
+  ps_multiples: "P/S Multiples",
+  pb_multiples: "P/B Multiples",
   peter_lynch: "Peter Lynch Fair Value",
 };
 
@@ -106,7 +107,13 @@ export function ModelCard({ model, currentPrice }: Props) {
                         <th className="text-left p-2">Name</th>
                         <th className="text-right p-2">Market Cap</th>
                         <th className="text-right p-2">
-                          {model.model_type === "pe_multiples" ? "P/E" : "EV/EBITDA"}
+                          {model.model_type === "pe_multiples"
+                            ? "P/E"
+                            : model.model_type === "ps_multiples"
+                              ? "P/S"
+                              : model.model_type === "pb_multiples"
+                                ? "P/B"
+                                : "Multiple"}
                         </th>
                       </tr>
                     </thead>
@@ -118,7 +125,8 @@ export function ModelCard({ model, currentPrice }: Props) {
                           name: string;
                           market_cap: number;
                           trailing_pe: number | null;
-                          ev_ebitda: number | null;
+                          ps_ratio: number | null;
+                          pb_ratio: number | null;
                         }>
                       ).map((peer) => (
                         <tr key={peer.ticker} className="border-b">
@@ -130,7 +138,9 @@ export function ModelCard({ model, currentPrice }: Props) {
                           <td className="p-2 text-right font-mono">
                             {model.model_type === "pe_multiples"
                               ? peer.trailing_pe?.toFixed(1) ?? "—"
-                              : peer.ev_ebitda?.toFixed(1) ?? "—"}
+                              : model.model_type === "ps_multiples"
+                                ? peer.ps_ratio?.toFixed(1) ?? "—"
+                                : peer.pb_ratio?.toFixed(1) ?? "—"}
                           </td>
                         </tr>
                       ))}

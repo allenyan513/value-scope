@@ -97,7 +97,8 @@ export type ValuationModelType =
   | "dcf_ebitda_exit_5y"
   | "dcf_ebitda_exit_10y"
   | "pe_multiples"
-  | "ev_ebitda_multiples"
+  | "ps_multiples"
+  | "pb_multiples"
   | "peter_lynch";
 
 export interface ValuationResult {
@@ -187,7 +188,8 @@ export interface PeerComparison {
   market_cap: number;
   trailing_pe: number | null;
   forward_pe: number | null;
-  ev_ebitda: number | null;
+  ps_ratio: number | null;
+  pb_ratio: number | null;
 }
 
 export interface TradingMultiplesResult extends ValuationResult {
@@ -268,6 +270,14 @@ export interface ValuationHistoryPoint {
   date: string;
   close_price: number;
   intrinsic_value: number;
+}
+
+// --- Historical Multiples (for trend chart) ---
+export interface HistoricalMultiplesPoint {
+  date: string;
+  pe: number | null;
+  ps: number | null;
+  pb: number | null;
 }
 
 // --- User / Watchlist ---

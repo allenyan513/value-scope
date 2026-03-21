@@ -255,6 +255,8 @@ export async function getIndustryPeers(ticker: string): Promise<string[]> {
 interface FMPKeyMetrics {
   date: string;
   peRatio: number;
+  priceToSalesRatio: number;
+  priceBookValueRatio: number;
   enterpriseValueOverEBITDA: number;
   dividendYield: number;
   marketCap: number;

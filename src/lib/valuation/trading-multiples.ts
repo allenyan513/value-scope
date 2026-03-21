@@ -1,5 +1,5 @@
 // ============================================================
-// Trading Multiples Valuation (P/E and EV/EBITDA)
+// Trading Multiples Valuation (P/E, P/S, P/B)
 // ============================================================
 
 import type {
@@ -17,6 +17,16 @@ function median(arr: number[]): number {
   return sorted.length % 2 !== 0
     ? sorted[mid]
     : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/** Get 25th and 75th percentile from array */
+function percentiles(arr: number[], fallbackMedian: number): { p25: number; p75: number } {
+  if (arr.length === 0) return { p25: fallbackMedian * 0.7, p75: fallbackMedian * 1.3 };
+  const sorted = [...arr].sort((a, b) => a - b);
+  return {
+    p25: sorted[Math.floor(sorted.length * 0.25)] ?? fallbackMedian * 0.7,
+    p75: sorted[Math.floor(sorted.length * 0.75)] ?? fallbackMedian * 1.3,
+  };
 }
 
 export interface TradingMultiplesInputs {
@@ -84,9 +94,7 @@ export function calculatePEMultiples(
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
   // Range: use 25th and 75th percentile P/E
-  const sortedPEs = [...trailingPEs].sort((a, b) => a - b);
-  const p25 = sortedPEs[Math.floor(sortedPEs.length * 0.25)] || medianTrailingPE * 0.7;
-  const p75 = sortedPEs[Math.floor(sortedPEs.length * 0.75)] || medianTrailingPE * 1.3;
+  const { p25, p75 } = percentiles(trailingPEs, medianTrailingPE);
   const lowEstimate = p25 * eps;
   const highEstimate = p75 * eps;
 
@@ -115,75 +123,140 @@ export function calculatePEMultiples(
 }
 
 /**
- * EV/EBITDA Multiples Valuation
+ * P/S Multiples Valuation
  *
- * Fair Price = (Industry Median EV/EBITDA × Company EBITDA − Net Debt) / Shares Outstanding
+ * Fair Price = Industry Median P/S × Company Revenue per Share
  */
-export function calculateEVEBITDAMultiples(
+export function calculatePSMultiples(
   inputs: TradingMultiplesInputs
 ): ValuationResult {
   const { financials, company, currentPrice, peers } = inputs;
 
-  // Filter peers with valid EV/EBITDA
+  // Filter peers with valid P/S ratios
   const validPeers = peers.filter(
-    (p) => p.ev_ebitda !== null && p.ev_ebitda > 0 && p.ev_ebitda < 100
+    (p) => p.ps_ratio !== null && p.ps_ratio > 0 && p.ps_ratio < 200
   );
 
-  const evEbitdaValues = validPeers.map((p) => p.ev_ebitda!);
-  const medianEVEBITDA = evEbitdaValues.length > 0 ? median(evEbitdaValues) : 12;
+  const psValues = validPeers.map((p) => p.ps_ratio!);
+  const medianPS = psValues.length > 0 ? median(psValues) : 3;
 
-  const ebitda = financials.ebitda;
-  const netDebt = financials.net_debt || 0;
+  const revenue = financials.revenue;
   const sharesOutstanding = financials.shares_outstanding || company.shares_outstanding;
 
-  if (!ebitda || ebitda <= 0 || !sharesOutstanding) {
+  if (!revenue || revenue <= 0 || !sharesOutstanding) {
     return {
-      model_type: "ev_ebitda_multiples",
+      model_type: "ps_multiples",
       fair_value: 0,
       upside_percent: 0,
       low_estimate: 0,
       high_estimate: 0,
       assumptions: {
-        note: "N/A — Negative or zero EBITDA",
-        industry_median_ev_ebitda: medianEVEBITDA,
-        ebitda,
+        note: "N/A — No revenue data",
+        industry_median_ps: medianPS,
+        revenue,
       },
-      details: { peers: validPeers, industry_median: medianEVEBITDA, company_metric: ebitda, metric_label: "EBITDA" },
+      details: { peers: validPeers, industry_median: medianPS, company_metric: revenue, metric_label: "Revenue" },
       computed_at: new Date().toISOString(),
     };
   }
 
-  const enterpriseValue = medianEVEBITDA * ebitda;
-  const equityValue = enterpriseValue - netDebt;
-  const fairValue = Math.max(0, equityValue / sharesOutstanding);
+  const revenuePerShare = revenue / sharesOutstanding;
+  const fairValue = medianPS * revenuePerShare;
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
-  // Range from 25th/75th percentile
-  const sorted = [...evEbitdaValues].sort((a, b) => a - b);
-  const p25 = sorted[Math.floor(sorted.length * 0.25)] || medianEVEBITDA * 0.7;
-  const p75 = sorted[Math.floor(sorted.length * 0.75)] || medianEVEBITDA * 1.3;
-  const lowEstimate = Math.max(0, (p25 * ebitda - netDebt) / sharesOutstanding);
-  const highEstimate = Math.max(0, (p75 * ebitda - netDebt) / sharesOutstanding);
+  const { p25, p75 } = percentiles(psValues, medianPS);
+  const lowEstimate = p25 * revenuePerShare;
+  const highEstimate = p75 * revenuePerShare;
 
   return {
-    model_type: "ev_ebitda_multiples",
+    model_type: "ps_multiples",
     fair_value: fairValue,
     upside_percent: upside,
     low_estimate: lowEstimate,
     high_estimate: highEstimate,
     assumptions: {
-      industry_median_ev_ebitda: Math.round(medianEVEBITDA * 100) / 100,
-      company_ebitda: ebitda,
-      net_debt: netDebt,
+      industry_median_ps: Math.round(medianPS * 100) / 100,
+      company_revenue: revenue,
+      revenue_per_share: Math.round(revenuePerShare * 100) / 100,
       shares_outstanding: sharesOutstanding,
       peer_count: validPeers.length,
       industry: company.industry,
     },
     details: {
       peers: validPeers,
-      industry_median: medianEVEBITDA,
-      company_metric: ebitda,
-      metric_label: "EBITDA",
+      industry_median: medianPS,
+      company_metric: revenuePerShare,
+      metric_label: "Revenue/Share",
+    },
+    computed_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * P/B Multiples Valuation
+ *
+ * Fair Price = Industry Median P/B × Company Book Value per Share
+ */
+export function calculatePBMultiples(
+  inputs: TradingMultiplesInputs
+): ValuationResult {
+  const { financials, company, currentPrice, peers } = inputs;
+
+  // Filter peers with valid P/B ratios
+  const validPeers = peers.filter(
+    (p) => p.pb_ratio !== null && p.pb_ratio > 0 && p.pb_ratio < 100
+  );
+
+  const pbValues = validPeers.map((p) => p.pb_ratio!);
+  const medianPB = pbValues.length > 0 ? median(pbValues) : 3;
+
+  const totalEquity = financials.total_equity;
+  const sharesOutstanding = financials.shares_outstanding || company.shares_outstanding;
+
+  if (!totalEquity || totalEquity <= 0 || !sharesOutstanding) {
+    return {
+      model_type: "pb_multiples",
+      fair_value: 0,
+      upside_percent: 0,
+      low_estimate: 0,
+      high_estimate: 0,
+      assumptions: {
+        note: "N/A — Negative or zero book value",
+        industry_median_pb: medianPB,
+        total_equity: totalEquity,
+      },
+      details: { peers: validPeers, industry_median: medianPB, company_metric: totalEquity, metric_label: "Total Equity" },
+      computed_at: new Date().toISOString(),
+    };
+  }
+
+  const bookValuePerShare = totalEquity / sharesOutstanding;
+  const fairValue = medianPB * bookValuePerShare;
+  const upside = ((fairValue - currentPrice) / currentPrice) * 100;
+
+  const { p25, p75 } = percentiles(pbValues, medianPB);
+  const lowEstimate = p25 * bookValuePerShare;
+  const highEstimate = p75 * bookValuePerShare;
+
+  return {
+    model_type: "pb_multiples",
+    fair_value: fairValue,
+    upside_percent: upside,
+    low_estimate: lowEstimate,
+    high_estimate: highEstimate,
+    assumptions: {
+      industry_median_pb: Math.round(medianPB * 100) / 100,
+      company_total_equity: totalEquity,
+      book_value_per_share: Math.round(bookValuePerShare * 100) / 100,
+      shares_outstanding: sharesOutstanding,
+      peer_count: validPeers.length,
+      industry: company.industry,
+    },
+    details: {
+      peers: validPeers,
+      industry_median: medianPB,
+      company_metric: bookValuePerShare,
+      metric_label: "Book Value/Share",
     },
     computed_at: new Date().toISOString(),
   };
