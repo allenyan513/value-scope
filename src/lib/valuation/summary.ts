@@ -1,12 +1,12 @@
 // ============================================================
 // Valuation Summary Aggregator
-// Combines all model results into a unified summary
+// Combines all model results into a unified summary with
+// company classification and weighted consensus
 // ============================================================
 
 import type {
   ValuationResult,
   ValuationSummary,
-  WACCResult,
   FinancialStatement,
   AnalystEstimate,
   Company,
@@ -20,6 +20,7 @@ import {
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePeterLynch } from "./peter-lynch";
+import { classifyCompany, computeWeightedConsensus } from "./company-classifier";
 
 export interface FullValuationInputs {
   company: Company;
@@ -54,6 +55,9 @@ export function computeFullValuation(
   if (!latestFinancial) {
     throw new Error(`No financial data available for ${company.ticker}`);
   }
+
+  // 0. Classify the company
+  const classification = classifyCompany(company, sortedHistoricals, estimates);
 
   // 1. Calculate WACC
   const waccInputs = buildWACCInputs(
@@ -94,7 +98,6 @@ export function computeFullValuation(
   }
 
   // DCF EBITDA Exit 5Y & 10Y
-  // Use industry median EV/EBITDA as exit multiple if available
   const peerEVEBITDA = peers
     .map((p) => p.ev_ebitda)
     .filter((v): v is number => v !== null && v > 0 && v < 100);
@@ -133,26 +136,39 @@ export function computeFullValuation(
     })
   );
 
-  // 4. Determine primary valuation (DCF Growth Exit 5Y)
+  // 4. Compute weighted consensus using classification weights
+  const { consensus, low, high } = computeWeightedConsensus(
+    models,
+    classification.model_weights
+  );
+
+  const consensusUpside = currentPrice > 0
+    ? ((consensus - currentPrice) / currentPrice) * 100
+    : 0;
+
+  // 5. Determine primary valuation (DCF Growth Exit 5Y as fallback)
   const primaryModel = models.find(
     (m) => m.model_type === "dcf_growth_exit_5y"
   );
   const primaryFairValue = primaryModel?.fair_value ?? 0;
   const primaryUpside = primaryModel?.upside_percent ?? 0;
 
-  // 5. Determine verdict
+  // 6. Determine verdict based on consensus (not just primary model)
+  const verdictUpside = consensus > 0 ? consensusUpside : primaryUpside;
+  const verdictValue = consensus > 0 ? consensus : primaryFairValue;
+
   let verdict: "undervalued" | "fairly_valued" | "overvalued";
   let verdictText: string;
 
-  if (primaryUpside > 15) {
+  if (verdictUpside > 15) {
     verdict = "undervalued";
-    verdictText = `Based on our DCF analysis, ${company.name} appears undervalued by ${Math.abs(primaryUpside).toFixed(1)}%. The current price of $${currentPrice.toFixed(2)} is below our estimated intrinsic value of $${primaryFairValue.toFixed(2)}.`;
-  } else if (primaryUpside < -15) {
+    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is undervalued by ${Math.abs(verdictUpside).toFixed(1)}%. The consensus intrinsic value of $${verdictValue.toFixed(2)} is above the current trading price of $${currentPrice.toFixed(2)}.`;
+  } else if (verdictUpside < -15) {
     verdict = "overvalued";
-    verdictText = `Based on our DCF analysis, ${company.name} appears overvalued by ${Math.abs(primaryUpside).toFixed(1)}%. The current price of $${currentPrice.toFixed(2)} is above our estimated intrinsic value of $${primaryFairValue.toFixed(2)}.`;
+    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is overvalued by ${Math.abs(verdictUpside).toFixed(1)}%. The consensus intrinsic value of $${verdictValue.toFixed(2)} is below the current trading price of $${currentPrice.toFixed(2)}.`;
   } else {
     verdict = "fairly_valued";
-    verdictText = `Based on our DCF analysis, ${company.name} appears fairly valued. The current price of $${currentPrice.toFixed(2)} is close to our estimated intrinsic value of $${primaryFairValue.toFixed(2)} (${primaryUpside > 0 ? "+" : ""}${primaryUpside.toFixed(1)}%).`;
+    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is fairly valued. The consensus intrinsic value of $${verdictValue.toFixed(2)} is close to the current trading price of $${currentPrice.toFixed(2)} (${verdictUpside > 0 ? "+" : ""}${verdictUpside.toFixed(1)}%).`;
   }
 
   return {
@@ -161,8 +177,13 @@ export function computeFullValuation(
     current_price: currentPrice,
     primary_fair_value: primaryFairValue,
     primary_upside: primaryUpside,
+    consensus_fair_value: consensus,
+    consensus_low: low,
+    consensus_high: high,
+    consensus_upside: consensusUpside,
     models,
     wacc: waccResult,
+    classification,
     verdict,
     verdict_text: verdictText,
     computed_at: new Date().toISOString(),
