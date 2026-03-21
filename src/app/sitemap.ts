@@ -34,12 +34,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB not available — return static pages only
   }
 
-  const stockPages: MetadataRoute.Sitemap = tickers.map((ticker) => ({
-    url: `${baseUrl}/${ticker}`,
-    lastModified: new Date(),
-    changeFrequency: "daily" as const,
-    priority: 0.8,
-  }));
+  const stockPages: MetadataRoute.Sitemap = tickers.flatMap((ticker) => [
+    {
+      url: `${baseUrl}/${ticker}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/${ticker}/dcf-valuation`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/${ticker}/relative-valuation`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/${ticker}/analyst-estimates`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    },
+  ]);
 
   return [...staticPages, ...stockPages];
 }

@@ -1,11 +1,9 @@
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getIndustryPeers } from "@/lib/db/queries";
-import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getKeyMetrics } from "@/lib/data/fmp";
-import { computeFullValuation } from "@/lib/valuation/summary";
-import type { PeerComparison } from "@/types";
-import { StockValuationClient } from "./client";
+import { getCompany } from "@/lib/db/queries";
+import { SummaryCard } from "@/components/valuation/summary-card";
+import { PriceValueChart } from "@/components/charts/price-value-chart";
+import { ModelCardCompact } from "@/components/valuation/model-card-compact";
+import { getTickerData } from "./data";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -14,10 +12,7 @@ interface Props {
 // ISR: revalidate every hour
 export const revalidate = 3600;
 
-// Pre-render top stocks at build time
 export async function generateStaticParams() {
-  // Will be populated once data is seeded
-  // For now, return empty — pages will be generated on demand
   return [];
 }
 
@@ -31,82 +26,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${upperTicker} Intrinsic Value & Fair Price — ${company.name}`,
-    description: `Is ${company.name} (${upperTicker}) undervalued? See DCF, P/E, EV/EBITDA, and Peter Lynch valuations with transparent assumptions. Updated daily.`,
+    title: `${upperTicker} Intrinsic Value & Fair Price — ${company.name} | ValuScope`,
+    description: `What is the intrinsic value of ${company.name} (${upperTicker})? Is ${upperTicker} undervalued or overvalued? See 7 valuation models including DCF, P/E, EV/EBITDA with transparent assumptions. Updated daily.`,
     openGraph: {
-      title: `${upperTicker} — Fair Value Analysis | ValuScope`,
-      description: `${company.name} stock valuation using 7 models. Current price: $${company.price?.toFixed(2)}`,
+      title: `${upperTicker} Intrinsic Value — Is ${company.name} Undervalued? | ValuScope`,
+      description: `${company.name} (${upperTicker}) intrinsic value analysis using 7 models. Current price: $${company.price?.toFixed(2)} USD.`,
     },
   };
 }
 
-export default async function StockValuationPage({ params }: Props) {
+export default async function SummaryPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
+  const { company, summary } = await getTickerData(upperTicker);
 
-  // Fetch all data in parallel
-  const [company, historicals, estimates, riskFreeRate] = await Promise.all([
-    getCompany(upperTicker),
-    getFinancials(upperTicker, "annual", 7),
-    getEstimates(upperTicker),
-    getTenYearTreasuryYield().catch(() => 0.0425),
-  ]);
-
-  if (!company) {
-    notFound();
-  }
-
-  if (historicals.length === 0) {
+  if (!summary) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">{company.name} ({upperTicker})</h1>
+      <div className="py-8 text-center">
+        <h2 className="text-xl font-bold mb-4">
+          {company.name} ({upperTicker})
+        </h2>
         <p className="text-muted-foreground">
-          Financial data not yet available for this company. We are currently seeding data — please check back soon.
+          Financial data not yet available. We are currently seeding data —
+          please check back soon.
         </p>
       </div>
     );
   }
 
-  const currentPrice = (await getLatestPrice(upperTicker)) || company.price || 0;
-
-  // Get peer data for trading multiples
-  const peerCompanies = await getIndustryPeers(upperTicker, 15);
-  const peers: PeerComparison[] = [];
-
-  // Fetch peer metrics (batch to reduce latency)
-  const peerMetricsPromises = peerCompanies.slice(0, 10).map(async (peer) => {
-    try {
-      const metrics = await getKeyMetrics(peer.ticker, "annual", 1);
-      if (metrics.length > 0) {
-        return {
-          ticker: peer.ticker,
-          name: peer.name,
-          market_cap: peer.market_cap,
-          trailing_pe: metrics[0].peRatio,
-          forward_pe: null,
-          ev_ebitda: metrics[0].enterpriseValueOverEBITDA,
-        } as PeerComparison;
-      }
-    } catch {
-      // Skip
-    }
-    return null;
-  });
-
-  const peerResults = await Promise.all(peerMetricsPromises);
-  peers.push(...peerResults.filter((p): p is PeerComparison => p !== null));
-
-  // Compute valuation
-  const summary = computeFullValuation({
-    company,
-    historicals,
-    estimates,
-    peers,
-    currentPrice,
-    riskFreeRate,
-  });
-
-  // JSON-LD structured data for SEO
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FinancialProduct",
@@ -119,7 +66,7 @@ export default async function StockValuationPage({ params }: Props) {
     },
     offers: {
       "@type": "Offer",
-      price: currentPrice.toFixed(2),
+      price: summary.current_price.toFixed(2),
       priceCurrency: "USD",
     },
   };
@@ -130,11 +77,43 @@ export default async function StockValuationPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <StockValuationClient
-        summary={summary}
-        company={company}
-        ticker={upperTicker}
-      />
+
+      {/* Valuation Summary */}
+      <SummaryCard summary={summary} />
+
+      {/* Price vs Intrinsic Value Chart */}
+      <div className="mt-8 rounded-lg border p-6">
+        <h2 className="text-lg font-semibold mb-4">
+          Valuation History
+        </h2>
+        <PriceValueChart ticker={upperTicker} />
+      </div>
+
+      {/* All Models Overview */}
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold mb-4">Valuation Models</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {summary.models.map((model) => (
+            <ModelCardCompact
+              key={model.model_type}
+              model={model}
+              ticker={upperTicker}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="text-xs text-muted-foreground border-t pt-6 mt-10">
+        <p>
+          <strong>Disclaimer:</strong> ValuScope provides estimated intrinsic
+          values for informational purposes only. This is not financial advice.
+          All models rely on assumptions that may not reflect future performance.
+          Always do your own research before making investment decisions. Data
+          sourced from SEC filings via Financial Modeling Prep. Last updated:{" "}
+          {new Date(summary.computed_at).toLocaleDateString()}.
+        </p>
+      </div>
     </>
   );
 }
