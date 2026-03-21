@@ -8,12 +8,14 @@ import {
   getCashFlowStatements,
   getAnalystEstimates,
   getHistoricalPrices,
+  getPriceTargetConsensus,
 } from "./fmp";
 import {
   upsertCompany,
   upsertFinancials,
   upsertDailyPrices,
   upsertEstimates,
+  upsertPriceTargets,
 } from "../db/queries";
 import type { FinancialStatement } from "@/types";
 
@@ -129,6 +131,21 @@ async function seedCompany(ticker: string): Promise<boolean> {
           number_of_analysts: e.numAnalystsRevenue,
         }))
       );
+    }
+
+    // Fetch price target consensus
+    const ptConsensus = await getPriceTargetConsensus(ticker);
+    await sleep(1000);
+
+    if (ptConsensus) {
+      await upsertPriceTargets({
+        ticker,
+        target_high: ptConsensus.targetHigh,
+        target_low: ptConsensus.targetLow,
+        target_consensus: ptConsensus.targetConsensus,
+        target_median: ptConsensus.targetMedian,
+        number_of_analysts: 0, // FMP consensus endpoint doesn't return count
+      });
     }
 
     const twoYearsAgo = new Date();

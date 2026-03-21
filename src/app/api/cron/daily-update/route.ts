@@ -8,9 +8,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db/supabase";
-import { getBatchQuotes } from "@/lib/data/fmp";
+import { getBatchQuotes, getPriceTargetConsensus } from "@/lib/data/fmp";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
@@ -130,6 +130,21 @@ export async function GET(request: NextRequest) {
           currentPrice,
           summary.primary_fair_value
         );
+
+        // Refresh price target consensus
+        try {
+          const ptConsensus = await getPriceTargetConsensus(ticker);
+          if (ptConsensus) {
+            await upsertPriceTargets({
+              ticker,
+              target_high: ptConsensus.targetHigh,
+              target_low: ptConsensus.targetLow,
+              target_consensus: ptConsensus.targetConsensus,
+              target_median: ptConsensus.targetMedian,
+              number_of_analysts: 0,
+            });
+          }
+        } catch { /* non-critical */ }
 
         valuationSuccess++;
       } catch (error) {
