@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${upperTicker} Intrinsic Value & Fair Price — ${company.name} | ValuScope`,
-    description: `What is the intrinsic value of ${company.name} (${upperTicker})? Is ${upperTicker} undervalued or overvalued? See 7 valuation models including DCF, P/E, EV/EBITDA with transparent assumptions. Updated daily.`,
+    description: `What is the intrinsic value of ${company.name} (${upperTicker})? Is ${upperTicker} undervalued or overvalued? See valuation models including DCF, P/E, P/S, P/B with transparent assumptions. Updated daily.`,
     openGraph: {
       title: `${upperTicker} Intrinsic Value — Is ${company.name} Undervalued? | ValuScope`,
       description: `${company.name} (${upperTicker}) intrinsic value analysis using 7 models. Current price: $${company.price?.toFixed(2)} USD.`,

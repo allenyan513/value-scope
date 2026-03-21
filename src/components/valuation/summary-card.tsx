@@ -10,7 +10,8 @@ const MODEL_NAMES: Record<string, string> = {
   dcf_ebitda_exit_5y: "DCF (EBITDA Exit 5Y)",
   dcf_ebitda_exit_10y: "DCF (EBITDA Exit 10Y)",
   pe_multiples: "P/E Multiples",
-  ev_ebitda_multiples: "EV/EBITDA Multiples",
+  ps_multiples: "P/S Multiples",
+  pb_multiples: "P/B Multiples",
   peter_lynch: "Peter Lynch Fair Value",
 };
 
