@@ -8,6 +8,7 @@ import type {
   AnalystEstimate,
   ValuationResult,
   DCFProjectionYear,
+  DCFProjectionYearFCFE,
   WACCResult,
 } from "@/types";
 
@@ -288,8 +289,207 @@ function buildSensitivityMatrix(
   return { wacc_values: waccValues, growth_values: secondAxis, prices };
 }
 
-// --- Public API ---
+// ============================================================
+// FCFE (Free Cash Flow to Equity) DCF Model
+// Simpler approach: Revenue → Net Income → FCFE, discount by Cost of Equity
+// ============================================================
 
+export interface DCFFCFEInputs {
+  historicals: FinancialStatement[];
+  estimates: AnalystEstimate[];
+  costOfEquity: number;       // Discount rate (Ke)
+  currentPrice: number;
+  sharesOutstanding: number;
+  cashAndEquivalents: number;
+  totalDebt: number;
+  terminalGrowthRate?: number; // Default 2.5%
+}
+
+/**
+ * DCF valuation using FCFE (Free Cash Flow to Equity) approach.
+ * Revenue → Net Margin → Net Income - CapEx = FCFE
+ * Discounted by Cost of Equity. Equity Value = PV(FCFE) + Cash - Debt.
+ */
+export function calculateDCF(
+  inputs: DCFFCFEInputs,
+  projectionYears: 5 | 10 = 5
+): ValuationResult {
+  const {
+    historicals,
+    estimates,
+    costOfEquity,
+    currentPrice,
+    sharesOutstanding,
+    cashAndEquivalents,
+    totalDebt,
+    terminalGrowthRate: termGrowth = 0.025,
+  } = inputs;
+
+  const revenueProjection = projectRevenue(historicals, estimates, projectionYears);
+
+  // Calculate historical averages for net margin and capex ratio
+  const sorted = [...historicals]
+    .filter((f) => f.revenue > 0)
+    .sort((a, b) => a.fiscal_year - b.fiscal_year);
+  const recent = sorted.slice(-5);
+
+  const netMargins = recent
+    .filter((f) => f.revenue > 0)
+    .map((f) => f.net_income / f.revenue);
+  const avgNetMargin = netMargins.length > 0 ? avg(netMargins) : 0.10;
+
+  const capexRatios = recent
+    .filter((f) => f.revenue > 0 && f.capital_expenditure !== 0)
+    .map((f) => Math.abs(f.capital_expenditure) / f.revenue);
+  const avgCapexRatio = capexRatios.length > 0 ? avg(capexRatios) : 0.05;
+
+  const ke = costOfEquity;
+  const g = termGrowth;
+
+  // Build FCFE projections
+  const projections: DCFProjectionYearFCFE[] = [];
+
+  for (let i = 0; i < revenueProjection.revenues.length; i++) {
+    const revenue = revenueProjection.revenues[i];
+    const netMargin = avgNetMargin; // Use constant margin assumption
+    const netIncome = revenue * netMargin;
+    const netCapex = revenue * avgCapexRatio;
+    const fcfe = netIncome - netCapex;
+    const t = i + 1;
+    const discountFactor = 1 / Math.pow(1 + ke, t);
+    const pvFCFE = fcfe * discountFactor;
+
+    projections.push({
+      year: revenueProjection.years[i],
+      revenue,
+      net_margin: netMargin,
+      net_income: netIncome,
+      net_capex: netCapex,
+      fcfe,
+      discount_factor: discountFactor,
+      pv_fcfe: pvFCFE,
+    });
+  }
+
+  // Terminal value (Gordon Growth on FCFE)
+  const lastFCFE = projections[projections.length - 1].fcfe;
+  const terminalValue =
+    ke > g ? (lastFCFE * (1 + g)) / (ke - g) : lastFCFE * 20;
+
+  const pvTerminalValue =
+    terminalValue / Math.pow(1 + ke, projectionYears);
+  const pvFCFETotal = projections.reduce((sum, p) => sum + p.pv_fcfe, 0);
+
+  // Equity Value = PV of FCFE + PV of Terminal + Cash - Debt
+  const totalPV = pvFCFETotal + pvTerminalValue;
+  const equityValue = totalPV + cashAndEquivalents - totalDebt;
+  const fairValue = Math.max(0, equityValue / sharesOutstanding);
+
+  // Sensitivity matrix (Discount Rate × Terminal Growth)
+  const sensitivity = buildFCFESensitivityMatrix(
+    projections,
+    cashAndEquivalents,
+    totalDebt,
+    sharesOutstanding,
+    ke,
+    g
+  );
+
+  const allPrices = sensitivity.prices.flat();
+  const lowEstimate = Math.min(...allPrices);
+  const highEstimate = Math.max(...allPrices);
+
+  return {
+    model_type: "dcf_growth_exit_5y", // Keep type for DB compat
+    fair_value: fairValue,
+    upside_percent: ((fairValue - currentPrice) / currentPrice) * 100,
+    low_estimate: lowEstimate,
+    high_estimate: highEstimate,
+    assumptions: {
+      revenue_growth_rates: revenueProjection.growthRates.map(
+        (r) => Math.round(r * 10000) / 100
+      ),
+      revenue_source: revenueProjection.source,
+      net_margin: Math.round(avgNetMargin * 10000) / 100,
+      capex_percent: Math.round(avgCapexRatio * 10000) / 100,
+      discount_rate: Math.round(ke * 10000) / 100,
+      terminal_growth_rate: Math.round(g * 10000) / 100,
+      projection_years: projectionYears,
+    },
+    details: {
+      projections,
+      terminal_value: terminalValue,
+      pv_terminal_value: pvTerminalValue,
+      pv_fcfe_total: pvFCFETotal,
+      cash_and_equivalents: cashAndEquivalents,
+      total_debt: totalDebt,
+      equity_value: equityValue,
+      shares_outstanding: sharesOutstanding,
+      sensitivity_matrix: sensitivity,
+    },
+    computed_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Sensitivity matrix for FCFE DCF: Discount Rate × Terminal Growth Rate
+ */
+function buildFCFESensitivityMatrix(
+  projections: DCFProjectionYearFCFE[],
+  cash: number,
+  debt: number,
+  sharesOutstanding: number,
+  baseKe: number,
+  baseGrowth: number,
+): { discount_rate_values: number[]; growth_values: number[]; prices: number[][] } {
+  const keValues = [
+    baseKe - 0.02,
+    baseKe - 0.01,
+    baseKe,
+    baseKe + 0.01,
+    baseKe + 0.02,
+  ];
+  const growthValues = [0.01, 0.02, baseGrowth, 0.04, 0.05].sort((a, b) => a - b);
+  // Deduplicate growth values
+  const uniqueGrowth = [...new Set(growthValues.map(v => Math.round(v * 1000) / 1000))];
+
+  const prices: number[][] = [];
+  const n = projections.length;
+
+  for (const ke of keValues) {
+    const row: number[] = [];
+    for (const g of uniqueGrowth) {
+      let pvFCFESum = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i + 1;
+        pvFCFESum += projections[i].fcfe / Math.pow(1 + ke, t);
+      }
+
+      const lastFCFE = projections[n - 1].fcfe;
+      let tv: number;
+      if (ke <= g) {
+        tv = lastFCFE * 20;
+      } else {
+        tv = (lastFCFE * (1 + g)) / (ke - g);
+      }
+      const pvTV = tv / Math.pow(1 + ke, n);
+      const totalPV = pvFCFESum + pvTV;
+      const equityValue = totalPV + cash - debt;
+      row.push(Math.max(0, equityValue / sharesOutstanding));
+    }
+    prices.push(row);
+  }
+
+  return { discount_rate_values: keValues, growth_values: uniqueGrowth, prices };
+}
+
+// ============================================================
+// Legacy FCFF Models (deprecated — kept for potential future use)
+// ============================================================
+
+// --- Public API (legacy) ---
+
+/** @deprecated Use DCFFCFEInputs instead */
 export interface DCFInputs {
   historicals: FinancialStatement[];
   estimates: AnalystEstimate[];
@@ -300,7 +500,8 @@ export interface DCFInputs {
 }
 
 /**
- * DCF Growth Exit Model (5Y or 10Y)
+ * @deprecated Use calculateDCF() (FCFE approach) instead.
+ * DCF Growth Exit Model (5Y or 10Y) — FCFF approach
  */
 export function calculateDCFGrowthExit(
   inputs: DCFInputs,
@@ -386,7 +587,8 @@ export function calculateDCFGrowthExit(
 }
 
 /**
- * DCF EBITDA Exit Model (5Y or 10Y)
+ * @deprecated Use calculateDCF() (FCFE approach) instead.
+ * DCF EBITDA Exit Model (5Y or 10Y) — FCFF approach
  */
 export function calculateDCFEBITDAExit(
   inputs: DCFInputs,

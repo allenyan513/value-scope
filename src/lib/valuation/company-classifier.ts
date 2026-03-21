@@ -179,106 +179,82 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
 }> = {
   high_growth: {
     label: "High Growth",
-    description: "Fast-growing company with strong revenue momentum. DCF models with longer horizons are most appropriate as current earnings may not reflect future potential.",
+    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while EV/EBITDA provides market-relative anchor.",
     weights: {
-      dcf_growth_exit_5y: 0.10,
-      dcf_growth_exit_10y: 0.30,
-      dcf_ebitda_exit_5y: 0.05,
-      dcf_ebitda_exit_10y: 0.20,
-      pe_multiples: 0.05,
-      ev_ebitda_multiples: 0.20,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.40,
+      pe_multiples: 0.10,
+      ev_ebitda_multiples: 0.35,
+      peter_lynch: 0.15,
     },
   },
   profitable_growth: {
     label: "Profitable Growth",
-    description: "Company with both strong growth and healthy profitability. All valuation models are applicable, with DCF models providing the most reliable estimates.",
+    description: "Company with both strong growth and healthy profitability. All valuation models are applicable, with DCF providing the most reliable estimate.",
     weights: {
-      dcf_growth_exit_5y: 0.25,
-      dcf_growth_exit_10y: 0.20,
-      dcf_ebitda_exit_5y: 0.10,
-      dcf_ebitda_exit_10y: 0.10,
-      pe_multiples: 0.15,
-      ev_ebitda_multiples: 0.10,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.40,
+      pe_multiples: 0.25,
+      ev_ebitda_multiples: 0.20,
+      peter_lynch: 0.15,
     },
   },
   mature_stable: {
     label: "Mature & Stable",
-    description: "Well-established company with predictable cash flows. Shorter-horizon DCF and trading multiples are most reliable due to stable, predictable financials.",
+    description: "Well-established company with predictable cash flows. DCF and trading multiples are most reliable due to stable, predictable financials.",
     weights: {
-      dcf_growth_exit_5y: 0.25,
-      dcf_growth_exit_10y: 0.10,
-      dcf_ebitda_exit_5y: 0.15,
-      dcf_ebitda_exit_10y: 0.05,
-      pe_multiples: 0.20,
-      ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.35,
+      pe_multiples: 0.30,
+      ev_ebitda_multiples: 0.20,
+      peter_lynch: 0.15,
     },
   },
   dividend_payer: {
     label: "Dividend Payer",
     description: "Company returning significant cash to shareholders via dividends. Cash flow stability and payout sustainability are key valuation drivers.",
     weights: {
-      dcf_growth_exit_5y: 0.25,
-      dcf_growth_exit_10y: 0.10,
-      dcf_ebitda_exit_5y: 0.15,
-      dcf_ebitda_exit_10y: 0.05,
-      pe_multiples: 0.20,
-      ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.35,
+      pe_multiples: 0.30,
+      ev_ebitda_multiples: 0.20,
+      peter_lynch: 0.15,
     },
   },
   cyclical: {
     label: "Cyclical",
-    description: "Earnings fluctuate significantly with economic cycles. Normalized earnings multiples and longer-term DCF are preferred over point-in-time metrics.",
+    description: "Earnings fluctuate significantly with economic cycles. DCF and EV/EBITDA are preferred over point-in-time P/E metrics.",
     weights: {
-      dcf_growth_exit_5y: 0.10,
-      dcf_growth_exit_10y: 0.25,
-      dcf_ebitda_exit_5y: 0.10,
-      dcf_ebitda_exit_10y: 0.15,
-      pe_multiples: 0.10,
-      ev_ebitda_multiples: 0.20,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.35,
+      pe_multiples: 0.15,
+      ev_ebitda_multiples: 0.35,
+      peter_lynch: 0.15,
     },
   },
   turnaround: {
     label: "Turnaround",
-    description: "Currently unprofitable but showing improving trends. Forward-looking models like long-horizon DCF are prioritized; current earnings multiples are unreliable.",
+    description: "Currently unprofitable but showing improving trends. DCF is prioritized; current earnings multiples are unreliable.",
     weights: {
-      dcf_growth_exit_5y: 0.10,
-      dcf_growth_exit_10y: 0.30,
-      dcf_ebitda_exit_5y: 0.10,
-      dcf_ebitda_exit_10y: 0.20,
+      dcf_growth_exit_5y: 0.45,
       pe_multiples: 0.00,
-      ev_ebitda_multiples: 0.20,
-      peter_lynch: 0.10,
+      ev_ebitda_multiples: 0.40,
+      peter_lynch: 0.15,
     },
   },
   asset_heavy: {
     label: "Asset-Heavy",
-    description: "Capital-intensive business with significant tangible assets. EV/EBITDA and asset-based methods provide important valuation anchors.",
+    description: "Capital-intensive business with significant tangible assets. EV/EBITDA provides important valuation anchor alongside DCF.",
     weights: {
-      dcf_growth_exit_5y: 0.15,
-      dcf_growth_exit_10y: 0.10,
-      dcf_ebitda_exit_5y: 0.15,
-      dcf_ebitda_exit_10y: 0.10,
-      pe_multiples: 0.15,
-      ev_ebitda_multiples: 0.25,
-      peter_lynch: 0.10,
+      dcf_growth_exit_5y: 0.30,
+      pe_multiples: 0.20,
+      ev_ebitda_multiples: 0.35,
+      peter_lynch: 0.15,
     },
   },
   loss_making: {
     label: "Loss-Making",
-    description: "Company is currently unprofitable with no clear improving trend. Earnings-based models are not applicable. Revenue multiples and long-horizon DCF are used cautiously.",
+    description: "Company is currently unprofitable with no clear improving trend. Earnings-based models are not applicable. DCF and EV/EBITDA used cautiously.",
     weights: {
-      dcf_growth_exit_5y: 0.10,
-      dcf_growth_exit_10y: 0.30,
-      dcf_ebitda_exit_5y: 0.10,
-      dcf_ebitda_exit_10y: 0.20,
+      dcf_growth_exit_5y: 0.40,
       pe_multiples: 0.00,
-      ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.15,
+      ev_ebitda_multiples: 0.35,
+      peter_lynch: 0.25,
     },
   },
 };
@@ -368,81 +344,32 @@ function buildModelApplicability(
 ): ModelApplicability[] {
   const applicability: ModelApplicability[] = [];
 
-  // DCF Growth Exit 5Y
+  // DCF (FCFE approach)
   if (archetype === "loss_making" || archetype === "turnaround") {
     applicability.push({
       model_type: "dcf_growth_exit_5y",
       applicable: true,
-      reason: "Short horizon may not capture recovery; use with caution",
+      reason: "DCF projects future cash flows; use with caution for unprofitable companies",
       confidence: "low",
-      role: "sanity_check",
+      role: "primary",
     });
   } else if (archetype === "high_growth") {
     applicability.push({
       model_type: "dcf_growth_exit_5y",
       applicable: true,
-      reason: "5-year window may miss long-term growth potential",
+      reason: "DCF captures intrinsic value based on projected free cash flows to equity",
       confidence: "medium",
-      role: "cross_check",
+      role: "primary",
     });
   } else {
     applicability.push({
       model_type: "dcf_growth_exit_5y",
       applicable: true,
-      reason: "Predictable cash flows make 5Y DCF reliable",
+      reason: "Predictable cash flows make DCF the most reliable intrinsic valuation",
       confidence: "high",
-      role: archetype === "mature_stable" || archetype === "dividend_payer" ? "primary" : "cross_check",
-    });
-  }
-
-  // DCF Growth Exit 10Y
-  if (archetype === "high_growth" || archetype === "turnaround") {
-    applicability.push({
-      model_type: "dcf_growth_exit_10y",
-      applicable: true,
-      reason: "Longer horizon captures growth trajectory and margin expansion",
-      confidence: "medium",
       role: "primary",
     });
-  } else if (archetype === "cyclical") {
-    applicability.push({
-      model_type: "dcf_growth_exit_10y",
-      applicable: true,
-      reason: "Longer horizon smooths out cyclical fluctuations",
-      confidence: "medium",
-      role: "primary",
-    });
-  } else {
-    applicability.push({
-      model_type: "dcf_growth_exit_10y",
-      applicable: true,
-      reason: "Extended projection adds uncertainty for stable businesses",
-      confidence: "medium",
-      role: "cross_check",
-    });
   }
-
-  // DCF EBITDA Exit 5Y
-  applicability.push({
-    model_type: "dcf_ebitda_exit_5y",
-    applicable: m.isCurrentlyProfitable || m.isProfitImproving,
-    reason: m.isCurrentlyProfitable
-      ? "EBITDA-based exit multiple provides market-anchored terminal value"
-      : "Negative EBITDA makes exit multiple unreliable",
-    confidence: m.isCurrentlyProfitable ? "medium" : "low",
-    role: m.isCurrentlyProfitable ? "cross_check" : "not_applicable",
-  });
-
-  // DCF EBITDA Exit 10Y
-  applicability.push({
-    model_type: "dcf_ebitda_exit_10y",
-    applicable: true,
-    reason: archetype === "high_growth"
-      ? "Long-term EBITDA exit captures mature-state profitability"
-      : "Combines long-term projection with market-based exit",
-    confidence: "medium",
-    role: archetype === "high_growth" ? "cross_check" : "sanity_check",
-  });
 
   // P/E Multiples
   if (!m.isCurrentlyProfitable || m.latestEPS <= 0) {

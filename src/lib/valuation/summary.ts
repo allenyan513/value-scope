@@ -13,7 +13,7 @@ import type {
   PeerComparison,
 } from "@/types";
 import { calculateWACC, buildWACCInputs } from "./wacc";
-import { calculateDCFGrowthExit, calculateDCFEBITDAExit, type DCFInputs } from "./dcf";
+import { calculateDCF, type DCFFCFEInputs } from "./dcf";
 import {
   calculatePEMultiples,
   calculateEVEBITDAMultiples,
@@ -69,52 +69,27 @@ export function computeFullValuation(
   const waccResult = calculateWACC(waccInputs);
 
   // 2. Common DCF inputs
-  const netDebt = latestFinancial.net_debt || 0;
   const sharesOutstanding =
     latestFinancial.shares_outstanding || company.shares_outstanding;
 
-  const dcfInputs: DCFInputs = {
+  const dcfInputs: DCFFCFEInputs = {
     historicals: sortedHistoricals,
     estimates,
-    waccResult,
+    costOfEquity: waccResult.cost_of_equity,
     currentPrice,
     sharesOutstanding,
-    netDebt,
+    cashAndEquivalents: latestFinancial.cash_and_equivalents || 0,
+    totalDebt: latestFinancial.total_debt || 0,
   };
 
-  // 3. Run all models
+  // 3. Run all models (4 active: DCF FCFE, P/E, EV/EBITDA, Peter Lynch)
   const models: ValuationResult[] = [];
 
-  // DCF Growth Exit 5Y & 10Y
+  // DCF (FCFE approach, 5Y)
   try {
-    models.push(calculateDCFGrowthExit(dcfInputs, 5));
+    models.push(calculateDCF(dcfInputs, 5));
   } catch {
     /* skip if insufficient data */
-  }
-  try {
-    models.push(calculateDCFGrowthExit(dcfInputs, 10));
-  } catch {
-    /* skip */
-  }
-
-  // DCF EBITDA Exit 5Y & 10Y
-  const peerEVEBITDA = peers
-    .map((p) => p.ev_ebitda)
-    .filter((v): v is number => v !== null && v > 0 && v < 100);
-  const exitMultiple =
-    peerEVEBITDA.length > 0
-      ? peerEVEBITDA.sort((a, b) => a - b)[Math.floor(peerEVEBITDA.length / 2)]
-      : 12;
-
-  try {
-    models.push(calculateDCFEBITDAExit(dcfInputs, 5, exitMultiple));
-  } catch {
-    /* skip */
-  }
-  try {
-    models.push(calculateDCFEBITDAExit(dcfInputs, 10, exitMultiple));
-  } catch {
-    /* skip */
   }
 
   // Trading Multiples
@@ -160,15 +135,18 @@ export function computeFullValuation(
   let verdict: "undervalued" | "fairly_valued" | "overvalued";
   let verdictText: string;
 
+  const modelCount = models.filter(m => m.fair_value > 0).length;
+  const absUpside = Math.abs(verdictUpside).toFixed(1);
+
   if (verdictUpside > 15) {
     verdict = "undervalued";
-    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is undervalued by ${Math.abs(verdictUpside).toFixed(1)}%. The consensus intrinsic value of $${verdictValue.toFixed(2)} is above the current trading price of $${currentPrice.toFixed(2)}.`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is undervalued by ${absUpside}%.`;
   } else if (verdictUpside < -15) {
     verdict = "overvalued";
-    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is overvalued by ${Math.abs(verdictUpside).toFixed(1)}%. The consensus intrinsic value of $${verdictValue.toFixed(2)} is below the current trading price of $${currentPrice.toFixed(2)}.`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is overvalued by ${absUpside}%.`;
   } else {
     verdict = "fairly_valued";
-    verdictText = `Our weighted analysis across ${models.filter(m => m.fair_value > 0).length} models suggests ${company.name} is fairly valued. The consensus intrinsic value of $${verdictValue.toFixed(2)} is close to the current trading price of $${currentPrice.toFixed(2)} (${verdictUpside > 0 ? "+" : ""}${verdictUpside.toFixed(1)}%).`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) appears fairly valued (${verdictUpside > 0 ? "+" : ""}${verdictUpside.toFixed(1)}%).`;
   }
 
   return {

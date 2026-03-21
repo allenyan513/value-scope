@@ -111,7 +111,37 @@ export interface ValuationResult {
   computed_at: string;
 }
 
-// --- DCF Specific ---
+// --- DCF Specific (FCFE approach) ---
+export interface DCFProjectionYearFCFE {
+  year: number;
+  revenue: number;
+  net_margin: number; // as decimal (e.g., 0.25 = 25%)
+  net_income: number;
+  net_capex: number;
+  fcfe: number; // Free Cash Flow to Equity = Net Income - CapEx
+  discount_factor: number;
+  pv_fcfe: number;
+}
+
+export interface DCFFCFEResult extends ValuationResult {
+  details: {
+    projections: DCFProjectionYearFCFE[];
+    terminal_value: number;
+    pv_terminal_value: number;
+    pv_fcfe_total: number;
+    cash_and_equivalents: number;
+    total_debt: number;
+    equity_value: number;
+    shares_outstanding: number;
+    sensitivity_matrix: {
+      discount_rate_values: number[];
+      growth_values: number[];
+      prices: number[][];
+    };
+  };
+}
+
+// --- DCF Specific (legacy FCFF approach, @deprecated) ---
 export interface DCFProjectionYear {
   year: number;
   revenue: number;
@@ -131,6 +161,7 @@ export interface DCFProjectionYear {
   pv_fcf: number;
 }
 
+/** @deprecated Use DCFFCFEResult instead */
 export interface DCFResult extends ValuationResult {
   details: {
     projections: DCFProjectionYear[];

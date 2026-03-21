@@ -2,25 +2,13 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { ValuationResult, ModelApplicability } from "@/types";
-import { SensitivityHeatmap } from "./sensitivity-heatmap";
-import { TVBreakdown } from "./tv-breakdown";
+import type { ValuationResult } from "@/types";
 
 const MODEL_NAMES: Record<string, string> = {
-  dcf_growth_exit_5y: "DCF — Growth Exit (5Y)",
-  dcf_growth_exit_10y: "DCF — Growth Exit (10Y)",
-  dcf_ebitda_exit_5y: "DCF — EBITDA Exit (5Y)",
-  dcf_ebitda_exit_10y: "DCF — EBITDA Exit (10Y)",
+  dcf_growth_exit_5y: "DCF Valuation",
   pe_multiples: "P/E Multiples",
   ev_ebitda_multiples: "EV/EBITDA Multiples",
   peter_lynch: "Peter Lynch Fair Value",
-};
-
-const ROLE_STYLES: Record<string, { border: string; label: string }> = {
-  primary: { border: "border-l-4 border-l-blue-500", label: "Primary Model" },
-  cross_check: { border: "border-l-4 border-l-slate-400", label: "Cross-Check" },
-  sanity_check: { border: "border-l-4 border-l-slate-300", label: "Sanity Check" },
-  not_applicable: { border: "border-l-4 border-l-slate-200", label: "Not Applicable" },
 };
 
 function formatLargeNumber(n: number): string {
@@ -33,19 +21,16 @@ function formatLargeNumber(n: number): string {
 interface Props {
   model: ValuationResult;
   currentPrice: number;
-  applicability?: ModelApplicability;
 }
 
-export function ModelCard({ model, currentPrice, applicability }: Props) {
+export function ModelCard({ model, currentPrice }: Props) {
   const isNA = model.fair_value === 0;
   const naNote = (model.assumptions as Record<string, unknown>)?.note as string | undefined;
-  const role = applicability?.role ?? "cross_check";
-  const roleStyle = ROLE_STYLES[role] ?? ROLE_STYLES.cross_check;
-  const isDCF = model.model_type.startsWith("dcf_");
+  void currentPrice;
 
   return (
-    <Card className={`p-6 ${roleStyle.border}`}>
-      <div className="flex items-center justify-between mb-1">
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-lg">
           {MODEL_NAMES[model.model_type] ?? model.model_type}
         </h3>
@@ -56,36 +41,6 @@ export function ModelCard({ model, currentPrice, applicability }: Props) {
           </Badge>
         )}
       </div>
-
-      {/* Role + confidence tag */}
-      {applicability && (
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-            {roleStyle.label}
-          </span>
-          {applicability.confidence && (
-            <Badge
-              variant="outline"
-              className={`text-[10px] ${
-                applicability.confidence === "high"
-                  ? "border-green-300 text-green-700"
-                  : applicability.confidence === "medium"
-                    ? "border-amber-300 text-amber-700"
-                    : "border-red-300 text-red-700"
-              }`}
-            >
-              {applicability.confidence} confidence
-            </Badge>
-          )}
-        </div>
-      )}
-
-      {/* Applicability reason */}
-      {applicability?.reason && (
-        <p className="text-xs text-muted-foreground mb-4 italic">
-          {applicability.reason}
-        </p>
-      )}
 
       {isNA ? (
         <p className="text-muted-foreground text-sm">{naNote || "Not applicable for this company."}</p>
@@ -135,101 +90,6 @@ export function ModelCard({ model, currentPrice, applicability }: Props) {
                 ))}
             </div>
           </div>
-
-          {/* DCF: TV Breakdown */}
-          {isDCF && model.details && "pv_terminal_value" in model.details && (
-            <div className="mb-6">
-              <h4 className="text-sm font-medium mb-2">Value Composition</h4>
-              <TVBreakdown
-                pvFCFTotal={(model.details as Record<string, unknown>).pv_fcf_total as number}
-                pvTerminalValue={(model.details as Record<string, unknown>).pv_terminal_value as number}
-                enterpriseValue={(model.details as Record<string, unknown>).enterprise_value as number}
-                netDebt={(model.details as Record<string, unknown>).net_debt as number}
-                equityValue={(model.details as Record<string, unknown>).equity_value as number}
-                fairValue={model.fair_value}
-              />
-            </div>
-          )}
-
-          {/* DCF: Projection table */}
-          {model.details &&
-            "projections" in model.details &&
-            Array.isArray((model.details as Record<string, unknown>).projections) && (
-              <div className="mb-6">
-                <h4 className="text-sm font-medium mb-2">FCF Projections</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Year</th>
-                        <th className="text-right p-2">Revenue</th>
-                        <th className="text-right p-2">EBITDA</th>
-                        <th className="text-right p-2">FCF</th>
-                        <th className="text-right p-2">PV of FCF</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(
-                        (model.details as Record<string, unknown>)
-                          .projections as Array<{
-                          year: number;
-                          revenue: number;
-                          ebitda: number;
-                          fcf: number;
-                          pv_fcf: number;
-                        }>
-                      ).map((p) => (
-                        <tr key={p.year} className="border-b">
-                          <td className="p-2 font-medium">{p.year}</td>
-                          <td className="p-2 text-right font-mono">
-                            {formatLargeNumber(p.revenue)}
-                          </td>
-                          <td className="p-2 text-right font-mono">
-                            {formatLargeNumber(p.ebitda)}
-                          </td>
-                          <td className="p-2 text-right font-mono">
-                            {formatLargeNumber(p.fcf)}
-                          </td>
-                          <td className="p-2 text-right font-mono">
-                            {formatLargeNumber(p.pv_fcf)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          {/* Sensitivity matrix */}
-          {model.details &&
-            "sensitivity_matrix" in model.details &&
-            (model.details as Record<string, unknown>).sensitivity_matrix && (
-              <div>
-                <h4 className="text-sm font-medium mb-2">Sensitivity Analysis</h4>
-                <SensitivityHeatmap
-                  waccValues={
-                    ((model.details as Record<string, unknown>).sensitivity_matrix as Record<string, unknown>)
-                      .wacc_values as number[]
-                  }
-                  secondAxisValues={
-                    ((model.details as Record<string, unknown>).sensitivity_matrix as Record<string, unknown>)
-                      .growth_values as number[]
-                  }
-                  prices={
-                    ((model.details as Record<string, unknown>).sensitivity_matrix as Record<string, unknown>)
-                      .prices as number[][]
-                  }
-                  currentPrice={currentPrice}
-                  xLabel={
-                    model.model_type.includes("ebitda_exit")
-                      ? "Exit Multiple"
-                      : "Terminal Growth Rate"
-                  }
-                  isPercent={!model.model_type.includes("ebitda_exit")}
-                />
-              </div>
-            )}
 
           {/* Trading Multiples: Peer table */}
           {model.details &&

@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from "react";
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  ReferenceLine,
 } from "recharts";
 
 interface DataPoint {
@@ -22,31 +21,24 @@ interface Props {
   ticker: string;
 }
 
-const RANGES = [
-  { label: "1Y", days: 365 },
-  { label: "3Y", days: 365 * 3 },
-  { label: "5Y", days: 365 * 5 },
-];
-
 export function PriceValueChart({ ticker }: Props) {
   const [data, setData] = useState<DataPoint[]>([]);
-  const [range, setRange] = useState(365);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/history/${ticker}?days=${range}`)
+    fetch(`/api/history/${ticker}?days=${365 * 5}`)
       .then((res) => res.json())
       .then((d) => {
         setData(d);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [ticker, range]);
+  }, [ticker]);
 
   if (loading) {
     return (
-      <div className="h-80 flex items-center justify-center text-muted-foreground">
+      <div className="h-80 flex items-center justify-center text-muted-foreground animate-pulse">
         Loading chart...
       </div>
     );
@@ -55,98 +47,117 @@ export function PriceValueChart({ ticker }: Props) {
   if (data.length === 0) {
     return (
       <div className="h-80 flex items-center justify-center text-muted-foreground">
-        No historical valuation data available yet. Check back after daily update.
+        No historical data available yet.
       </div>
     );
   }
 
-  // Format data for display
+  const lastPoint = data[data.length - 1];
+  const currentPrice = lastPoint.close_price;
+  const intrinsicValue = lastPoint.intrinsic_value;
+  const upside =
+    intrinsicValue > 0
+      ? ((intrinsicValue - currentPrice) / currentPrice) * 100
+      : 0;
+  const isOvervalued = upside < -5;
+  const isUndervalued = upside > 5;
+
   const chartData = data.map((d) => ({
     date: d.date,
-    displayDate: new Date(d.date).toLocaleDateString("en-US", {
+    displayDate: new Date(d.date + "T00:00:00").toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
     }),
-    "Stock Price": d.close_price,
-    "Intrinsic Value": d.intrinsic_value,
+    price: d.close_price,
+    intrinsic: d.intrinsic_value,
   }));
 
   return (
     <div>
-      <div className="flex justify-end gap-1 mb-4">
-        {RANGES.map((r) => (
-          <button
-            key={r.label}
-            onClick={() => setRange(r.days)}
-            className={`px-3 py-1 text-xs rounded-md transition-colors ${
-              range === r.days
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted hover:bg-muted/80 text-muted-foreground"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+      {/* Right-side labels */}
+      <div className="flex flex-wrap items-center gap-6 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-0.5 bg-red-400 inline-block" />
+          <span className="text-sm text-muted-foreground">Price</span>
+          <span className="text-sm font-mono font-semibold">
+            {currentPrice.toFixed(2)}
+          </span>
+        </div>
+        <div
+          className={`text-sm font-semibold px-2 py-0.5 rounded ${
+            isOvervalued
+              ? "bg-red-50 text-red-600"
+              : isUndervalued
+                ? "bg-green-50 text-green-600"
+                : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {Math.abs(upside).toFixed(0)}%{" "}
+          {isOvervalued ? "OVERVALUED" : isUndervalued ? "UNDERVALUED" : "FAIR"}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-0 border-t-2 border-dashed border-slate-400 inline-block" />
+          <span className="text-sm text-muted-foreground">Intrinsic Value</span>
+          <span className="text-sm font-mono font-semibold">
+            {intrinsicValue.toFixed(2)}
+          </span>
+        </div>
       </div>
-      <ResponsiveContainer width="100%" height={320}>
-        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-          <defs>
-            <linearGradient id="gradPrice" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(220, 70%, 55%)" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="hsl(220, 70%, 55%)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="gradValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(142, 70%, 45%)" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="hsl(142, 70%, 45%)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 90%)" />
+
+      <ResponsiveContainer width="100%" height={360}>
+        <LineChart
+          data={chartData}
+          margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+        >
           <XAxis
             dataKey="displayDate"
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
             tickLine={false}
+            axisLine={{ stroke: "hsl(0, 0%, 88%)" }}
             interval="equidistantPreserveStart"
           />
           <YAxis
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
             tickLine={false}
-            tickFormatter={(v) => `$${v}`}
-            width={60}
+            axisLine={false}
+            tickFormatter={(v) => `${v}`}
+            width={45}
+            orientation="right"
           />
           <Tooltip
             contentStyle={{
-              background: "hsl(0, 0%, 100%)",
-              border: "1px solid hsl(0, 0%, 90%)",
-              borderRadius: "8px",
-              fontSize: "13px",
+              background: "white",
+              border: "1px solid hsl(0, 0%, 88%)",
+              borderRadius: "6px",
+              fontSize: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
-            formatter={(value) => [`$${Number(value).toFixed(2)}`]}
+            formatter={(value, name) => [
+              `$${Number(value).toFixed(2)}`,
+              name === "price" ? "Price" : "Intrinsic Value",
+            ]}
             labelFormatter={(label) => label}
           />
-          <Legend
-            verticalAlign="top"
-            height={36}
-            iconType="line"
-            wrapperStyle={{ fontSize: "13px" }}
-          />
-          <Area
+          {/* Intrinsic value dashed line */}
+          <Line
             type="monotone"
-            dataKey="Stock Price"
-            stroke="hsl(220, 70%, 55%)"
-            strokeWidth={2}
-            fill="url(#gradPrice)"
+            dataKey="intrinsic"
+            stroke="hsl(210, 15%, 50%)"
+            strokeWidth={1.5}
+            strokeDasharray="6 4"
             dot={false}
+            activeDot={false}
           />
-          <Area
+          {/* Stock price solid line */}
+          <Line
             type="monotone"
-            dataKey="Intrinsic Value"
-            stroke="hsl(142, 70%, 45%)"
-            strokeWidth={2}
-            strokeDasharray="6 3"
-            fill="url(#gradValue)"
+            dataKey="price"
+            stroke="hsl(0, 70%, 60%)"
+            strokeWidth={1.5}
             dot={false}
+            activeDot={{ r: 3, fill: "hsl(0, 70%, 60%)" }}
           />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
