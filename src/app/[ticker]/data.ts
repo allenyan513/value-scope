@@ -6,13 +6,14 @@ import {
   getEstimates,
   getLatestPrice,
   getIndustryPeers,
+  getPriceTargets,
   getPriceHistory,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getKeyMetrics } from "@/lib/data/fmp";
+import { getKeyMetrics, getEarningsSurprises } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
-import type { PeerComparison } from "@/types";
+import type { PeerComparison, EarningsSurprise } from "@/types";
 
 export const getTickerData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
@@ -31,7 +32,16 @@ export const getTickerData = cache(async (ticker: string) => {
   }
 
   if (historicals.length === 0) {
-    return { company, summary: null, estimates, historicals };
+    return {
+      company,
+      summary: null,
+      estimates,
+      historicals,
+      historicalMultiples: [],
+      priceTargets: null,
+      earningsSurprises: [] as EarningsSurprise[],
+      priceHistory: [],
+    };
   }
 
   const currentPrice =
@@ -77,5 +87,24 @@ export const getTickerData = cache(async (ticker: string) => {
     historicalMultiples,
   });
 
-  return { company, summary, estimates, historicals, historicalMultiples };
+  // Fetch price targets, earnings surprises, and 2-year price history in parallel
+  const [priceTargets, rawSurprises, priceHistory] = await Promise.all([
+    getPriceTargets(upperTicker).catch(() => null),
+    getEarningsSurprises(upperTicker, 12).catch(() => []),
+    getPriceHistory(upperTicker, 365 * 2).catch(() => []),
+  ]);
+
+  // Normalize earnings surprises
+  const earningsSurprises: EarningsSurprise[] = rawSurprises.map((s) => ({
+    date: s.date,
+    actual_eps: s.actualEarningResult,
+    estimated_eps: s.estimatedEarning,
+    surprise_percent:
+      s.estimatedEarning !== 0
+        ? (s.actualEarningResult - s.estimatedEarning) /
+          Math.abs(s.estimatedEarning)
+        : 0,
+  }));
+
+  return { company, summary, estimates, historicals, historicalMultiples, priceTargets, earningsSurprises, priceHistory };
 });

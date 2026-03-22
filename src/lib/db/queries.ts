@@ -10,6 +10,7 @@ import type {
   DailyPrice,
   ValuationResult,
   ValuationHistoryPoint,
+  PriceTargetConsensus,
 } from "@/types";
 
 const db = () => createServerClient();
@@ -229,6 +230,29 @@ export async function upsertEstimates(
     .upsert(
       rows.map((r) => ({ ...r, updated_at: new Date().toISOString() })),
       { onConflict: "ticker,period" }
+    );
+}
+
+// --- Price Target Consensus ---
+export async function getPriceTargets(
+  ticker: string
+): Promise<PriceTargetConsensus | null> {
+  const { data } = await db()
+    .from("price_target_consensus")
+    .select("*")
+    .eq("ticker", ticker)
+    .single();
+  return data as PriceTargetConsensus | null;
+}
+
+export async function upsertPriceTargets(
+  row: PriceTargetConsensus
+): Promise<void> {
+  await db()
+    .from("price_target_consensus")
+    .upsert(
+      { ...row, updated_at: new Date().toISOString() },
+      { onConflict: "ticker" }
     );
 }
 
