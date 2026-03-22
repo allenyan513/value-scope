@@ -309,6 +309,52 @@ export async function getBatchQuotes(tickers: string[]): Promise<FMPQuote[]> {
   return results;
 }
 
+// --- Price Target Consensus ---
+interface FMPPriceTargetConsensus {
+  symbol: string;
+  targetHigh: number;
+  targetLow: number;
+  targetConsensus: number;
+  targetMedian: number;
+}
+
+export async function getPriceTargetConsensus(
+  ticker: string
+): Promise<FMPPriceTargetConsensus | null> {
+  try {
+    const data = await fmpFetch<FMPPriceTargetConsensus[]>(
+      "/price-target-consensus",
+      { symbol: ticker }
+    );
+    return data?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// --- Earnings Surprises ---
+interface FMPEarningsSurprise {
+  date: string;
+  symbol: string;
+  actualEarningResult: number;
+  estimatedEarning: number;
+}
+
+export async function getEarningsSurprises(
+  ticker: string,
+  limit = 12
+): Promise<FMPEarningsSurprise[]> {
+  try {
+    const data = await fmpFetch<FMPEarningsSurprise[]>(
+      "/earnings-surprises",
+      { symbol: ticker, limit: String(limit) }
+    );
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 // --- Enterprise Value (via key-metrics) ---
 interface FMPEnterpriseValue {
   date: string;

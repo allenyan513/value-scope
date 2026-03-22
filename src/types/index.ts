@@ -82,6 +82,24 @@ export interface AnalystEstimate {
   number_of_analysts: number;
 }
 
+// --- Price Target Consensus ---
+export interface PriceTargetConsensus {
+  ticker: string;
+  target_high: number;
+  target_low: number;
+  target_consensus: number;
+  target_median: number;
+  number_of_analysts: number;
+}
+
+// --- Earnings Surprise ---
+export interface EarningsSurprise {
+  date: string;
+  actual_eps: number;
+  estimated_eps: number;
+  surprise_percent: number;
+}
+
 // --- Daily Price ---
 export interface DailyPrice {
   ticker: string;
