@@ -104,7 +104,7 @@ export async function getPriceHistory(
 
   const { data } = await db()
     .from("daily_prices")
-    .select("ticker, date, close_price as close, volume")
+    .select("ticker, date, close:close_price, volume")
     .eq("ticker", ticker)
     .gte("date", startDate.toISOString().split("T")[0])
     .order("date", { ascending: true });

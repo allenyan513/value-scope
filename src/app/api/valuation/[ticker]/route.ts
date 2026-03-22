@@ -4,8 +4,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, upsertValuation } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, getPriceHistory, upsertValuation } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
+import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import type { PeerComparison, ValuationSummary } from "@/types";
 import { getKeyMetrics } from "@/lib/data/fmp";
@@ -56,11 +57,12 @@ export async function GET(
     }
 
     // Fetch fresh data
-    const [company, historicals, estimates, riskFreeRate] = await Promise.all([
+    const [company, historicals, estimates, riskFreeRate, prices] = await Promise.all([
       getCompany(upperTicker),
       getFinancials(upperTicker, "annual", 7),
       getEstimates(upperTicker),
       getTenYearTreasuryYield(),
+      getPriceHistory(upperTicker, 365 * 5),
     ]);
 
     if (!company) {
@@ -94,16 +96,19 @@ export async function GET(
             ticker: peer.ticker,
             name: peer.name,
             market_cap: peer.market_cap,
-            trailing_pe: metrics[0].peRatio,
+            trailing_pe: metrics[0].priceToEarningsRatio ?? null,
             forward_pe: null,
             ps_ratio: metrics[0].priceToSalesRatio ?? null,
-            pb_ratio: metrics[0].priceBookValueRatio ?? null,
+            pb_ratio: metrics[0].priceToBookRatio ?? null,
           });
         }
       } catch {
         // Skip peers with no data
       }
     }
+
+    // Compute historical multiples for self-comparison
+    const historicalMultiples = computeHistoricalMultiples(historicals, prices);
 
     // Compute full valuation
     const summary: ValuationSummary = computeFullValuation({
@@ -113,6 +118,7 @@ export async function GET(
       peers,
       currentPrice,
       riskFreeRate,
+      historicalMultiples,
     });
 
     // Cache results

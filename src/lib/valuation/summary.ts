@@ -11,6 +11,7 @@ import type {
   AnalystEstimate,
   Company,
   PeerComparison,
+  HistoricalMultiplesPoint,
 } from "@/types";
 import { calculateWACC, buildWACCInputs } from "./wacc";
 import { calculateDCF, type DCFFCFEInputs } from "./dcf";
@@ -30,6 +31,8 @@ export interface FullValuationInputs {
   peers: PeerComparison[];
   currentPrice: number;
   riskFreeRate: number;
+  /** Historical multiples for self-comparison valuation (optional) */
+  historicalMultiples?: HistoricalMultiplesPoint[];
 }
 
 /**
@@ -93,12 +96,13 @@ export function computeFullValuation(
     /* skip if insufficient data */
   }
 
-  // Trading Multiples
+  // Trading Multiples (uses historical self-comparison when data available)
   const tradingInputs: TradingMultiplesInputs = {
     financials: latestFinancial,
     company,
     currentPrice,
     peers,
+    historicalMultiples: inputs.historicalMultiples,
   };
 
   models.push(calculatePEMultiples(tradingInputs));

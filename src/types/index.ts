@@ -272,12 +272,45 @@ export interface ValuationHistoryPoint {
   intrinsic_value: number;
 }
 
-// --- Historical Multiples (for trend chart) ---
+// --- Historical Multiples (for trend chart + self-comparison valuation) ---
 export interface HistoricalMultiplesPoint {
   date: string;
   pe: number | null;
   ps: number | null;
   pb: number | null;
+}
+
+export interface MultipleStats {
+  current: number | null;
+  avg5y: number;
+  p25: number;
+  p75: number;
+  percentile: number; // 0-100, where current sits vs history
+  dataPoints: number;
+}
+
+export interface HistoricalRelativeValuation {
+  type: "pe" | "ps" | "pb";
+  label: string;
+  currentMultiple: number | null;
+  historicalAvg: number;
+  percentile: number;
+  fairValue: number;
+  lowEstimate: number;
+  highEstimate: number;
+  currentMetric: number;
+  metricLabel: string;
+  deviation: number; // % above/below avg (+ = expensive)
+}
+
+export interface HistoricalMultiplesResponse {
+  history: HistoricalMultiplesPoint[];
+  stats: {
+    pe: MultipleStats | null;
+    ps: MultipleStats | null;
+    pb: MultipleStats | null;
+  };
+  valuations: HistoricalRelativeValuation[];
 }
 
 // --- User / Watchlist ---
