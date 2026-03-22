@@ -1,12 +1,16 @@
 // ============================================================
 // Trading Multiples Valuation (P/E, P/S, P/B)
+// Uses historical self-comparison: fair value = 5Y avg multiple × metric
+// Falls back to peer-based when insufficient history
 // ============================================================
 
 import type {
   ValuationResult,
+  ValuationModelType,
   PeerComparison,
   FinancialStatement,
   Company,
+  HistoricalMultiplesPoint,
 } from "@/types";
 
 /** Calculate median of an array */
@@ -29,234 +33,293 @@ function percentiles(arr: number[], fallbackMedian: number): { p25: number; p75:
   };
 }
 
-export interface TradingMultiplesInputs {
-  /** Target company latest financials */
-  financials: FinancialStatement;
-  /** Target company info */
-  company: Company;
-  /** Current stock price */
-  currentPrice: number;
-  /** Peer companies data (from same industry) */
-  peers: PeerComparison[];
+/** Compute percentile: what % of values are below current */
+function computePercentile(sorted: number[], current: number): number {
+  const belowCount = sorted.filter((v) => v < current).length;
+  return Math.round((belowCount / sorted.length) * 100);
 }
+
+export interface TradingMultiplesInputs {
+  financials: FinancialStatement;
+  company: Company;
+  currentPrice: number;
+  peers: PeerComparison[];
+  /** Historical multiples for self-comparison (optional, used when available) */
+  historicalMultiples?: HistoricalMultiplesPoint[];
+}
+
+// Minimum data points to use historical self-comparison
+const MIN_HISTORY_POINTS = 100;
 
 /**
  * P/E Multiples Valuation
- *
- * Fair Price = Industry Median P/E × Company TTM EPS
+ * Primary: Fair Price = 5Y Avg P/E × Company TTM EPS
+ * Fallback: Fair Price = Peer Median P/E × Company TTM EPS
  */
 export function calculatePEMultiples(
   inputs: TradingMultiplesInputs
 ): ValuationResult {
-  const { financials, company, currentPrice, peers } = inputs;
+  const { financials, company, currentPrice, peers, historicalMultiples } = inputs;
 
-  // Filter peers with valid P/E ratios
-  const validPeers = peers.filter(
-    (p) => p.trailing_pe !== null && p.trailing_pe > 0 && p.trailing_pe < 200
-  );
-
-  const trailingPEs = validPeers
-    .map((p) => p.trailing_pe!)
-    .filter((pe) => pe > 0);
-  const forwardPEs = validPeers
-    .map((p) => p.forward_pe!)
-    .filter((pe) => pe !== null && pe > 0);
-
-  const medianTrailingPE = trailingPEs.length > 0 ? median(trailingPEs) : 20;
-  const medianForwardPE = forwardPEs.length > 0 ? median(forwardPEs) : medianTrailingPE;
-
-  // Company EPS
   const eps = financials.eps_diluted || financials.eps;
   if (!eps || eps <= 0) {
-    return {
-      model_type: "pe_multiples",
-      fair_value: 0,
-      upside_percent: 0,
-      low_estimate: 0,
-      high_estimate: 0,
-      assumptions: {
-        note: "N/A — Negative or zero EPS",
-        industry_median_pe: medianTrailingPE,
-        eps,
-      },
-      details: { peers: validPeers, industry_median: medianTrailingPE, company_metric: eps, metric_label: "TTM EPS" },
-      computed_at: new Date().toISOString(),
-    };
+    return naResult("pe_multiples", "N/A — Negative or zero EPS");
   }
 
-  // Use average of trailing and forward median P/E
-  const blendedPE =
-    forwardPEs.length > 0
-      ? (medianTrailingPE + medianForwardPE) / 2
-      : medianTrailingPE;
+  // Try historical self-comparison first
+  const histValues = (historicalMultiples ?? [])
+    .map((d) => d.pe)
+    .filter((v): v is number => v !== null && v > 0 && v < 200);
 
-  const fairValue = blendedPE * eps;
-  const upside = ((fairValue - currentPrice) / currentPrice) * 100;
+  if (histValues.length >= MIN_HISTORY_POINTS) {
+    return historicalValuation({
+      modelType: "pe_multiples",
+      values: histValues,
+      metric: eps,
+      metricLabel: "TTM EPS",
+      currentPrice,
+      company,
+      peers,
+      peerExtractor: (p) => p.trailing_pe,
+    });
+  }
 
-  // Range: use 25th and 75th percentile P/E
-  const { p25, p75 } = percentiles(trailingPEs, medianTrailingPE);
-  const lowEstimate = p25 * eps;
-  const highEstimate = p75 * eps;
-
-  return {
-    model_type: "pe_multiples",
-    fair_value: fairValue,
-    upside_percent: upside,
-    low_estimate: lowEstimate,
-    high_estimate: highEstimate,
-    assumptions: {
-      industry_median_trailing_pe: Math.round(medianTrailingPE * 100) / 100,
-      industry_median_forward_pe: Math.round(medianForwardPE * 100) / 100,
-      blended_pe: Math.round(blendedPE * 100) / 100,
-      company_eps: Math.round(eps * 100) / 100,
-      peer_count: validPeers.length,
-      industry: company.industry,
-    },
-    details: {
-      peers: validPeers,
-      industry_median: blendedPE,
-      company_metric: eps,
-      metric_label: "TTM EPS",
-    },
-    computed_at: new Date().toISOString(),
-  };
+  // Fallback: peer-based
+  return peerBasedValuation({
+    modelType: "pe_multiples",
+    peers,
+    peerExtractor: (p) => p.trailing_pe,
+    peerCap: 200,
+    defaultMultiple: 20,
+    metric: eps,
+    metricLabel: "TTM EPS",
+    currentPrice,
+    company,
+  });
 }
 
 /**
  * P/S Multiples Valuation
- *
- * Fair Price = Industry Median P/S × Company Revenue per Share
+ * Primary: Fair Price = 5Y Avg P/S × Revenue per Share
+ * Fallback: Peer-based
  */
 export function calculatePSMultiples(
   inputs: TradingMultiplesInputs
 ): ValuationResult {
-  const { financials, company, currentPrice, peers } = inputs;
+  const { financials, company, currentPrice, peers, historicalMultiples } = inputs;
 
-  // Filter peers with valid P/S ratios
-  const validPeers = peers.filter(
-    (p) => p.ps_ratio !== null && p.ps_ratio > 0 && p.ps_ratio < 200
-  );
-
-  const psValues = validPeers.map((p) => p.ps_ratio!);
-  const medianPS = psValues.length > 0 ? median(psValues) : 3;
-
-  const revenue = financials.revenue;
   const sharesOutstanding = financials.shares_outstanding || company.shares_outstanding;
-
-  if (!revenue || revenue <= 0 || !sharesOutstanding) {
-    return {
-      model_type: "ps_multiples",
-      fair_value: 0,
-      upside_percent: 0,
-      low_estimate: 0,
-      high_estimate: 0,
-      assumptions: {
-        note: "N/A — No revenue data",
-        industry_median_ps: medianPS,
-        revenue,
-      },
-      details: { peers: validPeers, industry_median: medianPS, company_metric: revenue, metric_label: "Revenue" },
-      computed_at: new Date().toISOString(),
-    };
+  if (!financials.revenue || financials.revenue <= 0 || !sharesOutstanding) {
+    return naResult("ps_multiples", "N/A — No revenue data");
   }
 
-  const revenuePerShare = revenue / sharesOutstanding;
-  const fairValue = medianPS * revenuePerShare;
+  const revenuePerShare = financials.revenue / sharesOutstanding;
+
+  const histValues = (historicalMultiples ?? [])
+    .map((d) => d.ps)
+    .filter((v): v is number => v !== null && v > 0 && v < 100);
+
+  if (histValues.length >= MIN_HISTORY_POINTS) {
+    return historicalValuation({
+      modelType: "ps_multiples",
+      values: histValues,
+      metric: revenuePerShare,
+      metricLabel: "Revenue/Share",
+      currentPrice,
+      company,
+      peers,
+      peerExtractor: (p) => p.ps_ratio,
+    });
+  }
+
+  return peerBasedValuation({
+    modelType: "ps_multiples",
+    peers,
+    peerExtractor: (p) => p.ps_ratio,
+    peerCap: 200,
+    defaultMultiple: 3,
+    metric: revenuePerShare,
+    metricLabel: "Revenue/Share",
+    currentPrice,
+    company,
+  });
+}
+
+/**
+ * P/B Multiples Valuation
+ * Primary: Fair Price = 5Y Avg P/B × Book Value per Share
+ * Fallback: Peer-based
+ */
+export function calculatePBMultiples(
+  inputs: TradingMultiplesInputs
+): ValuationResult {
+  const { financials, company, currentPrice, peers, historicalMultiples } = inputs;
+
+  const sharesOutstanding = financials.shares_outstanding || company.shares_outstanding;
+  if (!financials.total_equity || financials.total_equity <= 0 || !sharesOutstanding) {
+    return naResult("pb_multiples", "N/A — Negative or zero book value");
+  }
+
+  const bookPerShare = financials.total_equity / sharesOutstanding;
+
+  const histValues = (historicalMultiples ?? [])
+    .map((d) => d.pb)
+    .filter((v): v is number => v !== null && v > 0 && v < 50);
+
+  if (histValues.length >= MIN_HISTORY_POINTS) {
+    return historicalValuation({
+      modelType: "pb_multiples",
+      values: histValues,
+      metric: bookPerShare,
+      metricLabel: "Book Value/Share",
+      currentPrice,
+      company,
+      peers,
+      peerExtractor: (p) => p.pb_ratio,
+    });
+  }
+
+  return peerBasedValuation({
+    modelType: "pb_multiples",
+    peers,
+    peerExtractor: (p) => p.pb_ratio,
+    peerCap: 100,
+    defaultMultiple: 3,
+    metric: bookPerShare,
+    metricLabel: "Book Value/Share",
+    currentPrice,
+    company,
+  });
+}
+
+// --- Internal helpers ---
+
+function naResult(modelType: ValuationModelType, note: string): ValuationResult {
+  return {
+    model_type: modelType,
+    fair_value: 0,
+    upside_percent: 0,
+    low_estimate: 0,
+    high_estimate: 0,
+    assumptions: { note },
+    details: {},
+    computed_at: new Date().toISOString(),
+  };
+}
+
+interface HistoricalValuationArgs {
+  modelType: ValuationModelType;
+  values: number[];
+  metric: number;
+  metricLabel: string;
+  currentPrice: number;
+  company: Company;
+  peers: PeerComparison[];
+  peerExtractor: (p: PeerComparison) => number | null;
+}
+
+function historicalValuation(args: HistoricalValuationArgs): ValuationResult {
+  const { modelType, values, metric, metricLabel, currentPrice, company, peers, peerExtractor } = args;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const sum = values.reduce((a, b) => a + b, 0);
+  const avg = sum / values.length;
+  const p25 = sorted[Math.floor(sorted.length * 0.25)];
+  const p75 = sorted[Math.floor(sorted.length * 0.75)];
+  const current = values[values.length - 1]; // most recent
+  const pctile = computePercentile(sorted, current);
+  const deviation = Math.round(((current - avg) / avg) * 100);
+
+  const fairValue = avg * metric;
+  const lowEstimate = p25 * metric;
+  const highEstimate = p75 * metric;
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
-  const { p25, p75 } = percentiles(psValues, medianPS);
-  const lowEstimate = p25 * revenuePerShare;
-  const highEstimate = p75 * revenuePerShare;
+  // Supplementary: peer/sector median
+  const validPeerValues = peers
+    .map(peerExtractor)
+    .filter((v): v is number => v !== null && v > 0);
+  const sectorMedian = validPeerValues.length > 0 ? median(validPeerValues) : null;
 
   return {
-    model_type: "ps_multiples",
-    fair_value: fairValue,
-    upside_percent: upside,
-    low_estimate: lowEstimate,
-    high_estimate: highEstimate,
+    model_type: modelType,
+    fair_value: Math.round(fairValue * 100) / 100,
+    upside_percent: Math.round(upside * 100) / 100,
+    low_estimate: Math.round(lowEstimate * 100) / 100,
+    high_estimate: Math.round(highEstimate * 100) / 100,
     assumptions: {
-      industry_median_ps: Math.round(medianPS * 100) / 100,
-      company_revenue: revenue,
-      revenue_per_share: Math.round(revenuePerShare * 100) / 100,
-      shares_outstanding: sharesOutstanding,
-      peer_count: validPeers.length,
+      method: "historical_self_comparison",
+      historical_avg: Math.round(avg * 100) / 100,
+      historical_p25: Math.round(p25 * 100) / 100,
+      historical_p75: Math.round(p75 * 100) / 100,
+      current_multiple: Math.round(current * 100) / 100,
+      percentile: pctile,
+      deviation_pct: deviation,
+      company_metric: Math.round(metric * 100) / 100,
+      metric_label: metricLabel,
+      data_points: values.length,
+      sector_median: sectorMedian !== null ? Math.round(sectorMedian * 100) / 100 : null,
       industry: company.industry,
     },
     details: {
-      peers: validPeers,
-      industry_median: medianPS,
-      company_metric: revenuePerShare,
-      metric_label: "Revenue/Share",
+      peers: peers.filter((p) => {
+        const v = peerExtractor(p);
+        return v !== null && v > 0;
+      }),
+      industry_median: sectorMedian ?? avg,
+      company_metric: metric,
+      metric_label: metricLabel,
     },
     computed_at: new Date().toISOString(),
   };
 }
 
-/**
- * P/B Multiples Valuation
- *
- * Fair Price = Industry Median P/B × Company Book Value per Share
- */
-export function calculatePBMultiples(
-  inputs: TradingMultiplesInputs
-): ValuationResult {
-  const { financials, company, currentPrice, peers } = inputs;
+interface PeerBasedArgs {
+  modelType: ValuationModelType;
+  peers: PeerComparison[];
+  peerExtractor: (p: PeerComparison) => number | null;
+  peerCap: number;
+  defaultMultiple: number;
+  metric: number;
+  metricLabel: string;
+  currentPrice: number;
+  company: Company;
+}
 
-  // Filter peers with valid P/B ratios
-  const validPeers = peers.filter(
-    (p) => p.pb_ratio !== null && p.pb_ratio > 0 && p.pb_ratio < 100
-  );
+function peerBasedValuation(args: PeerBasedArgs): ValuationResult {
+  const { modelType, peers, peerExtractor, peerCap, defaultMultiple, metric, metricLabel, currentPrice, company } = args;
 
-  const pbValues = validPeers.map((p) => p.pb_ratio!);
-  const medianPB = pbValues.length > 0 ? median(pbValues) : 3;
+  const validPeers = peers.filter((p) => {
+    const v = peerExtractor(p);
+    return v !== null && v > 0 && v < peerCap;
+  });
 
-  const totalEquity = financials.total_equity;
-  const sharesOutstanding = financials.shares_outstanding || company.shares_outstanding;
+  const values = validPeers.map((p) => peerExtractor(p)!);
+  const med = values.length > 0 ? median(values) : defaultMultiple;
+  const { p25, p75 } = percentiles(values, med);
 
-  if (!totalEquity || totalEquity <= 0 || !sharesOutstanding) {
-    return {
-      model_type: "pb_multiples",
-      fair_value: 0,
-      upside_percent: 0,
-      low_estimate: 0,
-      high_estimate: 0,
-      assumptions: {
-        note: "N/A — Negative or zero book value",
-        industry_median_pb: medianPB,
-        total_equity: totalEquity,
-      },
-      details: { peers: validPeers, industry_median: medianPB, company_metric: totalEquity, metric_label: "Total Equity" },
-      computed_at: new Date().toISOString(),
-    };
-  }
-
-  const bookValuePerShare = totalEquity / sharesOutstanding;
-  const fairValue = medianPB * bookValuePerShare;
+  const fairValue = med * metric;
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
-  const { p25, p75 } = percentiles(pbValues, medianPB);
-  const lowEstimate = p25 * bookValuePerShare;
-  const highEstimate = p75 * bookValuePerShare;
-
   return {
-    model_type: "pb_multiples",
-    fair_value: fairValue,
-    upside_percent: upside,
-    low_estimate: lowEstimate,
-    high_estimate: highEstimate,
+    model_type: modelType,
+    fair_value: Math.round(fairValue * 100) / 100,
+    upside_percent: Math.round(upside * 100) / 100,
+    low_estimate: Math.round(p25 * metric * 100) / 100,
+    high_estimate: Math.round(p75 * metric * 100) / 100,
     assumptions: {
-      industry_median_pb: Math.round(medianPB * 100) / 100,
-      company_total_equity: totalEquity,
-      book_value_per_share: Math.round(bookValuePerShare * 100) / 100,
-      shares_outstanding: sharesOutstanding,
+      method: "peer_comparison",
+      industry_median: Math.round(med * 100) / 100,
+      company_metric: Math.round(metric * 100) / 100,
+      metric_label: metricLabel,
       peer_count: validPeers.length,
       industry: company.industry,
     },
     details: {
       peers: validPeers,
-      industry_median: medianPB,
-      company_metric: bookValuePerShare,
-      metric_label: "Book Value/Share",
+      industry_median: med,
+      company_metric: metric,
+      metric_label: metricLabel,
     },
     computed_at: new Date().toISOString(),
   };

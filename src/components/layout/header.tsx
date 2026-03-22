@@ -9,11 +9,11 @@ export function Header() {
   const { user, loading, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-          <span className="text-primary">Valu</span>
-          <span>Scope</span>
+        <Link href="/" className="flex items-center gap-0.5 font-bold text-lg tracking-tight">
+          <span className="text-brand">Valu</span>
+          <span className="text-foreground">Scope</span>
         </Link>
 
         <div className="hidden sm:block w-80">

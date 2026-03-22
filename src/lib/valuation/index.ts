@@ -6,3 +6,4 @@ export { calculatePEMultiples, calculatePSMultiples, calculatePBMultiples } from
 export { calculatePeterLynch } from "./peter-lynch";
 export { computeFullValuation } from "./summary";
 export { classifyCompany, computeWeightedConsensus } from "./company-classifier";
+export { computeHistoricalMultiples, computeMultiplesStats, computeHistoricalValuations } from "./historical-multiples";

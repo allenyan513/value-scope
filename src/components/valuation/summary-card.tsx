@@ -16,9 +16,9 @@ const MODEL_NAMES: Record<string, string> = {
 };
 
 const VERDICT_CONFIG = {
-  undervalued: { badge: "default" as const, label: "Undervalued", color: "text-green-600" },
-  fairly_valued: { badge: "secondary" as const, label: "Fairly Valued", color: "text-gray-600" },
-  overvalued: { badge: "destructive" as const, label: "Overvalued", color: "text-red-500" },
+  undervalued: { badge: "default" as const, label: "Undervalued", color: "text-success" },
+  fairly_valued: { badge: "secondary" as const, label: "Fairly Valued", color: "text-muted-foreground" },
+  overvalued: { badge: "destructive" as const, label: "Overvalued", color: "text-danger" },
 };
 
 interface Props {
@@ -81,7 +81,7 @@ export function SummaryCard({ summary }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b-2 border-orange-400">
+                <tr className="border-b-2 border-brand/40">
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground" />
                   <th className="text-right py-2 px-4 font-medium text-muted-foreground">Range</th>
                   <th className="text-right py-2 px-4 font-medium text-muted-foreground">Selected</th>
@@ -103,9 +103,9 @@ export function SummaryCard({ summary }: Props) {
                     <td
                       className={`py-2.5 pl-4 text-right font-mono font-semibold whitespace-nowrap ${
                         m.upside_percent > 0
-                          ? "text-green-600"
+                          ? "text-success"
                           : m.upside_percent < 0
-                            ? "text-red-500"
+                            ? "text-danger"
                             : "text-muted-foreground"
                       }`}
                     >

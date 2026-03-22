@@ -12,17 +12,20 @@ import {
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
+import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import type { PeerComparison, EarningsSurprise } from "@/types";
 
 export const getTickerData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
 
-  const [company, historicals, estimates, riskFreeRate] = await Promise.all([
-    getCompany(upperTicker),
-    getFinancials(upperTicker, "annual", 7),
-    getEstimates(upperTicker),
-    getTenYearTreasuryYield().catch(() => 0.0425),
-  ]);
+  const [company, historicals, estimates, riskFreeRate, prices] =
+    await Promise.all([
+      getCompany(upperTicker),
+      getFinancials(upperTicker, "annual", 7),
+      getEstimates(upperTicker),
+      getTenYearTreasuryYield().catch(() => 0.0425),
+      getPriceHistory(upperTicker, 365 * 5),
+    ]);
 
   if (!company) {
     notFound();
@@ -34,6 +37,7 @@ export const getTickerData = cache(async (ticker: string) => {
       summary: null,
       estimates,
       historicals,
+      historicalMultiples: [],
       priceTargets: null,
       earningsSurprises: [] as EarningsSurprise[],
       priceHistory: [],
@@ -43,7 +47,10 @@ export const getTickerData = cache(async (ticker: string) => {
   const currentPrice =
     (await getLatestPrice(upperTicker)) || company.price || 0;
 
-  // Get peer data for trading multiples
+  // Compute historical multiples for self-comparison valuation
+  const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+
+  // Get peer data (supplementary — used as fallback and sector reference)
   const peerCompanies = await getIndustryPeers(upperTicker, 15);
   const peers: PeerComparison[] = [];
 
@@ -55,10 +62,10 @@ export const getTickerData = cache(async (ticker: string) => {
           ticker: peer.ticker,
           name: peer.name,
           market_cap: peer.market_cap,
-          trailing_pe: metrics[0].peRatio,
+          trailing_pe: metrics[0].priceToEarningsRatio ?? null,
           forward_pe: null,
           ps_ratio: metrics[0].priceToSalesRatio ?? null,
-          pb_ratio: metrics[0].priceBookValueRatio ?? null,
+          pb_ratio: metrics[0].priceToBookRatio ?? null,
         } as PeerComparison;
       }
     } catch {
@@ -77,6 +84,7 @@ export const getTickerData = cache(async (ticker: string) => {
     peers,
     currentPrice,
     riskFreeRate,
+    historicalMultiples,
   });
 
   // Fetch price targets, earnings surprises, and 2-year price history in parallel
@@ -98,5 +106,5 @@ export const getTickerData = cache(async (ticker: string) => {
         : 0,
   }));
 
-  return { company, summary, estimates, historicals, priceTargets, earningsSurprises, priceHistory };
+  return { company, summary, estimates, historicals, historicalMultiples, priceTargets, earningsSurprises, priceHistory };
 });

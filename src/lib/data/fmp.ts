@@ -251,24 +251,21 @@ export async function getIndustryPeers(ticker: string): Promise<string[]> {
   return (data ?? []).map((p) => p.symbol);
 }
 
-// --- Key Metrics (for ratios) ---
-interface FMPKeyMetrics {
+// --- Financial Ratios (P/E, P/S, P/B etc.) ---
+interface FMPRatios {
   date: string;
-  peRatio: number;
-  priceToSalesRatio: number;
-  priceBookValueRatio: number;
-  enterpriseValueOverEBITDA: number;
-  dividendYield: number;
-  marketCap: number;
-  enterpriseValue: number;
+  priceToEarningsRatio: number | null;
+  priceToSalesRatio: number | null;
+  priceToBookRatio: number | null;
+  dividendYieldPercentage: number | null;
 }
 
 export async function getKeyMetrics(
   ticker: string,
   period: "annual" | "quarter" = "annual",
   limit = 5
-): Promise<FMPKeyMetrics[]> {
-  return fmpFetch<FMPKeyMetrics[]>("/key-metrics", {
+): Promise<FMPRatios[]> {
+  return fmpFetch<FMPRatios[]>("/ratios", {
     symbol: ticker,
     period,
     limit: String(limit),
