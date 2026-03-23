@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/db/supabase";
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   const baseUrl = request.headers.get("origin") || "https://valuscope.com";
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: sub.stripe_customer_id,
     return_url: `${baseUrl}/pricing`,
   });
