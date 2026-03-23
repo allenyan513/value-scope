@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
         // Refresh analyst estimates from FMP
         try {
-          const fmpEstimates = await getAnalystEstimates(ticker, "annual", 3);
+          const fmpEstimates = await getAnalystEstimates(ticker, "annual", 5);
           if (fmpEstimates.length > 0) {
             await upsertEstimates(
               fmpEstimates.map((e) => ({

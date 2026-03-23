@@ -284,8 +284,13 @@ function determineArchetype(m: ClassificationMetrics): CompanyArchetype {
     return "high_growth";
   }
 
-  // Profitable growth: growth > 12% and profitable
+  // Profitable growth: strong growth OR high-margin grower
+  // - growth > 12% with decent margins, OR
+  // - growth > 8% with high margins (>20%) — companies like AAPL
   if (effectiveGrowth > 0.12 && m.latestNetMargin > 0.05) {
+    return "profitable_growth";
+  }
+  if (effectiveGrowth > 0.08 && m.latestNetMargin > 0.20) {
     return "profitable_growth";
   }
 

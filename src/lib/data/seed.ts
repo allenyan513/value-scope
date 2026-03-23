@@ -122,7 +122,7 @@ async function seedCompany(ticker: string): Promise<boolean> {
     }
 
     // 3. Fetch analyst estimates
-    const estimates = await getAnalystEstimates(ticker, "annual", 3);
+    const estimates = await getAnalystEstimates(ticker, "annual", 5);
     await sleep(200);
 
     if (estimates.length > 0) {

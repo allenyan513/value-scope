@@ -9,8 +9,8 @@ interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-// ISR: revalidate every hour
-export const revalidate = 3600;
+import { PAGE_REVALIDATE } from "@/lib/constants";
+export const revalidate = PAGE_REVALIDATE;
 
 export async function generateStaticParams() {
   return [];

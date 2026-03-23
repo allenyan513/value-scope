@@ -327,7 +327,7 @@ export function calculateDCF(
 
   const revenueProjection = projectRevenue(historicals, estimates, projectionYears);
 
-  // Calculate historical averages for net margin and capex ratio
+  // Calculate historical averages for net margin and capex
   const sorted = [...historicals]
     .filter((f) => f.revenue > 0)
     .sort((a, b) => a.fiscal_year - b.fiscal_year);
@@ -338,29 +338,97 @@ export function calculateDCF(
     .map((f) => f.net_income / f.revenue);
   const avgNetMargin = netMargins.length > 0 ? avg(netMargins) : 0.10;
 
-  const capexRatios = recent
-    .filter((f) => f.revenue > 0 && f.capital_expenditure !== 0)
-    .map((f) => Math.abs(f.capital_expenditure) / f.revenue);
-  const avgCapexRatio = capexRatios.length > 0 ? avg(capexRatios) : 0.05;
+  // Sort estimates by period ascending for margin derivation
+  const sortedEstimates = [...estimates].sort((a, b) =>
+    a.period.localeCompare(b.period)
+  );
+
+  // Build per-year margin from analyst estimates (EPS × shares / revenue)
+  const lastYear = sorted[sorted.length - 1].fiscal_year;
+  const analystMargins = new Map<number, number>();
+  for (const est of sortedEstimates) {
+    const year = parseInt(est.period);
+    if (est.eps_estimate > 0 && est.revenue_estimate > 0 && sharesOutstanding > 0) {
+      const derivedNetIncome = est.eps_estimate * sharesOutstanding;
+      const margin = derivedNetIncome / est.revenue_estimate;
+      // Sanity check: margin should be between -50% and 80%
+      if (margin > -0.5 && margin < 0.8) {
+        analystMargins.set(year, margin);
+      }
+    }
+  }
+
+  // CapEx model: Maintenance (≈ D&A) + Growth CapEx (tied to revenue increase)
+  const lastFinancial = sorted[sorted.length - 1];
+  const maintenanceCapex = lastFinancial.depreciation_amortization > 0
+    ? lastFinancial.depreciation_amortization
+    : Math.abs(lastFinancial.capital_expenditure) * 0.8; // fallback: 80% of total capex as maintenance
+  const lastRevenue = lastFinancial.revenue;
+
+  // Growth CapEx intensity: how much incremental capex per dollar of revenue growth
+  // Derived from historical: (total capex - D&A) / revenue increase
+  const growthCapexRatios: number[] = [];
+  for (let i = 1; i < recent.length; i++) {
+    const revIncrease = recent[i].revenue - recent[i - 1].revenue;
+    const da = recent[i].depreciation_amortization > 0 ? recent[i].depreciation_amortization : 0;
+    const totalCapex = Math.abs(recent[i].capital_expenditure);
+    const growthCapex = totalCapex - da;
+    if (revIncrease > 0 && growthCapex > 0) {
+      growthCapexRatios.push(growthCapex / revIncrease);
+    }
+  }
+  const growthCapexIntensity = growthCapexRatios.length > 0
+    ? avg(growthCapexRatios)
+    : 0.05; // fallback: 5 cents of growth capex per dollar of revenue increase
 
   const ke = costOfEquity;
   const g = termGrowth;
 
   // Build FCFE projections
   const projections: DCFProjectionYearFCFE[] = [];
+  let prevRevenue = lastRevenue;
 
   for (let i = 0; i < revenueProjection.revenues.length; i++) {
     const revenue = revenueProjection.revenues[i];
-    const netMargin = avgNetMargin; // Use constant margin assumption
+    const year = revenueProjection.years[i];
+
+    // Dynamic net margin: analyst-derived → fade to historical average
+    let netMargin: number;
+    const analystMargin = analystMargins.get(year);
+    if (analystMargin !== undefined) {
+      netMargin = analystMargin;
+    } else {
+      // Fade from last known margin toward historical average
+      const lastKnownMargin = analystMargins.size > 0
+        ? Array.from(analystMargins.values()).pop()!
+        : avgNetMargin;
+      const yearsBeyondAnalyst = year - lastYear - analystMargins.size;
+      const fadeSteps = projectionYears - analystMargins.size;
+      if (fadeSteps > 0 && yearsBeyondAnalyst > 0) {
+        const fadeFactor = Math.max(0, 1 - yearsBeyondAnalyst / fadeSteps);
+        netMargin = lastKnownMargin * fadeFactor + avgNetMargin * (1 - fadeFactor);
+      } else {
+        netMargin = lastKnownMargin;
+      }
+    }
+
     const netIncome = revenue * netMargin;
-    const netCapex = revenue * avgCapexRatio;
+
+    // CapEx = Maintenance (D&A, grows slowly) + Growth (tied to revenue increase)
+    const revenueIncrease = Math.max(0, revenue - prevRevenue);
+    const maintenanceGrowth = 1 + Math.max(0, revenueProjection.growthRates[i] * 0.2); // D&A grows at ~20% of revenue growth
+    const yearMaintenanceCapex = i === 0 ? maintenanceCapex : maintenanceCapex * Math.pow(maintenanceGrowth, i);
+    const yearGrowthCapex = revenueIncrease * growthCapexIntensity;
+    const netCapex = yearMaintenanceCapex + yearGrowthCapex;
+    prevRevenue = revenue;
+
     const fcfe = netIncome - netCapex;
     const t = i + 1;
     const discountFactor = 1 / Math.pow(1 + ke, t);
     const pvFCFE = fcfe * discountFactor;
 
     projections.push({
-      year: revenueProjection.years[i],
+      year,
       revenue,
       net_margin: netMargin,
       net_income: netIncome,
@@ -411,7 +479,10 @@ export function calculateDCF(
       ),
       revenue_source: revenueProjection.source,
       net_margin: Math.round(avgNetMargin * 10000) / 100,
-      capex_percent: Math.round(avgCapexRatio * 10000) / 100,
+      net_margins_by_year: projections.map((p) => Math.round(p.net_margin * 10000) / 100),
+      margin_source: analystMargins.size > 0 ? "analyst" : "historical",
+      maintenance_capex: Math.round(maintenanceCapex / 1e6),
+      growth_capex_intensity: Math.round(growthCapexIntensity * 10000) / 100,
       discount_rate: Math.round(ke * 10000) / 100,
       terminal_growth_rate: Math.round(g * 10000) / 100,
       projection_years: projectionYears,

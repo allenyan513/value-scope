@@ -77,7 +77,7 @@ src/
 ```
 
 ## Valuation Models (src/lib/valuation/)
-1. **DCF FCFE 5Y** — Revenue projection → Net Income → FCFE, discounted by Cost of Equity, Gordon Growth terminal value
+1. **DCF FCFE 5Y** — Revenue (analyst estimates) → Net Margin (analyst-derived, dynamic per year) → Net Income → CapEx (maintenance D&A + growth) → FCFE, discounted by Cost of Equity, Gordon Growth terminal value
 2. **P/E Multiples** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
 3. **P/S Multiples** — Historical 5Y avg P/S × Revenue/Share (same fallback logic)
 4. **P/B Multiples** — Historical 5Y avg P/B × Book Value/Share (same fallback logic)
@@ -94,18 +94,21 @@ src/
 - Cost of Equity = Risk-free rate (10Y Treasury from FRED) + Beta × ERP (4.5% default, Damodaran implied)
 - Cost of Debt = Interest Expense / Total Debt
 - Terminal Growth Rate: dynamic by company archetype (2.5%–4.0%), defined in `company-classifier.ts`
+- `profitable_growth` (3.5%): growth >12% OR (growth >8% with net margin >20%) — covers companies like AAPL
 - MVP uses FMP-provided Beta (no custom Blume adjustment yet)
 
 ## Analyst Estimates
 - **Daily cron** fetches forward estimates from FMP `getAnalystEstimates()` and stores in `analyst_estimates` table
 - **Real-time fallback**: if estimates are empty when computing valuation, fetches from FMP on demand and persists
-- DCF uses analyst consensus for first 2-3 years of revenue projection, falls back to historical CAGR if unavailable
+- DCF uses analyst consensus for revenue projection (up to 5 years), falls back to historical CAGR if unavailable
+- Net margin derived from analyst EPS × shares / revenue per year; fades to 5Y historical average beyond analyst coverage
+- CapEx = Maintenance (≈ D&A) + Growth CapEx (proportional to revenue increase)
 
 ## Key Conventions
 - Ticker is always UPPERCASE and used as primary key
 - Financial data stored as raw numbers (not in millions/billions)
 - Valuation results include `assumptions` field for full transparency
-- ISR revalidation: 1 hour for stock pages
+- ISR revalidation: 1 hour in prod, 0 in dev — controlled by `PAGE_REVALIDATE` in `src/lib/constants.ts`
 - All prices in USD
 
 ## FMP API Notes

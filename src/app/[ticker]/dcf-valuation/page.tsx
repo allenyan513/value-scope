@@ -7,7 +7,8 @@ interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export const revalidate = 3600;
+import { PAGE_REVALIDATE } from "@/lib/constants";
+export const revalidate = PAGE_REVALIDATE;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ticker } = await params;

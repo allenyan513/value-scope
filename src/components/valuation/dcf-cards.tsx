@@ -326,6 +326,13 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
                 <td className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(calc.termFCFE)}</td>
               </tr>
               <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium text-muted-foreground">Discount Rate</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono text-muted-foreground">{discountRate.toFixed(2)}%</td>
+                ))}
+                <td className="p-2.5 text-right font-mono text-muted-foreground">{discountRate.toFixed(2)}%</td>
+              </tr>
               <tr className="border-b bg-primary/5">
                 <td className="p-2.5 font-bold">Present Value</td>
                 {calc.rows.map((p) => (
