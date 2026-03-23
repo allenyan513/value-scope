@@ -14,8 +14,8 @@ describe("calculateWACC", () => {
 
   it("should compute CAPM cost of equity correctly", () => {
     const result = calculateWACC(baseInputs);
-    // Ke = Rf + β × ERP = 0.0425 + 1.2 × 0.055 = 0.1085
-    expect(result.cost_of_equity).toBeCloseTo(0.1085, 4);
+    // Ke = Rf + β × ERP = 0.0425 + 1.2 × 0.045 = 0.0965
+    expect(result.cost_of_equity).toBeCloseTo(0.0965, 4);
   });
 
   it("should compute cost of debt as interest/debt", () => {
@@ -36,7 +36,7 @@ describe("calculateWACC", () => {
     const result = calculateWACC(baseInputs);
     // WACC = Ke × E_w + Kd × (1-tax) × D_w
     const expected =
-      0.1085 * (3000 / 3100) + 0.03 * (1 - 0.21) * (100 / 3100);
+      0.0965 * (3000 / 3100) + 0.03 * (1 - 0.21) * (100 / 3100);
     expect(result.wacc).toBeCloseTo(expected, 4);
   });
 
@@ -96,8 +96,8 @@ describe("calculateWACC", () => {
       ...baseInputs,
       additionalRiskPremium: 0.02,
     });
-    // Ke = 0.0425 + 1.2 × 0.055 + 0.02 = 0.1285
-    expect(result.cost_of_equity).toBeCloseTo(0.1285, 4);
+    // Ke = 0.0425 + 1.2 × 0.045 + 0.02 = 0.1165
+    expect(result.cost_of_equity).toBeCloseTo(0.1165, 4);
   });
 });
 

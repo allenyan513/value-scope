@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import type { ValuationResult, WACCResult } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
@@ -8,6 +9,61 @@ import { SensitivityHeatmap } from "./sensitivity-heatmap";
 function formatMillions(n: number): string {
   const inMillions = n / 1e6;
   return inMillions.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function getUpsideColor(upside: number) {
+  if (upside > 15) return "text-green-600 dark:text-green-400";
+  if (upside < -15) return "text-red-600 dark:text-red-400";
+  return "text-foreground";
+}
+
+// --- Parameter Input Component ---
+function ParamInput({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+
+  return (
+    <div className="text-center p-4 rounded-xl border border-border/60 bg-muted/30">
+      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => onChange(clamp(value - step))}
+          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+        <span className="text-xl font-bold font-mono min-w-[5rem]">
+          {value.toFixed(step < 1 ? 2 : 0)}{suffix}
+        </span>
+        <button
+          onClick={() => onChange(clamp(value + step))}
+          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-1.5">
+        {min}{suffix} – {max}{suffix}
+      </div>
+    </div>
+  );
 }
 
 interface Props {
@@ -30,23 +86,82 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
     pv_fcfe: number;
   }>;
 
-  const pvTerminal = details.pv_terminal_value as number;
-  const pvFCFETotal = details.pv_fcfe_total as number;
   const cashAndEquiv = details.cash_and_equivalents as number;
   const totalDebt = details.total_debt as number;
-  const equityValue = details.equity_value as number;
   const sharesOut = details.shares_outstanding as number;
-  const totalPV = pvFCFETotal + pvTerminal;
 
-  // Terminal year projection
-  const lastProj = projections[projections.length - 1];
-  const termGrowth = (assumptions.terminal_growth_rate as number) / 100;
-  const termRevenue = lastProj.revenue * (1 + termGrowth);
-  const termNetIncome = termRevenue * lastProj.net_margin;
-  const termCapex = termRevenue * (lastProj.net_capex / lastProj.revenue);
-  const termFCFE = termNetIncome - termCapex;
+  // Server defaults
+  const defaultDiscountRate = assumptions.discount_rate as number;
+  const defaultTerminalGrowth = assumptions.terminal_growth_rate as number;
+  const defaultForecastYears = projections.length;
 
-  const colSpan = projections.length + 2;
+  // Interactive state
+  const [discountRate, setDiscountRate] = useState(defaultDiscountRate);
+  const [terminalGrowth, setTerminalGrowth] = useState(defaultTerminalGrowth);
+  const [forecastYears, setForecastYears] = useState(defaultForecastYears);
+
+  const isCustom =
+    discountRate !== defaultDiscountRate ||
+    terminalGrowth !== defaultTerminalGrowth ||
+    forecastYears !== defaultForecastYears;
+
+  const resetDefaults = () => {
+    setDiscountRate(defaultDiscountRate);
+    setTerminalGrowth(defaultTerminalGrowth);
+    setForecastYears(defaultForecastYears);
+  };
+
+  // Recalculate when parameters change
+  const calc = useMemo(() => {
+    const ke = discountRate / 100;
+    const g = terminalGrowth / 100;
+    const active = projections.slice(0, forecastYears);
+    const n = active.length;
+
+    const rows = active.map((p, i) => {
+      const t = i + 1;
+      const discountFactor = 1 / Math.pow(1 + ke, t);
+      const pvFcfe = p.fcfe * discountFactor;
+      return { ...p, discount_factor: discountFactor, pv_fcfe: pvFcfe };
+    });
+
+    const lastFCFE = rows[n - 1].fcfe;
+    const terminalValue = ke > g ? (lastFCFE * (1 + g)) / (ke - g) : lastFCFE * 20;
+    const pvTerminal = terminalValue / Math.pow(1 + ke, n);
+    const pvFCFETotal = rows.reduce((sum, p) => sum + p.pv_fcfe, 0);
+    const totalPV = pvFCFETotal + pvTerminal;
+    const equityVal = totalPV + cashAndEquiv - totalDebt;
+    const fairVal = Math.max(0, equityVal / sharesOut);
+    const upsidePercent = ((fairVal - currentPrice) / currentPrice) * 100;
+
+    // Terminal year derived values
+    const lastRow = rows[n - 1];
+    const termRevenue = lastRow.revenue * (1 + g);
+    const termNetIncome = termRevenue * lastRow.net_margin;
+    const termCapex = termRevenue * (lastRow.net_capex / lastRow.revenue);
+    const termFCFE = termNetIncome - termCapex;
+    const termYear = lastRow.year + 1;
+
+    const keLeG = ke <= g;
+
+    return {
+      rows,
+      pvTerminal,
+      pvFCFETotal,
+      totalPV,
+      equityValue: equityVal,
+      fairValue: fairVal,
+      upsidePercent,
+      termRevenue,
+      termNetIncome,
+      termCapex,
+      termFCFE,
+      termYear,
+      keLeG,
+    };
+  }, [discountRate, terminalGrowth, forecastYears, projections, cashAndEquiv, totalDebt, sharesOut, currentPrice]);
+
+  const colSpan = calc.rows.length + 2;
 
   // Sensitivity matrix
   const sm = details.sensitivity_matrix as Record<string, unknown>;
@@ -54,18 +169,18 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
   const growthValues = sm.growth_values as number[];
   const prices = sm.prices as number[][];
 
-  const upsideColor =
-    model.upside_percent > 15
-      ? "text-green-600 dark:text-green-400"
-      : model.upside_percent < -15
-        ? "text-red-600 dark:text-red-400"
-        : "text-foreground";
-
   return (
     <div className="space-y-6">
       {/* ===== Card 1: DCF Value ===== */}
       <Card className="p-6">
-        <h3 className="font-semibold text-lg mb-6">DCF Value</h3>
+        <div className="flex items-center gap-3 mb-6">
+          <h3 className="font-semibold text-lg">DCF Value</h3>
+          {isCustom && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              Custom Scenario
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div>
             <div className="text-sm text-muted-foreground mb-1">Current Price</div>
@@ -73,7 +188,7 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
           </div>
           <div>
             <div className="text-sm text-muted-foreground mb-1">Fair Value</div>
-            <div className="text-2xl font-bold font-mono">${model.fair_value.toFixed(2)}</div>
+            <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground mb-1">Range</div>
@@ -83,8 +198,8 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
           </div>
           <div>
             <div className="text-sm text-muted-foreground mb-1">Upside</div>
-            <div className={`text-2xl font-bold font-mono ${upsideColor}`}>
-              {model.upside_percent > 0 ? "+" : ""}{model.upside_percent.toFixed(1)}%
+            <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
+              {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
             </div>
           </div>
         </div>
@@ -92,114 +207,160 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
 
       {/* ===== Card 2: Present Value Calculation ===== */}
       <Card className="p-6">
-        <h3 className="font-semibold text-lg mb-4">Present Value Calculation</h3>
-
-        {/* Parameters */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {[
-            { label: "Discount Rate", value: `${(assumptions.discount_rate as number).toFixed(2)}%` },
-            { label: "Terminal Growth", value: `${(assumptions.terminal_growth_rate as number).toFixed(2)}%` },
-            { label: "Forecast Period", value: `${assumptions.projection_years} Years` },
-          ].map((item) => (
-            <div key={item.label} className="text-center p-3 rounded-lg bg-muted/50">
-              <div className="text-sm text-muted-foreground mb-1">{item.label}</div>
-              <div className="text-xl font-bold font-mono">{item.value}</div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold text-lg">Present Value Calculation</h3>
+            {isCustom && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                Modified
+              </span>
+            )}
+          </div>
+          {isCustom && (
+            <button
+              onClick={resetDefaults}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+            >
+              Reset to Default
+            </button>
+          )}
         </div>
+
+        {/* Interactive Parameters */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
+          <ParamInput
+            label="Discount Rate"
+            value={discountRate}
+            onChange={setDiscountRate}
+            min={1}
+            max={25}
+            step={0.25}
+            suffix="%"
+          />
+          <ParamInput
+            label="Terminal Growth"
+            value={terminalGrowth}
+            onChange={setTerminalGrowth}
+            min={0}
+            max={6}
+            step={0.25}
+            suffix="%"
+          />
+          <ParamInput
+            label="Forecast Period"
+            value={forecastYears}
+            onChange={setForecastYears}
+            min={3}
+            max={defaultForecastYears}
+            step={1}
+            suffix=" Yrs"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mb-6 text-center">
+          Adjust parameters to explore scenarios. Changes are for exploration only and do not affect saved valuations.
+        </p>
+
+        {/* Warning for ke <= g */}
+        {calc.keLeG && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
+            Discount rate must be greater than terminal growth for a meaningful terminal value. Using fallback multiplier.
+          </div>
+        )}
 
         {/* Projection Table */}
         <div className="overflow-x-auto">
           <div className="flex justify-end mb-2">
             <span className="text-xs text-muted-foreground">Currency: USD &nbsp; Millions</span>
           </div>
-          <table className="w-full text-xs border-collapse">
+          <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left p-2 font-medium"></th>
-                {projections.map((p, i) => (
-                  <th key={p.year} className="text-right p-2 font-medium">
-                    <div>Year {i + 1}</div>
-                    <div className="text-[10px] text-muted-foreground font-normal">forecasted</div>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-2.5 font-semibold text-sm"></th>
+                {calc.rows.map((p) => (
+                  <th key={p.year} className="text-right p-2.5 font-semibold text-sm">
+                    <div>{p.year}</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">forecast</div>
                   </th>
                 ))}
-                <th className="text-right p-2 font-medium">
-                  <div>Terminal</div>
-                  <div className="text-[10px] text-muted-foreground font-normal">forecasted</div>
+                <th className="text-right p-2.5 font-semibold text-sm">
+                  <div>{calc.termYear}+</div>
+                  <div className="text-[10px] text-muted-foreground font-normal">terminal</div>
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b">
-                <td className="p-2 font-medium">Revenue</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono">{formatMillions(p.revenue)}</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium">Revenue</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono">{formatMillions(p.revenue)}</td>
                 ))}
-                <td className="p-2 text-right font-mono">{formatMillions(termRevenue)}</td>
+                <td className="p-2.5 text-right font-mono">{formatMillions(calc.termRevenue)}</td>
               </tr>
-              <tr className="border-b">
-                <td className="p-2 font-medium">Net Margin</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono">{(p.net_margin * 100).toFixed(2)}%</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium">Net Margin</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono">{(p.net_margin * 100).toFixed(1)}%</td>
                 ))}
-                <td className="p-2 text-right font-mono">{(lastProj.net_margin * 100).toFixed(2)}%</td>
+                <td className="p-2.5 text-right font-mono">{(calc.rows[calc.rows.length - 1].net_margin * 100).toFixed(1)}%</td>
               </tr>
-              <tr className="border-b">
-                <td className="p-2 font-medium text-blue-700 dark:text-blue-400">Net Income</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(p.net_income)}</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium text-blue-700 dark:text-blue-400">Net Income</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(p.net_income)}</td>
                 ))}
-                <td className="p-2 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(termNetIncome)}</td>
+                <td className="p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(calc.termNetIncome)}</td>
               </tr>
-              <tr><td colSpan={colSpan} className="h-2"></td></tr>
-              <tr className="border-b">
-                <td className="p-2 font-medium">Net CapEx</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono">{formatMillions(p.net_capex)}</td>
+              <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium">Net CapEx</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono">{formatMillions(p.net_capex)}</td>
                 ))}
-                <td className="p-2 text-right font-mono">{formatMillions(termCapex)}</td>
+                <td className="p-2.5 text-right font-mono">{formatMillions(calc.termCapex)}</td>
               </tr>
-              <tr className="border-b border-t-2 border-t-foreground/20">
-                <td className="p-2 font-bold text-blue-700 dark:text-blue-400">FCFE</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(p.fcfe)}</td>
+              <tr className="border-b border-t-2 border-t-foreground/20 hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-bold text-blue-700 dark:text-blue-400">FCFE</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(p.fcfe)}</td>
                 ))}
-                <td className="p-2 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(termFCFE)}</td>
+                <td className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(calc.termFCFE)}</td>
               </tr>
-              <tr><td colSpan={colSpan} className="h-2"></td></tr>
-              <tr className="border-b bg-muted/30">
-                <td className="p-2 font-bold">Present Value</td>
-                {projections.map((p) => (
-                  <td key={p.year} className="p-2 text-right font-mono font-bold">{formatMillions(p.pv_fcfe)}</td>
+              <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
+              <tr className="border-b bg-primary/5">
+                <td className="p-2.5 font-bold">Present Value</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className="p-2.5 text-right font-mono font-bold">{formatMillions(p.pv_fcfe)}</td>
                 ))}
-                <td className="p-2 text-right font-mono font-bold">{formatMillions(pvTerminal)}</td>
+                <td className="p-2.5 text-right font-mono font-bold">{formatMillions(calc.pvTerminal)}</td>
               </tr>
 
               {/* Bridge */}
-              <tr><td colSpan={colSpan} className="h-4"></td></tr>
-              <tr className="border-b">
-                <td className="p-2 font-medium">Present Value</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono font-semibold">{formatMillions(totalPV)}</td>
+              <tr><td colSpan={colSpan} className="h-5"></td></tr>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium">Present Value of Cash Flows</td>
+                <td colSpan={calc.rows.length + 1} className="p-2.5 text-right font-mono font-semibold">{formatMillions(calc.totalPV)}</td>
               </tr>
-              <tr className="border-b">
-                <td className="p-2 text-muted-foreground">+ Cash &amp; Equivalents</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono">{formatMillions(cashAndEquiv)}</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 text-muted-foreground">+ Cash &amp; Equivalents</td>
+                <td colSpan={calc.rows.length + 1} className="p-2.5 text-right font-mono">{formatMillions(cashAndEquiv)}</td>
               </tr>
-              <tr className="border-b">
-                <td className="p-2 text-muted-foreground">- Total Debt</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono">{formatMillions(totalDebt)}</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 text-muted-foreground">− Total Debt</td>
+                <td colSpan={calc.rows.length + 1} className="p-2.5 text-right font-mono">{formatMillions(totalDebt)}</td>
               </tr>
-              <tr className="border-b border-t-2 border-t-foreground/20">
-                <td className="p-2 font-semibold">Equity Value</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono font-semibold">{formatMillions(equityValue)}</td>
+              <tr className="border-b border-t-2 border-t-foreground/20 hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-semibold">Equity Value</td>
+                <td colSpan={calc.rows.length + 1} className="p-2.5 text-right font-mono font-semibold">{formatMillions(calc.equityValue)}</td>
               </tr>
-              <tr className="border-b">
-                <td className="p-2 text-muted-foreground">/ Shares Outstanding</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono">{formatMillions(sharesOut)}</td>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 text-muted-foreground">÷ Shares Outstanding</td>
+                <td colSpan={calc.rows.length + 1} className="p-2.5 text-right font-mono">{formatMillions(sharesOut)}</td>
               </tr>
-              <tr className="bg-muted/30">
-                <td className="p-2 font-bold text-base">DCF Value</td>
-                <td colSpan={projections.length + 1} className="p-2 text-right font-mono font-bold text-base">${model.fair_value.toFixed(2)}</td>
+              <tr className="bg-primary/5 rounded-b-lg">
+                <td className="p-3 font-bold text-base">DCF Fair Value</td>
+                <td colSpan={calc.rows.length + 1} className={`p-3 text-right font-mono font-bold text-lg ${getUpsideColor(calc.upsidePercent)}`}>
+                  ${calc.fairValue.toFixed(2)}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -242,7 +403,7 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
           ].map((row) => (
             <div
               key={row.label}
-              className={`flex justify-between py-1.5 px-2 rounded text-sm ${
+              className={`flex justify-between py-2 px-3 rounded text-sm ${
                 row.highlight ? "bg-primary/5 font-medium" : ""
               }`}
             >

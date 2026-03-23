@@ -74,7 +74,6 @@ src/
 │   ├── layout/             # Header (with auth), footer
 │   └── ui/                 # shadcn/ui primitives
 ├── types/                  # All TypeScript interfaces
-└── scripts/                # Migration runner (legacy, prefer MCP)
 ```
 
 ## Valuation Models (src/lib/valuation/)
@@ -92,9 +91,15 @@ src/
 - Percentile shows where current multiple sits vs history
 
 ## WACC Calculation
-- Cost of Equity = Risk-free rate (10Y Treasury from FRED) + Beta × ERP (5.5% default)
+- Cost of Equity = Risk-free rate (10Y Treasury from FRED) + Beta × ERP (4.5% default, Damodaran implied)
 - Cost of Debt = Interest Expense / Total Debt
+- Terminal Growth Rate: dynamic by company archetype (2.5%–4.0%), defined in `company-classifier.ts`
 - MVP uses FMP-provided Beta (no custom Blume adjustment yet)
+
+## Analyst Estimates
+- **Daily cron** fetches forward estimates from FMP `getAnalystEstimates()` and stores in `analyst_estimates` table
+- **Real-time fallback**: if estimates are empty when computing valuation, fetches from FMP on demand and persists
+- DCF uses analyst consensus for first 2-3 years of revenue projection, falls back to historical CAGR if unavailable
 
 ## Key Conventions
 - Ticker is always UPPERCASE and used as primary key
@@ -159,4 +164,5 @@ npm run test:coverage # With coverage report
 - **Phase 4**: Auth + Watchlist ✅
 - **Phase 5**: SEO (sitemap, JSON-LD, robots.txt, meta) ✅
 - **Phase 6**: Stripe monetization (checkout, webhook, billing portal) ✅
-- **Remaining**: Data seeding (run seed script), Stripe Price IDs configuration, domain setup
+- **Phase 7**: Valuation accuracy (ERP calibration, dynamic terminal growth, analyst estimates integration, interactive DCF) ✅
+- **Remaining**: Data seeding (run seed script), Stripe Price IDs configuration, domain setup, Relative Valuation combined price, Summary card redesign

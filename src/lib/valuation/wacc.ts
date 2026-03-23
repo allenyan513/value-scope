@@ -4,8 +4,10 @@
 
 import type { WACCResult, FinancialStatement } from "@/types";
 
-// Default Equity Risk Premium (Damodaran, ~5.5% for US market)
-const DEFAULT_ERP = 0.055;
+// Default Equity Risk Premium (Damodaran implied ERP, updated 2025-01)
+// Source: https://pages.stern.nyu.edu/~adamodar/
+// Review annually — Damodaran publishes updated estimates each January
+const DEFAULT_ERP = 0.045;
 
 export interface WACCInputs {
   /** Company beta (from FMP or calculated) */

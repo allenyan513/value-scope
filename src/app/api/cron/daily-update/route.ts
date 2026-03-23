@@ -8,9 +8,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db/supabase";
-import { getBatchQuotes, getPriceTargetConsensus } from "@/lib/data/fmp";
+import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates } from "@/lib/data/fmp";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     for (const ticker of tickers) {
       try {
-        const [companyData, historicals, estimates] = await Promise.all([
+        let [companyData, historicals, estimates] = await Promise.all([
           db.from("companies").select("*").eq("ticker", ticker).single(),
           getFinancials(ticker, "annual", 7),
           getEstimates(ticker),
@@ -89,6 +89,28 @@ export async function GET(request: NextRequest) {
         const company = companyData.data;
         const currentPrice = quoteMap.get(ticker)?.price ?? company.price ?? 0;
         if (currentPrice <= 0) continue;
+
+        // Refresh analyst estimates from FMP
+        try {
+          const fmpEstimates = await getAnalystEstimates(ticker, "annual", 3);
+          if (fmpEstimates.length > 0) {
+            await upsertEstimates(
+              fmpEstimates.map((e) => ({
+                ticker,
+                period: e.date.split("-")[0],
+                revenue_estimate: e.revenueAvg,
+                eps_estimate: e.epsAvg,
+                revenue_low: e.revenueLow,
+                revenue_high: e.revenueHigh,
+                eps_low: e.epsLow,
+                eps_high: e.epsHigh,
+                number_of_analysts: e.numAnalystsRevenue,
+              }))
+            );
+            // Re-fetch estimates from DB so valuation uses fresh data
+            estimates = await getEstimates(ticker);
+          }
+        } catch { /* non-critical: valuation still works with historical CAGR */ }
 
         // Fetch peers (limited to avoid rate limits)
         const peerCompanies = await getIndustryPeers(ticker, 8);

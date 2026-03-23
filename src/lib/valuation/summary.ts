@@ -22,7 +22,7 @@ import {
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePeterLynch } from "./peter-lynch";
-import { classifyCompany, computeWeightedConsensus } from "./company-classifier";
+import { classifyCompany, computeWeightedConsensus, getTerminalGrowthRate } from "./company-classifier";
 
 export interface FullValuationInputs {
   company: Company;
@@ -84,6 +84,7 @@ export function computeFullValuation(
     sharesOutstanding,
     cashAndEquivalents: latestFinancial.cash_and_equivalents || 0,
     totalDebt: latestFinancial.total_debt || 0,
+    terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
   };
 
   // 3. Run all models (4 active: DCF FCFE, P/E, EV/EBITDA, Peter Lynch)

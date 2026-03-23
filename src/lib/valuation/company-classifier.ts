@@ -458,6 +458,28 @@ function buildModelApplicability(
   return applicability;
 }
 
+// --- Terminal Growth Rate by Archetype ---
+// Higher-growth companies warrant a higher perpetual growth rate in DCF terminal value.
+// Range: 2.5% (slow/stable) to 4.0% (high growth). All within nominal GDP bounds.
+
+const TERMINAL_GROWTH_RATES: Record<CompanyArchetype, number> = {
+  high_growth: 0.040,       // 4.0% — strong secular growth
+  profitable_growth: 0.035, // 3.5% — above-average grower
+  mature_stable: 0.030,     // 3.0% — GDP-ish growth
+  dividend_payer: 0.025,    // 2.5% — slow, stable
+  cyclical: 0.025,          // 2.5% — normalize to economy
+  turnaround: 0.030,        // 3.0% — assume recovery
+  asset_heavy: 0.025,       // 2.5% — capital-intensive, slow
+  loss_making: 0.030,       // 3.0% — assume eventual normalization
+};
+
+/**
+ * Get the terminal growth rate appropriate for a company archetype.
+ */
+export function getTerminalGrowthRate(archetype: CompanyArchetype): number {
+  return TERMINAL_GROWTH_RATES[archetype];
+}
+
 // --- Public API ---
 
 export function classifyCompany(

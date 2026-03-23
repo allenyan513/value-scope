@@ -4,12 +4,12 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, getPriceHistory, upsertValuation } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, getPriceHistory, upsertValuation, upsertEstimates } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import type { PeerComparison, ValuationSummary } from "@/types";
-import { getKeyMetrics } from "@/lib/data/fmp";
+import type { PeerComparison, ValuationSummary, AnalystEstimate } from "@/types";
+import { getKeyMetrics, getAnalystEstimates } from "@/lib/data/fmp";
 
 export async function GET(
   request: NextRequest,
@@ -57,13 +57,37 @@ export async function GET(
     }
 
     // Fetch fresh data
-    const [company, historicals, estimates, riskFreeRate, prices] = await Promise.all([
+    const [company, historicals, dbEstimates, riskFreeRate, prices] = await Promise.all([
       getCompany(upperTicker),
       getFinancials(upperTicker, "annual", 7),
       getEstimates(upperTicker),
       getTenYearTreasuryYield(),
       getPriceHistory(upperTicker, 365 * 5),
     ]);
+
+    // Real-time fallback: if no analyst estimates in DB, fetch from FMP and persist
+    let estimates: AnalystEstimate[] = dbEstimates;
+    if (estimates.length === 0) {
+      try {
+        const fmpEstimates = await getAnalystEstimates(upperTicker, "annual", 3);
+        if (fmpEstimates.length > 0) {
+          await upsertEstimates(
+            fmpEstimates.map((e) => ({
+              ticker: upperTicker,
+              period: e.date.split("-")[0],
+              revenue_estimate: e.revenueAvg,
+              eps_estimate: e.epsAvg,
+              revenue_low: e.revenueLow,
+              revenue_high: e.revenueHigh,
+              eps_low: e.epsLow,
+              eps_high: e.epsHigh,
+              number_of_analysts: e.numAnalystsRevenue,
+            }))
+          );
+          estimates = await getEstimates(upperTicker);
+        }
+      } catch { /* non-critical: DCF falls back to historical CAGR */ }
+    }
 
     if (!company) {
       return NextResponse.json({ error: `Company ${upperTicker} not found` }, { status: 404 });
