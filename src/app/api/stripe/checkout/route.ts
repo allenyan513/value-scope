@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, PLANS, type PlanKey } from "@/lib/stripe";
+import { getStripe, PLANS, type PlanKey } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const baseUrl = request.headers.get("origin") || "https://valuscope.com";
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
     customer_email: user.email,
     line_items: [
