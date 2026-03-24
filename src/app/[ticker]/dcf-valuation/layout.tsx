@@ -26,7 +26,6 @@ export default async function DCFLayout({ params, children }: Props) {
         <DCFModelNav
           ticker={upperTicker}
           models={models}
-          currentPrice={summary?.current_price ?? 0}
         />
       )}
       {children}

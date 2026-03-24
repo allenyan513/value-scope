@@ -256,13 +256,11 @@ function CalculationColumn({
 function CalcRow({
   label,
   value,
-  op,
   highlight,
   primary,
 }: {
   label: string;
   value: string;
-  op?: string;
   highlight?: boolean;
   primary?: boolean;
 }) {

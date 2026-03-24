@@ -133,8 +133,7 @@ export default async function RelativeValuationPage({ params }: Props) {
     peTrailingUpside = Math.round(((peTrailingFairPrice - currentPrice) / currentPrice) * 10000) / 100;
   }
 
-  // For forward P/E — use analyst estimates if available
-  const _estimates = summary.models.find((m) => m.model_type === "pe_multiples")?.assumptions;
+  // TODO: integrate analyst forward earnings for forward P/E
   const peForwardFairPrice: number | null = null;
   const peForwardUpside: number | null = null;
   const forwardProfit: number | null = null; // TODO: integrate analyst forward earnings
