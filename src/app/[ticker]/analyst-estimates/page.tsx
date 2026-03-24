@@ -35,6 +35,14 @@ export default async function AnalystEstimatesPage({ params }: Props) {
     priceHistory,
   } = await getTickerData(upperTicker);
 
+  if (!company) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>Data is being prepared for {upperTicker}. Please check back later.</p>
+      </div>
+    );
+  }
+
   const currentPrice = summary?.current_price ?? company.price ?? 0;
 
   return (
