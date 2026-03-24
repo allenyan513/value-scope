@@ -126,8 +126,7 @@ export async function GET(request: NextRequest) {
                 market_cap: peer.market_cap,
                 trailing_pe: metrics[0].priceToEarningsRatio ?? null,
                 forward_pe: null,
-                ps_ratio: metrics[0].priceToSalesRatio ?? null,
-                pb_ratio: metrics[0].priceToBookRatio ?? null,
+                ev_ebitda: null,
               });
             }
           } catch { /* skip */ }

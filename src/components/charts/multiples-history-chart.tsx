@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { HistoricalMultiplesPoint } from "@/types";
 
-type MultipleKey = "pe" | "ps" | "pb";
+type MultipleKey = "pe" | "ev_ebitda";
 
 const MULTIPLE_CONFIG: Record<
   MultipleKey,
@@ -23,15 +23,10 @@ const MULTIPLE_CONFIG: Record<
     color: "hsl(210, 70%, 50%)",
     description: "Price / Earnings — how much investors pay per dollar of earnings",
   },
-  ps: {
-    label: "P/S",
+  ev_ebitda: {
+    label: "EV/EBITDA",
     color: "hsl(150, 60%, 40%)",
-    description: "Price / Sales — how much investors pay per dollar of revenue",
-  },
-  pb: {
-    label: "P/B",
-    color: "hsl(25, 70%, 50%)",
-    description: "Price / Book — how much investors pay relative to book value",
+    description: "Enterprise Value / EBITDA — valuation relative to operating cash flow",
   },
 };
 
@@ -76,7 +71,7 @@ export function MultiplesHistoryChart({ ticker }: Props) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2">
       {(["pe", "ps", "pb"] as MultipleKey[]).map((key) => (
         <SingleMultipleChart key={key} data={data} multipleKey={key} />
       ))}

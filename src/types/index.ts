@@ -118,8 +118,7 @@ export type ValuationModelType =
   | "dcf_pe_exit_10y"
   | "dcf_ebitda_exit_fcfe_10y"
   | "pe_multiples"
-  | "ps_multiples"
-  | "pb_multiples"
+  | "ev_ebitda_multiples"
   | "peter_lynch";
 
 export interface ValuationResult {
@@ -211,8 +210,7 @@ export interface PeerComparison {
   market_cap: number;
   trailing_pe: number | null;
   forward_pe: number | null;
-  ps_ratio: number | null;
-  pb_ratio: number | null;
+  ev_ebitda: number | null;
 }
 
 export interface TradingMultiplesResult extends ValuationResult {
@@ -299,9 +297,7 @@ export interface ValuationHistoryPoint {
 export interface HistoricalMultiplesPoint {
   date: string;
   pe: number | null;
-  ps: number | null;
-  pb: number | null;
-  ev_ebitda?: number | null; // Enterprise Value / EBITDA
+  ev_ebitda: number | null;
 }
 
 export interface MultipleStats {
@@ -313,29 +309,12 @@ export interface MultipleStats {
   dataPoints: number;
 }
 
-export interface HistoricalRelativeValuation {
-  type: "pe" | "ps" | "pb";
-  label: string;
-  currentMultiple: number | null;
-  historicalAvg: number;
-  percentile: number;
-  fairValue: number;
-  lowEstimate: number;
-  highEstimate: number;
-  currentMetric: number;
-  metricLabel: string;
-  deviation: number; // % above/below avg (+ = expensive)
-}
-
 export interface HistoricalMultiplesResponse {
   history: HistoricalMultiplesPoint[];
   stats: {
     pe: MultipleStats | null;
-    ps: MultipleStats | null;
-    pb: MultipleStats | null;
-    ev_ebitda?: MultipleStats | null;
+    ev_ebitda: MultipleStats | null;
   };
-  valuations: HistoricalRelativeValuation[];
 }
 
 // --- User / Watchlist ---

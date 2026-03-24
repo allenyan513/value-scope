@@ -25,8 +25,7 @@ import {
 import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,
-  calculatePSMultiples,
-  calculatePBMultiples,
+  calculateEVEBITDAMultiples,
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePeterLynch } from "./peter-lynch";
@@ -147,8 +146,7 @@ export function computeFullValuation(
   };
 
   models.push(calculatePEMultiples(tradingInputs));
-  models.push(calculatePSMultiples(tradingInputs));
-  models.push(calculatePBMultiples(tradingInputs));
+  models.push(calculateEVEBITDAMultiples(tradingInputs));
 
   // Peter Lynch
   models.push(

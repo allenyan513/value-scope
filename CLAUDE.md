@@ -3,7 +3,7 @@
 # ValuScope - Stock Valuation SaaS
 
 ## Project Overview
-Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provides 8 automated valuation models with daily updates. Target: SEO-driven organic growth.
+Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provides 7 automated valuation models with daily updates. Target: SEO-driven organic growth.
 
 ## Tech Stack
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5
@@ -69,7 +69,7 @@ src/
 │   ├── auth/               # Supabase auth client helpers
 │   ├── data/               # External API clients (fmp.ts, fred.ts, seed.ts)
 │   ├── db/                 # Supabase client + query helpers + migrations
-│   ├── valuation/          # 8 valuation model engines + dcf-narrative.ts
+│   ├── valuation/          # 7 valuation model engines + dcf-narrative.ts
 │   └── stripe.ts           # Stripe client + plan definitions
 ├── components/
 │   ├── auth/               # AuthProvider context
@@ -87,16 +87,16 @@ src/
 3. **DCF P/E Exit 10Y** — Same 10Y FCFE projections, terminal value = Year 10 Net Income × historical 5Y avg P/E. Cross-validation only (not in consensus).
 4. **DCF EV/EBITDA Exit 10Y** — Same 10Y FCFE projections, terminal value = Year 10 EBITDA × historical 5Y avg EV/EBITDA − net debt. Cross-validation only.
 5. **P/E Multiples** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
-6. **P/S Multiples** — Historical 5Y avg P/S × Revenue/Share (same fallback logic)
-7. **P/B Multiples** — Historical 5Y avg P/B × Book Value/Share (same fallback logic)
-8. **Peter Lynch Fair Value** — PEG-based (Growth Rate × 100 × EPS, growth clamped 5%–25%)
+6. **EV/EBITDA Multiples** — Historical 5Y avg EV/EBITDA × EBITDA → subtract net debt → equity per share (same fallback logic)
+7. **Peter Lynch Fair Value** — PEG-based (Growth Rate × 100 × EPS, growth clamped 5%–25%)
 
-### Relative Valuation Approach
+### Relative Valuation Approach (valueinvesting.io style)
+- **Only 2 models**: P/E and EV/EBITDA — simplified for clarity (removed P/S, P/B, EV/EBIT, Forward multiples)
 - **Primary method**: Historical self-comparison (company's own 5Y average multiples)
 - **Fallback**: Peer-based (when historical data < 100 points)
+- **Page design**: Each model shows summary table (Range + Selected), peer comparison table, and transparent step-by-step calculation breakdown
 - **Shared logic**: `historical-multiples.ts` — compute multiples from daily_prices + financial_statements
 - Low/High estimates use p25/p75 of historical distribution
-- Percentile shows where current multiple sits vs history
 
 ## WACC Calculation
 - Cost of Equity = Risk-free rate (10Y Treasury from FRED) + Beta × ERP (4.5% default, Damodaran implied)
@@ -206,5 +206,6 @@ npm run test:coverage # With coverage report
 
 ## Remaining
 - Stripe Price IDs configuration, domain setup
-- Relative Valuation combined price, Summary card redesign
+- Summary card redesign
+- Relative Valuation: populate Forward P/E + Forward EV/EBITDA columns from analyst estimates
 - Terminal value improvement: normalize terminal FCFE, two-stage terminal, exit multiple cross-check

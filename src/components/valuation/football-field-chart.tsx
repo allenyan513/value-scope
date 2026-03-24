@@ -11,8 +11,7 @@ const MODEL_LABELS: Record<string, string> = {
   dcf_pe_exit_10y: "DCF P/E Exit",
   dcf_ebitda_exit_fcfe_10y: "DCF EV/EBITDA Exit",
   pe_multiples: "P/E Multiples",
-  ps_multiples: "P/S Multiples",
-  pb_multiples: "P/B Multiples",
+  ev_ebitda_multiples: "EV/EBITDA Multiples",
   peter_lynch: "Peter Lynch",
 };
 

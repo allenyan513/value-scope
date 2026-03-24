@@ -406,3 +406,28 @@ export async function getEnterpriseValue(
     numberOfShares: 0,
   }));
 }
+
+// --- EV-based Multiples (via key-metrics) ---
+export interface FMPEVMetrics {
+  evToEBITDA: number | null;
+  evToOperatingCashFlow: number | null;
+  evToFreeCashFlow: number | null;
+}
+
+export async function getEVMetrics(
+  ticker: string,
+  limit = 1
+): Promise<FMPEVMetrics[]> {
+  const data = await fmpFetch<
+    Array<{ evToEBITDA?: number; evToOperatingCashFlow?: number; evToFreeCashFlow?: number }>
+  >("/key-metrics", {
+    symbol: ticker,
+    period: "annual",
+    limit: String(limit),
+  });
+  return (data ?? []).map((d) => ({
+    evToEBITDA: d.evToEBITDA ?? null,
+    evToOperatingCashFlow: d.evToOperatingCashFlow ?? null,
+    evToFreeCashFlow: d.evToFreeCashFlow ?? null,
+  }));
+}

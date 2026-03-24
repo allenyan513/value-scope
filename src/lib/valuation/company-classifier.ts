@@ -179,90 +179,82 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
 }> = {
   high_growth: {
     label: "High Growth",
-    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while P/S provides revenue-based market anchor.",
+    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while Peter Lynch provides growth-adjusted anchor.",
     weights: {
       dcf_growth_exit_5y: 0.40,
       pe_multiples: 0.10,
-      ps_multiples: 0.20,
-      pb_multiples: 0.10,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.15,
+      peter_lynch: 0.35,
     },
   },
   profitable_growth: {
     label: "Profitable Growth",
-    description: "Company with both strong growth and healthy profitability. All valuation models are applicable, with DCF providing the most reliable estimate.",
+    description: "Company with both strong growth and healthy profitability. DCF provides the most reliable estimate, complemented by multiples.",
     weights: {
       dcf_growth_exit_5y: 0.40,
       pe_multiples: 0.20,
-      ps_multiples: 0.10,
-      pb_multiples: 0.10,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.15,
+      peter_lynch: 0.25,
     },
   },
   mature_stable: {
     label: "Mature & Stable",
-    description: "Well-established company with predictable cash flows. DCF and trading multiples are most reliable due to stable, predictable financials.",
+    description: "Well-established company with predictable cash flows. DCF and trading multiples are most reliable.",
     weights: {
       dcf_growth_exit_5y: 0.35,
       pe_multiples: 0.25,
-      ps_multiples: 0.10,
-      pb_multiples: 0.10,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.15,
+      peter_lynch: 0.25,
     },
   },
   dividend_payer: {
     label: "Dividend Payer",
-    description: "Company returning significant cash to shareholders via dividends. Cash flow stability and payout sustainability are key valuation drivers.",
+    description: "Company returning significant cash to shareholders via dividends. Cash flow stability and payout sustainability are key.",
     weights: {
       dcf_growth_exit_5y: 0.35,
       pe_multiples: 0.25,
-      ps_multiples: 0.05,
-      pb_multiples: 0.15,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.15,
+      peter_lynch: 0.25,
     },
   },
   cyclical: {
     label: "Cyclical",
-    description: "Earnings fluctuate significantly with economic cycles. P/S and P/B are preferred over point-in-time P/E metrics.",
+    description: "Earnings fluctuate significantly with economic cycles. EV/EBITDA and DCF are preferred over point-in-time P/E.",
     weights: {
       dcf_growth_exit_5y: 0.35,
       pe_multiples: 0.10,
-      ps_multiples: 0.15,
-      pb_multiples: 0.20,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.20,
+      peter_lynch: 0.35,
     },
   },
   turnaround: {
     label: "Turnaround",
-    description: "Currently unprofitable but showing improving trends. DCF is prioritized; P/S provides revenue-based anchor when earnings are negative.",
+    description: "Currently unprofitable but showing improving trends. DCF and EV/EBITDA are prioritized.",
     weights: {
       dcf_growth_exit_5y: 0.40,
       pe_multiples: 0.00,
-      ps_multiples: 0.25,
-      pb_multiples: 0.15,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.25,
+      peter_lynch: 0.35,
     },
   },
   asset_heavy: {
     label: "Asset-Heavy",
-    description: "Capital-intensive business with significant tangible assets. P/B is a key metric alongside DCF for asset-rich businesses.",
+    description: "Capital-intensive business with significant tangible assets. DCF and EV/EBITDA are key metrics.",
     weights: {
-      dcf_growth_exit_5y: 0.30,
+      dcf_growth_exit_5y: 0.35,
       pe_multiples: 0.15,
-      ps_multiples: 0.05,
-      pb_multiples: 0.30,
-      peter_lynch: 0.20,
+      ev_ebitda_multiples: 0.20,
+      peter_lynch: 0.30,
     },
   },
   loss_making: {
     label: "Loss-Making",
-    description: "Company is currently unprofitable. P/S and P/B provide alternative valuation anchors when earnings-based models are not applicable.",
+    description: "Company is currently unprofitable. EV/EBITDA provides an alternative anchor when earnings-based models are not applicable.",
     weights: {
       dcf_growth_exit_5y: 0.35,
       pe_multiples: 0.00,
-      ps_multiples: 0.25,
-      pb_multiples: 0.15,
-      peter_lynch: 0.25,
+      ev_ebitda_multiples: 0.25,
+      peter_lynch: 0.40,
     },
   },
 };
@@ -411,27 +403,24 @@ function buildModelApplicability(
     });
   }
 
-  // P/S Multiples
-  applicability.push({
-    model_type: "ps_multiples",
-    applicable: true,
-    reason: archetype === "high_growth" || archetype === "turnaround" || archetype === "loss_making"
-      ? "P/S is especially useful when earnings are negative or volatile"
-      : "P/S provides a revenue-based valuation anchor",
-    confidence: archetype === "high_growth" || archetype === "turnaround" ? "high" : "medium",
-    role: archetype === "turnaround" || archetype === "loss_making" ? "primary" : "cross_check",
-  });
-
-  // P/B Multiples
-  applicability.push({
-    model_type: "pb_multiples",
-    applicable: true,
-    reason: archetype === "asset_heavy"
-      ? "P/B is the preferred metric for asset-rich, capital-intensive businesses"
-      : "P/B provides a book value-based floor valuation",
-    confidence: archetype === "asset_heavy" ? "high" : "medium",
-    role: archetype === "asset_heavy" ? "primary" : "cross_check",
-  });
+  // EV/EBITDA Multiples
+  if (archetype === "loss_making" && m.latestEPS <= 0) {
+    applicability.push({
+      model_type: "ev_ebitda_multiples",
+      applicable: true,
+      reason: "EV/EBITDA provides a useful anchor when earnings are negative",
+      confidence: "medium",
+      role: "primary",
+    });
+  } else {
+    applicability.push({
+      model_type: "ev_ebitda_multiples",
+      applicable: true,
+      reason: "EV/EBITDA provides enterprise-level valuation relative to peers",
+      confidence: "high",
+      role: "cross_check",
+    });
+  }
 
   // Peter Lynch
   if (m.latestEPS <= 0) {
