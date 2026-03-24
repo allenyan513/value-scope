@@ -30,6 +30,34 @@ async function fmpFetch<T>(path: string, params: Record<string, string> = {}): P
   return res.json() as Promise<T>;
 }
 
+// --- Company Search ---
+interface FMPSearchResult {
+  symbol: string;
+  name: string;
+  exchangeShortName: string;
+}
+
+export async function searchTickers(
+  query: string,
+  limit = 8
+): Promise<Array<{ ticker: string; name: string; exchange: string }>> {
+  try {
+    const data = await fmpFetch<FMPSearchResult[]>("/search", {
+      query,
+      limit: String(limit),
+    });
+    return (data || [])
+      .filter((d) => d.exchangeShortName === "NYSE" || d.exchangeShortName === "NASDAQ" || d.exchangeShortName === "AMEX")
+      .map((d) => ({
+        ticker: d.symbol,
+        name: d.name,
+        exchange: d.exchangeShortName,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 // --- Company Profile ---
 interface FMPProfile {
   symbol: string;

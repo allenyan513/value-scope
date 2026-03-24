@@ -5,8 +5,7 @@ export default function TickerNotFound() {
     <div className="container mx-auto px-4 py-16 text-center">
       <h1 className="text-3xl font-bold mb-4">Stock Not Found</h1>
       <p className="text-muted-foreground mb-6">
-        We don&apos;t have valuation data for this ticker yet. We currently cover
-        S&amp;P 500 companies.
+        This ticker doesn&apos;t exist or has no financial data available.
       </p>
       <Link
         href="/"

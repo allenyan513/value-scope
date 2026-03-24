@@ -25,13 +25,17 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function seedCompany(ticker: string): Promise<boolean> {
+/**
+ * Seed a single company's data from FMP into Supabase.
+ * Used both by batch seeding and on-demand provisioning.
+ */
+export async function seedSingleCompany(ticker: string): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Fetch company profile
     const profile = await getCompanyProfile(ticker);
     if (!profile) {
       console.warn(`  [SKIP] No profile for ${ticker}`);
-      return false;
+      return { success: false, error: "No profile found — ticker may not exist" };
     }
 
     await upsertCompany({
@@ -48,16 +52,15 @@ async function seedCompany(ticker: string): Promise<boolean> {
       logo_url: profile.image || null,
     });
 
-    await sleep(200);
+    await sleep(300);
 
-    // 2. Fetch financial statements (5 years annual)
-    const [incomeStmts, balanceSheets, cashFlows] = await Promise.all([
-      getIncomeStatements(ticker, "annual", 7),
-      getBalanceSheets(ticker, "annual", 7),
-      getCashFlowStatements(ticker, "annual", 7),
-    ]);
-
-    await sleep(400);
+    // 2. Fetch financial statements sequentially to avoid rate limits
+    const incomeStmts = await getIncomeStatements(ticker, "annual", 5);
+    await sleep(300);
+    const balanceSheets = await getBalanceSheets(ticker, "annual", 5);
+    await sleep(300);
+    const cashFlows = await getCashFlowStatements(ticker, "annual", 5);
+    await sleep(300);
 
     // Merge into unified financial statements
     const financialRows: Array<Partial<FinancialStatement> & { ticker: string; period: string }> = [];
@@ -164,10 +167,11 @@ async function seedCompany(ticker: string): Promise<boolean> {
     console.log(
       `  [OK] ${ticker}: ${financialRows.length} years financials, ${estimates.length} estimates, ${prices.length} daily prices`
     );
-    return true;
+    return { success: true };
   } catch (error) {
-    console.error(`  [ERROR] ${ticker}:`, error instanceof Error ? error.message : error);
-    return false;
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`  [ERROR] ${ticker}:`, msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -185,8 +189,8 @@ async function main() {
     const { symbol } = constituents[i];
     console.log(`[${i + 1}/${constituents.length}] Seeding ${symbol}...`);
 
-    const ok = await seedCompany(symbol);
-    if (ok) success++;
+    const result = await seedSingleCompany(symbol);
+    if (result.success) success++;
     else failed++;
 
     // Rate limiting: ~5 API calls per company, pace to stay under 300/min
@@ -196,5 +200,9 @@ async function main() {
   console.log(`\n✅ Seeding complete: ${success} success, ${failed} failed`);
 }
 
-// Only run if executed directly
-main().catch(console.error);
+// Only run if executed directly via: npx tsx src/lib/data/seed.ts
+// Check if this file is the entry point (not imported as a module)
+const isDirectRun = process.argv[1]?.endsWith("seed.ts") || process.argv[1]?.endsWith("seed.js");
+if (isDirectRun) {
+  main().catch(console.error);
+}

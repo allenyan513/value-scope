@@ -8,6 +8,7 @@ import {
   getIndustryPeers,
   getPriceTargets,
   getPriceHistory,
+  enqueueDataRequest,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises } from "@/lib/data/fmp";
@@ -21,17 +22,33 @@ export const getTickerData = cache(async (ticker: string) => {
   const [company, historicals, estimates, riskFreeRate, prices] =
     await Promise.all([
       getCompany(upperTicker),
-      getFinancials(upperTicker, "annual", 7),
+      getFinancials(upperTicker, "annual", 5),
       getEstimates(upperTicker),
       getTenYearTreasuryYield().catch(() => 0.0425),
       getPriceHistory(upperTicker, 365 * 5),
     ]);
 
-  if (!company) {
-    notFound();
-  }
-
-  if (historicals.length === 0) {
+  if (!company || historicals.length === 0) {
+    // Ticker not in DB or has no financials — enqueue for async provisioning
+    // Only enqueue if it looks like a valid ticker (1-5 uppercase letters)
+    if (/^[A-Z]{1,5}$/.test(upperTicker)) {
+      await enqueueDataRequest(upperTicker).catch(() => {});
+    }
+    if (!company) {
+      // Return minimal "pending" state so page can show "data preparing" UI
+      return {
+        company: null,
+        summary: null,
+        estimates: [],
+        historicals: [],
+        historicalMultiples: [],
+        priceTargets: null,
+        earningsSurprises: [] as EarningsSurprise[],
+        priceHistory: [],
+        pending: true,
+      };
+    }
+    // Company exists but no financials yet
     return {
       company,
       summary: null,

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates } from "@/lib/data/fmp";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates, getPendingDataRequests, updateDataRequestStatus } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       try {
         let [companyData, historicals, estimates] = await Promise.all([
           db.from("companies").select("*").eq("ticker", ticker).single(),
-          getFinancials(ticker, "annual", 7),
+          getFinancials(ticker, "annual", 5),
           getEstimates(ticker),
         ]);
 
@@ -176,12 +176,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 5. Process pending data requests (new tickers users have requested)
+    // Rate budget: ~6 FMP calls per company, 300ms between each = ~2s per company
+    // With 3s gap between companies, ~10 companies/min, well under 300 req/min
+    let provisioned = 0;
+    let provisionErrors = 0;
+    try {
+      const { seedSingleCompany } = await import("@/lib/data/seed");
+      const pendingTickers = await getPendingDataRequests(10); // max 10 per run
+      for (const pendingTicker of pendingTickers) {
+        await updateDataRequestStatus(pendingTicker, "processing");
+        const result = await seedSingleCompany(pendingTicker);
+        if (result.success) {
+          await updateDataRequestStatus(pendingTicker, "completed");
+          provisioned++;
+        } else {
+          await updateDataRequestStatus(pendingTicker, "failed", result.error);
+          provisionErrors++;
+        }
+        // Rate limit: wait 3s between companies to stay well under 300 req/min
+        if (pendingTickers.indexOf(pendingTicker) < pendingTickers.length - 1) {
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+    } catch (error) {
+      console.error("Data request processing error:", error);
+    }
+
     return NextResponse.json({
       message: "Daily update complete",
       date: today,
       prices_updated: priceRows.length,
       valuations_computed: valuationSuccess,
       valuation_errors: valuationErrors,
+      new_tickers_provisioned: provisioned,
+      new_tickers_failed: provisionErrors,
     });
   } catch (error) {
     console.error("Daily update error:", error);

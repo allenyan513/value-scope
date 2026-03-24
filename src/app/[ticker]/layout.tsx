@@ -18,7 +18,17 @@ function formatMarketCap(n: number): string {
 export default async function TickerLayout({ params, children }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const { company, summary } = await getTickerData(upperTicker);
+  const data = await getTickerData(upperTicker);
+  const { company, summary } = data;
+
+  // No company data — show minimal layout for pending/unknown tickers
+  if (!company) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        {children}
+      </div>
+    );
+  }
 
   const currentPrice = summary?.current_price ?? company.price ?? 0;
 

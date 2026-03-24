@@ -59,7 +59,7 @@ export async function GET(
     // Fetch fresh data
     const [company, historicals, dbEstimates, riskFreeRate, prices] = await Promise.all([
       getCompany(upperTicker),
-      getFinancials(upperTicker, "annual", 7),
+      getFinancials(upperTicker, "annual", 5),
       getEstimates(upperTicker),
       getTenYearTreasuryYield(),
       getPriceHistory(upperTicker, 365 * 5),

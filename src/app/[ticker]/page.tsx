@@ -38,7 +38,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SummaryPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const { company, summary } = await getTickerData(upperTicker);
+  const data = await getTickerData(upperTicker);
+
+  // Ticker not in DB at all — data request has been enqueued
+  if (data.pending || !data.company) {
+    return (
+      <div className="py-16 text-center">
+        <div className="text-4xl mb-4">📊</div>
+        <h2 className="text-xl font-bold mb-3">{upperTicker}</h2>
+        <p className="text-muted-foreground mb-2">
+          We don&apos;t have data for this ticker yet.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          It has been queued for processing. Please check back later.
+        </p>
+      </div>
+    );
+  }
+
+  const { company, summary } = data;
 
   if (!summary) {
     return (
@@ -47,8 +65,7 @@ export default async function SummaryPage({ params }: Props) {
           {company.name} ({upperTicker})
         </h2>
         <p className="text-muted-foreground">
-          Financial data not yet available. We are currently seeding data —
-          please check back soon.
+          Financial data is being prepared. Please check back soon.
         </p>
       </div>
     );

@@ -25,7 +25,7 @@ export async function GET(
 
   try {
     const [financials, prices] = await Promise.all([
-      getFinancials(upperTicker, "annual", 7),
+      getFinancials(upperTicker, "annual", 5),
       getPriceHistory(upperTicker, days),
     ]);
 
