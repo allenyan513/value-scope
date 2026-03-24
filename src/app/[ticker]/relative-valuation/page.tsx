@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
-import { getTickerData } from "../data";
+import { getCoreTickerData } from "../data";
 import { computeMultiplesStats } from "@/lib/valuation/historical-multiples";
 import { RelativeValuationSection } from "./section";
 import type { PeerComparison } from "@/types";
@@ -72,7 +72,7 @@ export interface RelativeValuationData {
 export default async function RelativeValuationPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const { summary, historicals, historicalMultiples } = await getTickerData(upperTicker);
+  const { summary, historicals, historicalMultiples } = await getCoreTickerData(upperTicker);
 
   if (!summary || !historicalMultiples || historicalMultiples.length === 0) {
     return (

@@ -1,5 +1,4 @@
 import { cache } from "react";
-import { notFound } from "next/navigation";
 import {
   getCompany,
   getFinancials,
@@ -8,68 +7,65 @@ import {
   getIndustryPeers,
   getPriceTargets,
   getPriceHistory,
+  getValuationHistory,
   enqueueDataRequest,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises } from "@/lib/data/fmp";
+import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
+import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
+import { toDateString } from "@/lib/format";
 import type { PeerComparison, EarningsSurprise } from "@/types";
 
-export const getTickerData = cache(async (ticker: string) => {
+/**
+ * Core ticker data — needed by ALL pages.
+ * Fetches company, financials, estimates, peers, and computes valuation.
+ * Does NOT fetch analyst-only data (priceTargets, earningsSurprises).
+ */
+export const getCoreTickerData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
 
-  const [company, historicals, estimates, riskFreeRate, prices] =
+  // Level 1: ALL independent queries in parallel (flattened from 2 sequential batches)
+  const [company, historicals, estimates, riskFreeRate, prices, latestPrice, peerCompanies] =
     await Promise.all([
       getCompany(upperTicker),
       getFinancials(upperTicker, "annual", 5),
       getEstimates(upperTicker),
       getTenYearTreasuryYield().catch(() => 0.0425),
       getPriceHistory(upperTicker, 365 * 5),
+      getLatestPrice(upperTicker),
+      getIndustryPeers(upperTicker, 15),
     ]);
 
   if (!company || historicals.length === 0) {
-    // Ticker not in DB or has no financials — enqueue for async provisioning
-    // Only enqueue if it looks like a valid ticker (1-5 uppercase letters)
     if (/^[A-Z]{1,5}$/.test(upperTicker)) {
       await enqueueDataRequest(upperTicker).catch(() => {});
     }
     if (!company) {
-      // Return minimal "pending" state so page can show "data preparing" UI
       return {
         company: null,
         summary: null,
         estimates: [],
         historicals: [],
         historicalMultiples: [],
-        priceTargets: null,
-        earningsSurprises: [] as EarningsSurprise[],
-        priceHistory: [],
         pending: true,
       };
     }
-    // Company exists but no financials yet
     return {
       company,
       summary: null,
       estimates,
       historicals,
       historicalMultiples: [],
-      priceTargets: null,
-      earningsSurprises: [] as EarningsSurprise[],
-      priceHistory: [],
     };
   }
 
-  const currentPrice =
-    (await getLatestPrice(upperTicker)) || company.price || 0;
+  const currentPrice = latestPrice || company.price || 0;
 
-  // Compute historical multiples for self-comparison valuation
+  // Level 2: computation + peer metrics in parallel
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
-
-  // Get peer data (supplementary — used as fallback and sector reference)
-  const peerCompanies = await getIndustryPeers(upperTicker, 15);
-  const peers: PeerComparison[] = [];
 
   const peerMetricsPromises = peerCompanies.slice(0, 10).map(async (peer) => {
     try {
@@ -85,13 +81,13 @@ export const getTickerData = cache(async (ticker: string) => {
         } as PeerComparison;
       }
     } catch {
-      // Skip
+      // Skip unavailable peers
     }
     return null;
   });
 
   const peerResults = await Promise.all(peerMetricsPromises);
-  peers.push(...peerResults.filter((p): p is PeerComparison => p !== null));
+  const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
   const summary = computeFullValuation({
     company,
@@ -103,14 +99,22 @@ export const getTickerData = cache(async (ticker: string) => {
     historicalMultiples,
   });
 
-  // Fetch price targets, earnings surprises, and 2-year price history in parallel
+  return { company, summary, estimates, historicals, historicalMultiples };
+});
+
+/**
+ * Analyst-only data — needed only by /analyst-estimates page.
+ * Fetches price targets, earnings surprises, and 2-year price history.
+ */
+export const getAnalystData = cache(async (ticker: string) => {
+  const upperTicker = ticker.toUpperCase();
+
   const [priceTargets, rawSurprises, priceHistory] = await Promise.all([
     getPriceTargets(upperTicker).catch(() => null),
     getEarningsSurprises(upperTicker, 12).catch(() => []),
     getPriceHistory(upperTicker, 365 * 2).catch(() => []),
   ]);
 
-  // Normalize earnings surprises
   const earningsSurprises: EarningsSurprise[] = rawSurprises.map((s) => ({
     date: s.date,
     actual_eps: s.actualEarningResult,
@@ -122,5 +126,100 @@ export const getTickerData = cache(async (ticker: string) => {
         : 0,
   }));
 
-  return { company, summary, estimates, historicals, historicalMultiples, priceTargets, earningsSurprises, priceHistory };
+  return { priceTargets, earningsSurprises, priceHistory };
+});
+
+/**
+ * Chart history data — needed only by the summary page chart.
+ * Extracted from /api/history/[ticker] to avoid client-side waterfall.
+ */
+export const getChartHistory = cache(async (ticker: string) => {
+  const upperTicker = ticker.toUpperCase();
+  const days = DEFAULT_HISTORY_DAYS;
+
+  // Try real valuation history first
+  const history = await getValuationHistory(upperTicker, days);
+  if (history.length > 0) {
+    return history;
+  }
+
+  // Fallback 1: daily_prices table
+  let closePrices: { date: string; close: number }[] = [];
+  const dbPrices = await getPriceHistory(upperTicker, days);
+  if (dbPrices.length > 0) {
+    closePrices = dbPrices.map((p) => ({ date: p.date, close: p.close }));
+  }
+
+  // Fallback 2: FMP API
+  if (closePrices.length === 0) {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    const from = toDateString(fromDate);
+    const to = toDateString(new Date());
+
+    try {
+      const fmpPrices = await getHistoricalPrices(upperTicker, from, to);
+      closePrices = fmpPrices
+        .map((p) => ({ date: p.date, close: p.close }))
+        .reverse();
+    } catch {
+      // FMP unavailable
+    }
+  }
+
+  if (closePrices.length === 0) {
+    return [];
+  }
+
+  // Generate synthetic intrinsic value as a smoothed trend line (EMA)
+  const priceValues = closePrices.map((p) => p.close);
+  const emaSpan = Math.min(MAX_EMA_SPAN, Math.floor(priceValues.length / 3));
+  const alpha = 2 / (emaSpan + 1);
+
+  let ema = priceValues[0];
+  const emaValues: number[] = [];
+  for (const price of priceValues) {
+    ema = alpha * price + (1 - alpha) * ema;
+    emaValues.push(ema);
+  }
+
+  const lastEma = emaValues[emaValues.length - 1];
+  const lastPrice = priceValues[priceValues.length - 1];
+  const discountFactor =
+    lastPrice > 0 ? Math.min(lastEma / lastPrice, 0.95) : 0.7;
+
+  const syntheticHistory = closePrices.map((p, i) => ({
+    date: p.date,
+    close_price: p.close,
+    intrinsic_value: Math.round(emaValues[i] * discountFactor * 100) / 100,
+  }));
+
+  // Sample to ~500 points max
+  if (syntheticHistory.length > HISTORY_SAMPLE_MAX) {
+    const step = Math.ceil(syntheticHistory.length / HISTORY_SAMPLE_MAX);
+    const sampled = syntheticHistory.filter((_, i) => i % step === 0);
+    if (sampled[sampled.length - 1] !== syntheticHistory[syntheticHistory.length - 1]) {
+      sampled.push(syntheticHistory[syntheticHistory.length - 1]);
+    }
+    return sampled;
+  }
+
+  return syntheticHistory;
+});
+
+// ---- Legacy compat: re-export the old shape for any callers not yet migrated ----
+
+/** @deprecated Use getCoreTickerData + getAnalystData instead */
+export const getTickerData = cache(async (ticker: string) => {
+  const core = await getCoreTickerData(ticker);
+  if (!core.summary) {
+    return {
+      ...core,
+      priceTargets: null,
+      earningsSurprises: [] as EarningsSurprise[],
+      priceHistory: [],
+    };
+  }
+  const analyst = await getAnalystData(ticker);
+  return { ...core, ...analyst };
 });

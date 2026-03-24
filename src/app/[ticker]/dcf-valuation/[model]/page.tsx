@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/db/queries";
 import { DCFCards } from "@/components/valuation/dcf-cards";
-import { getTickerData } from "../../data";
+import { getCoreTickerData } from "../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
 import type { ValuationModelType } from "@/types";
 const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string }> = {
@@ -54,7 +54,7 @@ export default async function DCFModelPage({ params }: Props) {
 
   if (!config) notFound();
 
-  const { summary } = await getTickerData(upperTicker);
+  const { summary } = await getCoreTickerData(upperTicker);
   if (!summary) {
     return (
       <p className="text-muted-foreground py-8 text-center">

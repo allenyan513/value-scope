@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
-import { PriceTargetsSummary } from "@/components/valuation/price-targets-summary";
-import { EstimateChart } from "@/components/valuation/estimate-chart";
-import { getTickerData } from "../data";
+import { getCoreTickerData } from "../data";
+import { PriceTargetsSection } from "./price-targets-section";
+
 interface Props {
   params: Promise<{ ticker: string }>;
 }
@@ -23,15 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AnalystEstimatesPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const {
-    company,
-    summary,
-    estimates,
-    historicals,
-    priceTargets,
-    earningsSurprises,
-    priceHistory,
-  } = await getTickerData(upperTicker);
+  const { company } = await getCoreTickerData(upperTicker);
 
   if (!company) {
     return (
@@ -41,47 +34,21 @@ export default async function AnalystEstimatesPage({ params }: Props) {
     );
   }
 
-  const currentPrice = summary?.current_price ?? company.price ?? 0;
-
   return (
     <div className="space-y-8">
       <h2 className="text-xl font-bold">Analyst Estimates</h2>
 
-      {/* Module 1: Price Targets Summary */}
-      {priceTargets ? (
-        <PriceTargetsSummary
-          ticker={upperTicker}
-          companyName={company.name}
-          currentPrice={currentPrice}
-          priceTargets={priceTargets}
-          priceHistory={priceHistory}
-        />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          No price target data available for {upperTicker}.
-        </p>
-      )}
-
-      {/* Module 2: EPS Estimates */}
-      <EstimateChart
-        title="EPS"
-        metricType="eps"
-        ticker={upperTicker}
-        companyName={company.name}
-        financials={historicals}
-        estimates={estimates}
-        earningsSurprises={earningsSurprises}
-      />
-
-      {/* Module 3: Revenue Estimates */}
-      <EstimateChart
-        title="Revenue"
-        metricType="revenue"
-        ticker={upperTicker}
-        companyName={company.name}
-        financials={historicals}
-        estimates={estimates}
-      />
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="h-48 animate-pulse bg-muted rounded-lg" />
+            <div className="h-64 animate-pulse bg-muted rounded-lg" />
+            <div className="h-64 animate-pulse bg-muted rounded-lg" />
+          </div>
+        }
+      >
+        <PriceTargetsSection ticker={upperTicker} />
+      </Suspense>
     </div>
   );
 }

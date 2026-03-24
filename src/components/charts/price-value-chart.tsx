@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -8,42 +7,19 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 
-interface DataPoint {
+export interface ChartDataPoint {
   date: string;
   close_price: number;
   intrinsic_value: number;
 }
 
 interface Props {
-  ticker: string;
+  data: ChartDataPoint[];
 }
 
-export function PriceValueChart({ ticker }: Props) {
-  const [data, setData] = useState<DataPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/history/${ticker}?days=${365 * 5}`)
-      .then((res) => res.json())
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [ticker]);
-
-  if (loading) {
-    return (
-      <div className="h-80 flex items-center justify-center text-muted-foreground animate-pulse">
-        Loading chart...
-      </div>
-    );
-  }
-
+export function PriceValueChart({ data }: Props) {
   if (data.length === 0) {
     return (
       <div className="h-80 flex items-center justify-center text-muted-foreground">
