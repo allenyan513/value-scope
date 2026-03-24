@@ -1,81 +1,10 @@
-import { Metadata } from "next";
-import { getCompany } from "@/lib/db/queries";
-import { DCFCards } from "@/components/valuation/dcf-cards";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getTickerData } from "../data";
+import { redirect } from "next/navigation";
 
 interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export const revalidate = 3600;
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export default async function DCFValuationIndex({ params }: Props) {
   const { ticker } = await params;
-  const upperTicker = ticker.toUpperCase();
-  const company = await getCompany(upperTicker);
-
-  return {
-    title: `${upperTicker} DCF Valuation — Discounted Cash Flow Analysis${company ? ` | ${company.name}` : ""} | ValuScope`,
-    description: `${company?.name ?? upperTicker} DCF valuation using Free Cash Flow to Equity (FCFE). Includes Gordon Growth (5Y) and Three-Stage (10Y) models with sensitivity analysis.`,
-  };
-}
-
-export default async function DCFValuationPage({ params }: Props) {
-  const { ticker } = await params;
-  const upperTicker = ticker.toUpperCase();
-  const { summary } = await getTickerData(upperTicker);
-
-  if (!summary) {
-    return (
-      <p className="text-muted-foreground py-8 text-center">
-        Financial data not yet available for DCF analysis.
-      </p>
-    );
-  }
-
-  const gordonModel = summary.models.find((m) => m.model_type === "dcf_growth_exit_5y");
-  const threeStageModel = summary.models.find((m) => m.model_type === "dcf_3stage");
-
-  if (!gordonModel || gordonModel.fair_value === 0) {
-    return (
-      <p className="text-muted-foreground py-8 text-center">
-        DCF model not available — insufficient financial data.
-      </p>
-    );
-  }
-
-  return (
-    <>
-      <h2 className="text-xl font-bold mb-6">
-        Discounted Cash Flow (DCF) Valuation
-      </h2>
-      <Tabs defaultValue="gordon">
-        <TabsList className="mb-6">
-          <TabsTrigger value="gordon">Gordon Growth (5Y)</TabsTrigger>
-          {threeStageModel && (
-            <TabsTrigger value="3stage">Three-Stage (10Y)</TabsTrigger>
-          )}
-        </TabsList>
-
-        <TabsContent value="gordon">
-          <DCFCards
-            model={gordonModel}
-            currentPrice={summary.current_price}
-            wacc={summary.wacc}
-          />
-        </TabsContent>
-
-        {threeStageModel && (
-          <TabsContent value="3stage">
-            <DCFCards
-              model={threeStageModel}
-              currentPrice={summary.current_price}
-              wacc={summary.wacc}
-            />
-          </TabsContent>
-        )}
-      </Tabs>
-    </>
-  );
+  redirect(`/${ticker}/dcf-valuation/perpetual-growth`);
 }

@@ -42,10 +42,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/${ticker}/dcf-valuation`,
+      url: `${baseUrl}/${ticker}/dcf-valuation/perpetual-growth`,
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/${ticker}/dcf-valuation/pe-exit`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/${ticker}/dcf-valuation/ev-ebitda-exit`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.6,
     },
     {
       url: `${baseUrl}/${ticker}/relative-valuation`,

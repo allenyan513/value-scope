@@ -6,6 +6,9 @@ import type { ValuationResult } from "@/types";
 
 const MODEL_NAMES: Record<string, string> = {
   dcf_growth_exit_5y: "DCF Valuation",
+  dcf_3stage: "DCF Perpetual Growth",
+  dcf_pe_exit_10y: "DCF P/E Exit",
+  dcf_ebitda_exit_fcfe_10y: "DCF EV/EBITDA Exit",
   pe_multiples: "P/E Multiples",
   ps_multiples: "P/S Multiples",
   pb_multiples: "P/B Multiples",

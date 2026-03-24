@@ -47,11 +47,19 @@ export function computeHistoricalMultiples(
     const ps = fin.revenue > 0 ? marketCap / fin.revenue : null;
     const pb = fin.total_equity > 0 ? marketCap / fin.total_equity : null;
 
+    // EV/EBITDA: EV = Market Cap + Total Debt - Cash
+    const totalDebt = fin.total_debt || 0;
+    const cash = fin.cash_and_equivalents || 0;
+    const ev = marketCap + totalDebt - cash;
+    const ebitda = fin.ebitda || 0;
+    const evEbitda = ebitda > 0 && ev > 0 ? ev / ebitda : null;
+
     result.push({
       date: price.date,
       pe: pe !== null ? Math.round(pe * 100) / 100 : null,
       ps: ps !== null ? Math.round(ps * 100) / 100 : null,
       pb: pb !== null ? Math.round(pb * 100) / 100 : null,
+      ev_ebitda: evEbitda !== null ? Math.round(evEbitda * 100) / 100 : null,
     });
   }
 
@@ -60,7 +68,7 @@ export function computeHistoricalMultiples(
 
 // --- Statistics: compute avg, p25, p75, percentile for each multiple ---
 
-const CAPS: Record<string, number> = { pe: 200, ps: 100, pb: 50 };
+const CAPS: Record<string, number> = { pe: 200, ps: 100, pb: 50, ev_ebitda: 100 };
 
 function computeStats(
   values: number[],
@@ -103,6 +111,10 @@ export function computeMultiplesStats(data: HistoricalMultiplesPoint[]) {
     pb: computeStats(
       data.map((d) => d.pb).filter((v): v is number => v !== null),
       CAPS.pb
+    ),
+    ev_ebitda: computeStats(
+      data.map((d) => d.ev_ebitda).filter((v): v is number => v != null),
+      CAPS.ev_ebitda
     ),
   };
 }

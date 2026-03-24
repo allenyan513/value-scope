@@ -14,7 +14,15 @@ import type {
   HistoricalMultiplesPoint,
 } from "@/types";
 import { calculateWACC, buildWACCInputs } from "./wacc";
-import { calculateDCF, calculateDCF3Stage, type DCFFCFEInputs } from "./dcf";
+import {
+  calculateDCF,
+  calculateDCF3Stage,
+  calculateDCF3StagePEExit,
+  calculateDCF3StageEBITDAExit,
+  type DCFFCFEInputs,
+  type DCFExitMultipleInputs,
+} from "./dcf";
+import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,
   calculatePSMultiples,
@@ -101,6 +109,30 @@ export function computeFullValuation(
   // Display only — not included in weighted consensus
   try {
     models.push(calculateDCF3Stage(dcfInputs));
+  } catch {
+    /* skip if insufficient data */
+  }
+
+  // Three-Stage DCF with exit multiple terminal values (cross-validation only)
+  // Compute historical multiples stats for exit P/E and EV/EBITDA
+  const multiplesStats = inputs.historicalMultiples
+    ? computeMultiplesStats(inputs.historicalMultiples)
+    : null;
+
+  const exitInputs: DCFExitMultipleInputs = {
+    ...dcfInputs,
+    exitPE: multiplesStats?.pe?.avg5y,
+    exitEVEBITDA: multiplesStats?.ev_ebitda?.avg5y,
+  };
+
+  try {
+    models.push(calculateDCF3StagePEExit(exitInputs));
+  } catch {
+    /* skip if insufficient data */
+  }
+
+  try {
+    models.push(calculateDCF3StageEBITDAExit(exitInputs));
   } catch {
     /* skip if insufficient data */
   }

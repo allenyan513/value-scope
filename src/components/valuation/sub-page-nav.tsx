@@ -27,7 +27,7 @@ export function SubPageNav({ ticker }: Props) {
           const isActive =
             item.href === ""
               ? pathname === basePath || pathname === `${basePath}/summary`
-              : pathname === fullHref;
+              : pathname === fullHref || pathname.startsWith(fullHref + "/");
 
           return (
             <Link
