@@ -175,8 +175,6 @@ export function computeFullValuation(
 
   // 6. Determine verdict based on consensus (not just primary model)
   const verdictUpside = consensus > 0 ? consensusUpside : primaryUpside;
-  const verdictValue = consensus > 0 ? consensus : primaryFairValue;
-
   let verdict: "undervalued" | "fairly_valued" | "overvalued";
   let verdictText: string;
 

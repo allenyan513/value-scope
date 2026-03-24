@@ -64,7 +64,8 @@ export function TickerPending({ ticker }: Props) {
   }, [ticker, router]);
 
   useEffect(() => {
-    startProvisioning();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- setState happens in async polling callback, not synchronously in effect body
+    void startProvisioning();
   }, [startProvisioning]);
 
   return (

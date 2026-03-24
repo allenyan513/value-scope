@@ -1,7 +1,7 @@
 // GET /api/history/[ticker]?days=1825
 // Returns price vs intrinsic value history for chart
 import { NextRequest, NextResponse } from "next/server";
-import { getValuationHistory, getPriceHistory, getCompany } from "@/lib/db/queries";
+import { getValuationHistory, getPriceHistory } from "@/lib/db/queries";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";

@@ -27,10 +27,9 @@ const SLUG_MAP: Record<string, { slug: string; label: string; desc: string }> = 
 interface Props {
   ticker: string;
   models: ValuationResult[];
-  currentPrice: number;
 }
 
-export function DCFModelNav({ ticker, models, currentPrice }: Props) {
+export function DCFModelNav({ ticker, models }: Props) {
   const pathname = usePathname();
 
   return (
