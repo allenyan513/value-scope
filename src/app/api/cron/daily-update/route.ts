@@ -15,6 +15,8 @@ import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertV
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
+import { CRON_COMPANY_DELAY_MS } from "@/lib/constants";
+import { toDateString } from "@/lib/format";
 
 export const maxDuration = 300; // 5 min max for Vercel Pro
 
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   const db = createServerClient();
-  const today = new Date().toISOString().split("T")[0];
+  const today = toDateString(new Date());
 
   try {
     // 1. Get all tracked tickers
@@ -197,9 +199,9 @@ export async function GET(request: NextRequest) {
           await updateDataRequestStatus(pendingTicker, "failed", result.error);
           provisionErrors++;
         }
-        // Rate limit: wait 3s between companies to stay well under 300 req/min
+        // Rate limit: wait between companies to stay well under 300 req/min
         if (pendingTickers.indexOf(pendingTicker) < pendingTickers.length - 1) {
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise((r) => setTimeout(r, CRON_COMPANY_DELAY_MS));
         }
       }
     } catch (error) {

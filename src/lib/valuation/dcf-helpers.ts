@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { FinancialStatement, AnalystEstimate } from "@/types";
+import { MIN_GROWTH_RATE, MAX_GROWTH_RATE } from "@/lib/constants";
 
 // --- Math Helpers ---
 
@@ -97,7 +98,7 @@ export function projectRevenue(
         growthRate = historicalCAGR;
       }
       // Clamp growth rate
-      growthRate = clamp(growthRate, -0.1, 0.3);
+      growthRate = clamp(growthRate, MIN_GROWTH_RATE, MAX_GROWTH_RATE);
       revenue = prevRevenue * (1 + growthRate);
     }
 

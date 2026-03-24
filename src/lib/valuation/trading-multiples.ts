@@ -12,6 +12,7 @@ import type {
   Company,
   HistoricalMultiplesPoint,
 } from "@/types";
+import { MIN_HISTORY_POINTS, MAX_PE_RATIO } from "@/lib/constants";
 
 /** Calculate median of an array */
 function median(arr: number[]): number {
@@ -52,8 +53,7 @@ export interface TradingMultiplesInputs {
   historicalMultiples?: HistoricalMultiplesPoint[];
 }
 
-// Minimum data points to use historical self-comparison
-const MIN_HISTORY_POINTS = 100;
+// MIN_HISTORY_POINTS imported from constants
 
 /**
  * P/E Multiples Valuation
@@ -73,7 +73,7 @@ export function calculatePEMultiples(
   // Try historical self-comparison first
   const histValues = (historicalMultiples ?? [])
     .map((d) => d.pe)
-    .filter((v): v is number => v !== null && v > 0 && v < 200);
+    .filter((v): v is number => v !== null && v > 0 && v < MAX_PE_RATIO);
 
   if (histValues.length >= MIN_HISTORY_POINTS) {
     return historicalValuation({

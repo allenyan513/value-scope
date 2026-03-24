@@ -2,6 +2,8 @@
 // Shared Formatting Utilities
 // ============================================================
 
+import { VERDICT_THRESHOLD } from "./constants";
+
 interface FormatLargeNumberOptions {
   prefix?: string;   // Default "$"
   decimals?: number;  // Default 1 for B/T, 1 for M
@@ -36,7 +38,12 @@ export function formatMillions(n: number): string {
 
 /** Return CSS color class based on upside percentage */
 export function getUpsideColor(upside: number): string {
-  if (upside > 15) return "text-green-600 dark:text-green-400";
-  if (upside < -15) return "text-red-600 dark:text-red-400";
+  if (upside > VERDICT_THRESHOLD) return "text-green-600 dark:text-green-400";
+  if (upside < -VERDICT_THRESHOLD) return "text-red-600 dark:text-red-400";
   return "text-foreground";
+}
+
+/** Convert a Date to YYYY-MM-DD string */
+export function toDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
 }

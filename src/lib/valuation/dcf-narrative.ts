@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { ValuationResult } from "@/types";
+import { VERDICT_THRESHOLD } from "@/lib/constants";
 
 function pct(v: number): string {
   return v.toFixed(1) + "%";
@@ -21,8 +22,8 @@ function fmt(n: number): string {
 }
 
 function verdictWord(upside: number): string {
-  if (upside > 15) return "undervalued";
-  if (upside < -15) return "overvalued";
+  if (upside > VERDICT_THRESHOLD) return "undervalued";
+  if (upside < -VERDICT_THRESHOLD) return "overvalued";
   return "fairly valued";
 }
 

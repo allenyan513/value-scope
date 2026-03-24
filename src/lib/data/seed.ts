@@ -19,6 +19,8 @@ import {
   upsertEstimates,
 } from "../db/queries";
 import type { FinancialStatement } from "@/types";
+import { FMP_API_DELAY_MS, DESCRIPTION_MAX_LENGTH } from "@/lib/constants";
+import { toDateString } from "@/lib/format";
 
 // Rate limiter: FMP Starter allows 300 req/min
 async function sleep(ms: number) {
@@ -48,19 +50,19 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
       price: profile.price,
       shares_outstanding: Math.round(profile.marketCap / profile.price),
       exchange: profile.exchange,
-      description: profile.description?.slice(0, 1000) || "",
+      description: profile.description?.slice(0, DESCRIPTION_MAX_LENGTH) || "",
       logo_url: profile.image || null,
     });
 
-    await sleep(300);
+    await sleep(FMP_API_DELAY_MS);
 
     // 2. Fetch financial statements sequentially to avoid rate limits
     const incomeStmts = await getIncomeStatements(ticker, "annual", 5);
-    await sleep(300);
+    await sleep(FMP_API_DELAY_MS);
     const balanceSheets = await getBalanceSheets(ticker, "annual", 5);
-    await sleep(300);
+    await sleep(FMP_API_DELAY_MS);
     const cashFlows = await getCashFlowStatements(ticker, "annual", 5);
-    await sleep(300);
+    await sleep(FMP_API_DELAY_MS);
 
     // Merge into unified financial statements
     const financialRows: Array<Partial<FinancialStatement> & { ticker: string; period: string }> = [];
@@ -149,7 +151,7 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
     const prices = await getHistoricalPrices(
       ticker,
-      twoYearsAgo.toISOString().split("T")[0]
+      toDateString(twoYearsAgo)
     );
     await sleep(200);
 

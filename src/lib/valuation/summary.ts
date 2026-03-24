@@ -13,6 +13,7 @@ import type {
   PeerComparison,
   HistoricalMultiplesPoint,
 } from "@/types";
+import { VERDICT_THRESHOLD } from "@/lib/constants";
 import { calculateWACC, buildWACCInputs } from "./wacc";
 import { calculateDCF, type DCFFCFEInputs } from "./dcf";
 import {
@@ -182,10 +183,10 @@ export function computeFullValuation(
   const modelCount = models.filter(m => m.fair_value > 0).length;
   const absUpside = Math.abs(verdictUpside).toFixed(1);
 
-  if (verdictUpside > 15) {
+  if (verdictUpside > VERDICT_THRESHOLD) {
     verdict = "undervalued";
     verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is undervalued by ${absUpside}%.`;
-  } else if (verdictUpside < -15) {
+  } else if (verdictUpside < -VERDICT_THRESHOLD) {
     verdict = "overvalued";
     verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is overvalued by ${absUpside}%.`;
   } else {

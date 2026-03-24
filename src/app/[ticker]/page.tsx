@@ -5,12 +5,11 @@ import { PriceValueChart } from "@/components/charts/price-value-chart";
 import { ModelCardCompact } from "@/components/valuation/model-card-compact";
 import { TickerPending } from "@/components/provisioning/ticker-pending";
 import { getTickerData } from "./data";
-
 interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 
 export async function generateStaticParams() {
   return [];

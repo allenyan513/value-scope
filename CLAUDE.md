@@ -118,11 +118,12 @@ src/
 - Ticker is always UPPERCASE and used as primary key
 - Financial data stored as raw numbers (not in millions/billions)
 - Valuation results include `assumptions` field for full transparency
-- ISR revalidation: 1 hour in prod, 0 in dev — controlled by `PAGE_REVALIDATE` in `src/lib/constants.ts`
+- ISR revalidation: 1 hour in prod. Page `export const revalidate = 3600` must be a literal (Next.js build constraint). Runtime fetch revalidation uses `ISR_REVALIDATE_SECONDS` from constants.
 - All prices in USD
 
 ## Shared Utilities — Do Not Duplicate
-- **Formatting** (`src/lib/format.ts`): Use `formatLargeNumber()`, `formatCurrency()`, `formatMillions()`, `getUpsideColor()`. Never create inline formatting functions in components — import from here.
+- **Constants** (`src/lib/constants.ts`): All magic numbers live here. Never hardcode thresholds, delays, or limits inline — import from constants. Key values: `VERDICT_THRESHOLD`, `ISR_REVALIDATE_SECONDS`, `FMP_API_DELAY_MS`, `CRON_COMPANY_DELAY_MS`, `DB_BATCH_CHUNK_SIZE`, `DEFAULT_HISTORY_DAYS`, `MIN_GROWTH_RATE`/`MAX_GROWTH_RATE`.
+- **Formatting** (`src/lib/format.ts`): Use `formatLargeNumber()`, `formatCurrency()`, `formatMillions()`, `getUpsideColor()`, `toDateString()`. Never create inline formatting functions in components — import from here.
 - **API Auth** (`src/lib/api/auth.ts`): Use `getAuthenticatedUser(request)` in API routes that need auth. Returns `{ user, supabase }` or a 401 `NextResponse`. Never inline Supabase client creation with auth headers.
 - **DCF Helpers** (`src/lib/valuation/dcf-helpers.ts`): Shared `cagr()`, `avg()`, `clamp()`, `projectRevenue()` — used by all DCF models. Do not redefine these.
 

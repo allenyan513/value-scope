@@ -3,6 +3,7 @@
 // ============================================================
 
 import { createServerClient } from "./supabase";
+import { DB_BATCH_CHUNK_SIZE } from "@/lib/constants";
 import type {
   Company,
   FinancialStatement,
@@ -213,11 +214,11 @@ export async function upsertDailyPrices(
   rows: Array<{ ticker: string; date: string; close_price: number; volume: number }>
 ) {
   if (rows.length === 0) return;
-  // Batch in chunks of 1000
-  for (let i = 0; i < rows.length; i += 1000) {
+  // Batch in chunks to avoid payload limits
+  for (let i = 0; i < rows.length; i += DB_BATCH_CHUNK_SIZE) {
     await db()
       .from("daily_prices")
-      .upsert(rows.slice(i, i + 1000), { onConflict: "ticker,date" });
+      .upsert(rows.slice(i, i + DB_BATCH_CHUNK_SIZE), { onConflict: "ticker,date" });
   }
 }
 
