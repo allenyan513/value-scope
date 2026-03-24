@@ -114,6 +114,7 @@ export type ValuationModelType =
   | "dcf_growth_exit_10y"
   | "dcf_ebitda_exit_5y"
   | "dcf_ebitda_exit_10y"
+  | "dcf_3stage"
   | "pe_multiples"
   | "ps_multiples"
   | "pb_multiples"
@@ -140,6 +141,7 @@ export interface DCFProjectionYearFCFE {
   fcfe: number; // Free Cash Flow to Equity = Net Income - CapEx
   discount_factor: number;
   pv_fcfe: number;
+  stage?: 1 | 2; // Three-stage DCF: 1 = analyst-driven, 2 = transition
 }
 
 export interface DCFFCFEResult extends ValuationResult {

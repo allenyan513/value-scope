@@ -84,7 +84,10 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
     net_capex: number;
     fcfe: number;
     pv_fcfe: number;
+    stage?: 1 | 2;
   }>;
+
+  const isThreeStage = projections.some((p) => p.stage !== undefined);
 
   const cashAndEquiv = details.cash_and_equivalents as number;
   const totalDebt = details.total_debt as number;
@@ -246,15 +249,23 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
             step={0.25}
             suffix="%"
           />
-          <ParamInput
-            label="Forecast Period"
-            value={forecastYears}
-            onChange={setForecastYears}
-            min={3}
-            max={defaultForecastYears}
-            step={1}
-            suffix=" Yrs"
-          />
+          {!isThreeStage ? (
+            <ParamInput
+              label="Forecast Period"
+              value={forecastYears}
+              onChange={setForecastYears}
+              min={3}
+              max={defaultForecastYears}
+              step={1}
+              suffix=" Yrs"
+            />
+          ) : (
+            <div className="text-center p-4 rounded-xl border border-border/60 bg-muted/30">
+              <div className="text-sm text-muted-foreground mb-2">Forecast Period</div>
+              <div className="text-xl font-bold font-mono">10 Yrs</div>
+              <div className="text-[11px] text-muted-foreground mt-1.5">Stage 1 (5Y) + Stage 2 (5Y)</div>
+            </div>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mb-6 text-center">
           Adjust parameters to explore scenarios. Changes are for exploration only and do not affect saved valuations.
@@ -274,12 +285,41 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
           </div>
           <table className="w-full text-sm border-collapse">
             <thead>
+              {isThreeStage && (
+                <tr className="border-b">
+                  <th className="p-1.5"></th>
+                  <th
+                    colSpan={5}
+                    className="text-center p-1.5 text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-r border-border/60"
+                  >
+                    Stage 1 — Analyst Estimates
+                  </th>
+                  <th
+                    colSpan={5}
+                    className="text-center p-1.5 text-[11px] font-semibold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border-r border-border/60"
+                  >
+                    Stage 2 — Transition
+                  </th>
+                  <th className="text-center p-1.5 text-[11px] font-semibold bg-muted/50 text-muted-foreground">
+                    Terminal
+                  </th>
+                </tr>
+              )}
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-2.5 font-semibold text-sm"></th>
                 {calc.rows.map((p) => (
-                  <th key={p.year} className="text-right p-2.5 font-semibold text-sm">
+                  <th
+                    key={p.year}
+                    className={`text-right p-2.5 font-semibold text-sm ${
+                      isThreeStage && p.stage === 2
+                        ? "bg-violet-50/50 dark:bg-violet-950/20"
+                        : ""
+                    }`}
+                  >
                     <div>{p.year}</div>
-                    <div className="text-[10px] text-muted-foreground font-normal">forecast</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">
+                      {isThreeStage ? (p.stage === 1 ? "analyst" : "transition") : "forecast"}
+                    </div>
                   </th>
                 ))}
                 <th className="text-right p-2.5 font-semibold text-sm">
@@ -292,21 +332,21 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Revenue</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono">{formatMillions(p.revenue)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.revenue)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{formatMillions(calc.termRevenue)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Net Margin</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono">{(p.net_margin * 100).toFixed(1)}%</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{(p.net_margin * 100).toFixed(1)}%</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{(calc.rows[calc.rows.length - 1].net_margin * 100).toFixed(1)}%</td>
               </tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium text-blue-700 dark:text-blue-400">Net Income</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(p.net_income)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.net_income)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(calc.termNetIncome)}</td>
               </tr>
@@ -314,14 +354,14 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Net CapEx</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono">{formatMillions(p.net_capex)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.net_capex)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{formatMillions(calc.termCapex)}</td>
               </tr>
               <tr className="border-b border-t-2 border-t-foreground/20 hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-bold text-blue-700 dark:text-blue-400">FCFE</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(p.fcfe)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.fcfe)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(calc.termFCFE)}</td>
               </tr>
@@ -329,14 +369,14 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium text-muted-foreground">Discount Rate</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono text-muted-foreground">{discountRate.toFixed(2)}%</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono text-muted-foreground ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{discountRate.toFixed(2)}%</td>
                 ))}
                 <td className="p-2.5 text-right font-mono text-muted-foreground">{discountRate.toFixed(2)}%</td>
               </tr>
               <tr className="border-b bg-primary/5">
                 <td className="p-2.5 font-bold">Present Value</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className="p-2.5 text-right font-mono font-bold">{formatMillions(p.pv_fcfe)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.pv_fcfe)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono font-bold">{formatMillions(calc.pvTerminal)}</td>
               </tr>

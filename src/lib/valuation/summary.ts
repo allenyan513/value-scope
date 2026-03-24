@@ -14,7 +14,7 @@ import type {
   HistoricalMultiplesPoint,
 } from "@/types";
 import { calculateWACC, buildWACCInputs } from "./wacc";
-import { calculateDCF, type DCFFCFEInputs } from "./dcf";
+import { calculateDCF, calculateDCF3Stage, type DCFFCFEInputs } from "./dcf";
 import {
   calculatePEMultiples,
   calculatePSMultiples,
@@ -90,9 +90,17 @@ export function computeFullValuation(
   // 3. Run all models (4 active: DCF FCFE, P/E, EV/EBITDA, Peter Lynch)
   const models: ValuationResult[] = [];
 
-  // DCF (FCFE approach, 5Y)
+  // DCF (FCFE approach, 5Y) — primary model used in consensus
   try {
     models.push(calculateDCF(dcfInputs, 5));
+  } catch {
+    /* skip if insufficient data */
+  }
+
+  // Three-Stage DCF (10Y: Y1–5 analyst, Y6–10 transition, Y11+ terminal)
+  // Display only — not included in weighted consensus
+  try {
+    models.push(calculateDCF3Stage(dcfInputs));
   } catch {
     /* skip if insufficient data */
   }
