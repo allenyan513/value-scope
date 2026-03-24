@@ -9,11 +9,11 @@
 ## Refactoring Backlog (do when touching the file)
 
 ### File Splits (>300 lines)
-- [ ] `types/index.ts` (328 lines) → split into `types/company.ts`, `types/valuation.ts`, `types/financial.ts`
-- [ ] `fmp.ts` (433 lines) → split by domain: `fmp-financials.ts`, `fmp-prices.ts`, `fmp-estimates.ts`
-- [ ] `trading-multiples.ts` (417 lines) → consider splitting P/E and EV/EBITDA if adding new models
-- [ ] `queries.ts` (330 lines) → split by domain: `queries-company.ts`, `queries-valuation.ts`, `queries-prices.ts`
-- [ ] `estimate-chart.tsx` (366 lines) → extract sub-components (revenue chart, EPS chart, accuracy section)
+- [x] `types/index.ts` → split into `types/company.ts`, `types/valuation.ts`, `types/financial.ts`
+- [x] `fmp.ts` → split into `fmp-core.ts`, `fmp-financials.ts`, `fmp-prices.ts`, `fmp-estimates.ts`, `fmp-multiples.ts`
+- [ ] `trading-multiples.ts` (417 lines) → consider splitting P/E and EV/EBITDA if adding new models (deferred: shared helpers make split counterproductive)
+- [x] `queries.ts` → split into `queries-company.ts`, `queries-valuation.ts`, `queries-financial.ts`, `queries-prices.ts`, `queries-queue.ts`
+- [x] `estimate-chart.tsx` → extracted `estimate-kpi-row.tsx`, `estimate-beat-miss-table.tsx`
 
 ### Unused Code Cleanup
 - [ ] `fred.ts` — `getTreasuryYieldHistory()` exported but never called

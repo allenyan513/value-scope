@@ -13,24 +13,14 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { FinancialStatement, AnalystEstimate, EarningsSurprise } from "@/types";
 import { formatLargeNumber, formatCurrency } from "@/lib/format";
+import { EstimateKPIRow } from "./estimate-kpi-row";
+import { EstimateBeatMissTable } from "./estimate-beat-miss-table";
 
 // --- Helpers ---
 
 function cagr(start: number, end: number, years: number): number | null {
   if (start <= 0 || end <= 0 || years <= 0) return null;
   return Math.pow(end / start, 1 / years) - 1;
-}
-
-function accuracyStars(avgAbsMiss: number): number {
-  if (avgAbsMiss <= 0.02) return 5;
-  if (avgAbsMiss <= 0.05) return 4;
-  if (avgAbsMiss <= 0.10) return 3;
-  if (avgAbsMiss <= 0.20) return 2;
-  return 1;
-}
-
-function renderStars(count: number): string {
-  return "★".repeat(count) + "☆".repeat(5 - count);
 }
 
 // --- Types ---
@@ -137,20 +127,10 @@ export function EstimateChart({
         )
       : null;
 
-  // Compute accuracy metrics from beat/miss data
+  // Compute beat/miss values
   const beatMissValues = actualPoints
     .map((p) => p.beatMiss)
     .filter((v): v is number => v !== null);
-  const avgMiss =
-    beatMissValues.length > 0
-      ? beatMissValues.reduce((s, v) => s + v, 0) / beatMissValues.length
-      : null;
-  const avgAbsMiss =
-    beatMissValues.length > 0
-      ? beatMissValues.reduce((s, v) => s + Math.abs(v), 0) /
-        beatMissValues.length
-      : null;
-  const stars = avgAbsMiss !== null ? accuracyStars(avgAbsMiss) : null;
 
   return (
     <Card>
@@ -160,90 +140,15 @@ export function EstimateChart({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* KPI Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {pastCAGR !== null && (
-            <div className="rounded-lg border p-3 text-center">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                Past CAGR
-              </div>
-              <div className="text-lg font-bold font-mono">
-                {(pastCAGR * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">
-                /year ({actuals.length - 1}Y)
-              </div>
-            </div>
-          )}
-          {estCAGR !== null && (
-            <div className="rounded-lg border p-3 text-center">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                Est. CAGR
-              </div>
-              <div className="text-lg font-bold font-mono">
-                {(estCAGR * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">
-                /year ({estPoints.length}Y)
-              </div>
-            </div>
-          )}
-          {stars !== null && (
-            <div className="rounded-lg border p-3 text-center">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                Accuracy
-              </div>
-              <div className="text-lg font-bold text-amber-500">
-                {renderStars(stars)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {beatMissValues.length} periods
-              </div>
-            </div>
-          )}
-          {avgMiss !== null && (
-            <div className="rounded-lg border p-3 text-center">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                Avg Surprise
-              </div>
-              <div
-                className={`text-lg font-bold font-mono ${
-                  avgMiss >= 0 ? "text-emerald-600" : "text-red-600"
-                }`}
-              >
-                {avgMiss >= 0 ? "+" : ""}
-                {(avgMiss * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {avgMiss >= 0 ? "beat" : "miss"}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground">
-          {pastCAGR !== null && (
-            <>
-              For the last {actuals.length - 1} years, {companyName}&apos;s{" "}
-              {title.toLowerCase()} CAGR is{" "}
-              <span className="font-semibold text-foreground">
-                {(pastCAGR * 100).toFixed(1)}%
-              </span>
-              .
-            </>
-          )}{" "}
-          {estCAGR !== null && (
-            <>
-              The projected CAGR for the next {estPoints.length} year
-              {estPoints.length > 1 ? "s" : ""} is{" "}
-              <span className="font-semibold text-foreground">
-                {(estCAGR * 100).toFixed(1)}%
-              </span>
-              .
-            </>
-          )}
-        </p>
+        <EstimateKPIRow
+          pastCAGR={pastCAGR}
+          estCAGR={estCAGR}
+          actualsCount={actuals.length}
+          estCount={estPoints.length}
+          beatMissValues={beatMissValues}
+          companyName={companyName}
+          title={title}
+        />
 
         {/* Legend */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -313,53 +218,7 @@ export function EstimateChart({
           </BarChart>
         </ResponsiveContainer>
 
-        {/* Beat/Miss Row */}
-        {beatMissValues.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="p-2 text-left font-medium text-muted-foreground">
-                    Year
-                  </th>
-                  {actualPoints
-                    .filter((p) => p.beatMiss !== null)
-                    .map((p) => (
-                      <th
-                        key={p.year}
-                        className="p-2 text-center font-medium text-muted-foreground"
-                      >
-                        {p.year}
-                      </th>
-                    ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-2 font-medium text-muted-foreground">
-                    Surprise
-                  </td>
-                  {actualPoints
-                    .filter((p) => p.beatMiss !== null)
-                    .map((p) => {
-                      const isBeat = (p.beatMiss ?? 0) >= 0;
-                      return (
-                        <td
-                          key={p.year}
-                          className={`p-2 text-center font-mono font-semibold ${
-                            isBeat ? "text-emerald-600" : "text-red-600"
-                          }`}
-                        >
-                          {isBeat ? "Beat" : "Miss"}{" "}
-                          {((p.beatMiss ?? 0) * 100).toFixed(1)}%
-                        </td>
-                      );
-                    })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
+        <EstimateBeatMissTable actualPoints={actualPoints} />
       </CardContent>
     </Card>
   );
