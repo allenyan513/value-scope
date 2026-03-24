@@ -1,5 +1,7 @@
 "use client";
 
+import { formatLargeNumber } from "@/lib/format";
+
 interface Props {
   pvFCFTotal: number;
   pvTerminalValue: number;
@@ -7,13 +9,6 @@ interface Props {
   netDebt: number;
   equityValue: number;
   fairValue: number;
-}
-
-function formatLargeNumber(n: number): string {
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
 export function TVBreakdown({

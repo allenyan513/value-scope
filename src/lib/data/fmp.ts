@@ -3,6 +3,8 @@
 // Docs: https://site.financialmodelingprep.com/developer/docs
 // ============================================================
 
+import { ISR_REVALIDATE_SECONDS } from "@/lib/constants";
+
 const FMP_BASE = "https://financialmodelingprep.com/stable";
 
 function apiKey(): string {
@@ -21,7 +23,7 @@ async function fmpFetch<T>(path: string, params: Record<string, string> = {}): P
   const fetchOptions: RequestInit = {};
   // next.revalidate is only available in Next.js runtime
   if (typeof globalThis.process?.env?.NEXT_RUNTIME === "string") {
-    (fetchOptions as Record<string, unknown>).next = { revalidate: 3600 };
+    (fetchOptions as Record<string, unknown>).next = { revalidate: ISR_REVALIDATE_SECONDS };
   }
   const res = await fetch(url.toString(), fetchOptions);
   if (!res.ok) {

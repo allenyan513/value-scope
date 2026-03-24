@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationResult } from "@/types";
+import { formatLargeNumber } from "@/lib/format";
 
 const MODEL_NAMES: Record<string, string> = {
   dcf_growth_exit_5y: "DCF Valuation",
@@ -13,13 +14,6 @@ const MODEL_NAMES: Record<string, string> = {
   ev_ebitda_multiples: "EV/EBITDA Multiples",
   peter_lynch: "Peter Lynch Fair Value",
 };
-
-function formatLargeNumber(n: number): string {
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toLocaleString()}`;
-}
 
 interface Props {
   model: ValuationResult;

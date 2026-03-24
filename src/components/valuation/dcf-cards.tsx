@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import type { ValuationResult, WACCResult } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
+import { formatMillions, getUpsideColor } from "@/lib/format";
 
 /** Highlight key data in narrative: $amounts, percentages, multiples, verdict words */
 function highlightNarrative(text: string): React.ReactNode[] {
@@ -41,17 +42,6 @@ function highlightNarrative(text: string): React.ReactNode[] {
   return parts;
 }
 
-/** Format number in millions (e.g., 125000000 → "125,000") */
-function formatMillions(n: number): string {
-  const inMillions = n / 1e6;
-  return inMillions.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
-function getUpsideColor(upside: number) {
-  if (upside > 15) return "text-green-600 dark:text-green-400";
-  if (upside < -15) return "text-red-600 dark:text-red-400";
-  return "text-foreground";
-}
 
 // --- Parameter Input Component ---
 function ParamInput({

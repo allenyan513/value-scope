@@ -1,12 +1,11 @@
 import { getTickerData } from "../data";
 import { DCFModelNav } from "@/components/valuation/dcf-model-nav";
-
 interface Props {
   params: Promise<{ ticker: string }>;
   children: React.ReactNode;
 }
 
-export const revalidate = 3600;
+export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 
 export default async function DCFLayout({ params, children }: Props) {
   const { ticker } = await params;

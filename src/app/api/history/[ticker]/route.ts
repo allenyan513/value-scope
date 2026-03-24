@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValuationHistory, getPriceHistory, getCompany } from "@/lib/db/queries";
 import { getHistoricalPrices } from "@/lib/data/fmp";
+import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
+import { toDateString } from "@/lib/format";
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +12,7 @@ export async function GET(
 ) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const days = parseInt(request.nextUrl.searchParams.get("days") || "1825");
+  const days = parseInt(request.nextUrl.searchParams.get("days") || String(DEFAULT_HISTORY_DAYS));
 
   // Try real valuation history first
   const history = await getValuationHistory(upperTicker, days);
@@ -29,8 +31,8 @@ export async function GET(
   if (closePrices.length === 0) {
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - days);
-    const from = fromDate.toISOString().split("T")[0];
-    const to = new Date().toISOString().split("T")[0];
+    const from = toDateString(fromDate);
+    const to = toDateString(new Date());
 
     try {
       const fmpPrices = await getHistoricalPrices(upperTicker, from, to);
@@ -49,7 +51,7 @@ export async function GET(
 
   // Generate synthetic intrinsic value as a smoothed trend line
   const prices = closePrices.map((p) => p.close);
-  const emaSpan = Math.min(120, Math.floor(prices.length / 3));
+  const emaSpan = Math.min(MAX_EMA_SPAN, Math.floor(prices.length / 3));
   const alpha = 2 / (emaSpan + 1);
 
   let ema = prices[0];
@@ -72,8 +74,8 @@ export async function GET(
   }));
 
   // Sample to ~500 points max to keep response small
-  if (syntheticHistory.length > 500) {
-    const step = Math.ceil(syntheticHistory.length / 500);
+  if (syntheticHistory.length > HISTORY_SAMPLE_MAX) {
+    const step = Math.ceil(syntheticHistory.length / HISTORY_SAMPLE_MAX);
     const sampled = syntheticHistory.filter((_, i) => i % step === 0);
     // Always include last point
     if (sampled[sampled.length - 1] !== syntheticHistory[syntheticHistory.length - 1]) {

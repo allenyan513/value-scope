@@ -5,7 +5,6 @@ import { DCFCards } from "@/components/valuation/dcf-cards";
 import { getTickerData } from "../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
 import type { ValuationModelType } from "@/types";
-
 const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string }> = {
   "perpetual-growth": {
     modelType: "dcf_3stage",
@@ -31,7 +30,7 @@ interface Props {
   params: Promise<{ ticker: string; model: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ticker, model } = await params;

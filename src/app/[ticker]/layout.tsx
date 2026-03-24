@@ -2,17 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { AddToWatchlistButton } from "@/components/watchlist/add-to-watchlist-button";
 import { SubPageNav } from "@/components/valuation/sub-page-nav";
 import { getTickerData } from "./data";
+import { formatLargeNumber } from "@/lib/format";
 
 interface Props {
   params: Promise<{ ticker: string }>;
   children: React.ReactNode;
-}
-
-function formatMarketCap(n: number): string {
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
-  return `$${n.toLocaleString()}`;
 }
 
 export default async function TickerLayout({ params, children }: Props) {
@@ -55,7 +49,7 @@ export default async function TickerLayout({ params, children }: Props) {
             ${currentPrice.toFixed(2)}
           </div>
           <div className="text-sm text-muted-foreground">
-            Market Cap: {formatMarketCap(company.market_cap)}
+            Market Cap: {formatLargeNumber(company.market_cap, { decimals: 2 })}
           </div>
         </div>
       </div>

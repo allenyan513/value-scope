@@ -66,10 +66,12 @@ src/
 │   ├── sitemap.ts          # Dynamic sitemap (all tickers)
 │   └── robots.ts           # robots.txt
 ├── lib/
+│   ├── api/                # API route helpers (auth.ts — shared Supabase auth)
 │   ├── auth/               # Supabase auth client helpers
 │   ├── data/               # External API clients (fmp.ts, fred.ts, seed.ts)
 │   ├── db/                 # Supabase client + query helpers + migrations
-│   ├── valuation/          # 7 valuation model engines + dcf-narrative.ts
+│   ├── valuation/          # 7 valuation model engines (DCF split: dcf.ts, dcf-3stage.ts, dcf-helpers.ts, dcf-legacy.ts)
+│   ├── format.ts           # Shared formatting (formatLargeNumber, formatCurrency, formatMillions)
 │   └── stripe.ts           # Stripe client + plan definitions
 ├── components/
 │   ├── auth/               # AuthProvider context
@@ -116,8 +118,14 @@ src/
 - Ticker is always UPPERCASE and used as primary key
 - Financial data stored as raw numbers (not in millions/billions)
 - Valuation results include `assumptions` field for full transparency
-- ISR revalidation: 1 hour in prod, 0 in dev — controlled by `PAGE_REVALIDATE` in `src/lib/constants.ts`
+- ISR revalidation: 1 hour in prod. Page `export const revalidate = 3600` must be a literal (Next.js build constraint). Runtime fetch revalidation uses `ISR_REVALIDATE_SECONDS` from constants.
 - All prices in USD
+
+## Shared Utilities — Do Not Duplicate
+- **Constants** (`src/lib/constants.ts`): All magic numbers live here. Never hardcode thresholds, delays, or limits inline — import from constants. Key values: `VERDICT_THRESHOLD`, `ISR_REVALIDATE_SECONDS`, `FMP_API_DELAY_MS`, `CRON_COMPANY_DELAY_MS`, `DB_BATCH_CHUNK_SIZE`, `DEFAULT_HISTORY_DAYS`, `MIN_GROWTH_RATE`/`MAX_GROWTH_RATE`.
+- **Formatting** (`src/lib/format.ts`): Use `formatLargeNumber()`, `formatCurrency()`, `formatMillions()`, `getUpsideColor()`, `toDateString()`. Never create inline formatting functions in components — import from here.
+- **API Auth** (`src/lib/api/auth.ts`): Use `getAuthenticatedUser(request)` in API routes that need auth. Returns `{ user, supabase }` or a 401 `NextResponse`. Never inline Supabase client creation with auth headers.
+- **DCF Helpers** (`src/lib/valuation/dcf-helpers.ts`): Shared `cagr()`, `avg()`, `clamp()`, `projectRevenue()` — used by all DCF models. Do not redefine these.
 
 ## FMP API Notes
 - Uses `/stable/` endpoints (legacy `/api/v3` deprecated after 2025-08-31)
@@ -209,3 +217,16 @@ npm run test:coverage # With coverage report
 - Summary card redesign
 - Relative Valuation: populate Forward P/E + Forward EV/EBITDA columns from analyst estimates
 - Terminal value improvement: normalize terminal FCFE, two-stage terminal, exit multiple cross-check
+
+## Refactoring Backlog (do when touching the file)
+### File Splits (>300 lines, split when modifying)
+- `types/index.ts` (328 lines) → split into `types/company.ts`, `types/valuation.ts`, `types/financial.ts`
+- `fmp.ts` (433 lines) → split by domain: `fmp-financials.ts`, `fmp-prices.ts`, `fmp-estimates.ts`
+- `trading-multiples.ts` (417 lines) → P/E and EV/EBITDA share helpers, consider splitting if adding new models
+- `queries.ts` (330 lines) → split by domain: `queries-company.ts`, `queries-valuation.ts`, `queries-prices.ts`
+- `estimate-chart.tsx` (366 lines) → extract sub-components (revenue chart, EPS chart, accuracy section)
+### Unused Code Cleanup (deferred)
+- `fred.ts` — `getTreasuryYieldHistory()` exported but never called
+- `fmp.ts` — `getEnterpriseValue()` exported but never called
+- `dcf.ts` / `dcf-legacy.ts` — deprecated `DCFInputs`, `calculateDCFGrowthExit`, `calculateDCFEBITDAExit` (remove when confirmed no DB references)
+- 6 unused components: `wacc-card.tsx`, `tv-breakdown.tsx`, `dcf-tabs.tsx`, `football-field-chart.tsx`, `analyst-estimates-table.tsx`, `multiples-history-chart.tsx`

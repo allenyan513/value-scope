@@ -4,12 +4,11 @@ import { getTickerData } from "../data";
 import { computeMultiplesStats } from "@/lib/valuation/historical-multiples";
 import { RelativeValuationSection } from "./section";
 import type { PeerComparison } from "@/types";
-
 interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ticker } = await params;

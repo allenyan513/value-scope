@@ -3,12 +3,11 @@ import { getCompany } from "@/lib/db/queries";
 import { PriceTargetsSummary } from "@/components/valuation/price-targets-summary";
 import { EstimateChart } from "@/components/valuation/estimate-chart";
 import { getTickerData } from "../data";
-
 interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ticker } = await params;

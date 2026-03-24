@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-function getSupabaseWithAuth(authHeader: string | null) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: authHeader ? { Authorization: authHeader } : {},
-      },
-    }
-  );
-  return supabase;
-}
+import { getAuthenticatedUser } from "@/lib/api/auth";
 
 // GET /api/watchlist — list user's watchlist
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const supabase = getSupabaseWithAuth(authHeader);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await getAuthenticatedUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { user, supabase } = auth;
 
   const { data: watchlistItems } = await supabase
     .from("watchlists")
@@ -74,15 +55,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/watchlist — add ticker to watchlist
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const supabase = getSupabaseWithAuth(authHeader);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await getAuthenticatedUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { user, supabase } = auth;
 
   const body = await request.json();
   const ticker = (body.ticker as string)?.toUpperCase();
@@ -104,15 +79,9 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/watchlist — remove ticker from watchlist
 export async function DELETE(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const supabase = getSupabaseWithAuth(authHeader);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await getAuthenticatedUser(request);
+  if (auth instanceof NextResponse) return auth;
+  const { user, supabase } = auth;
 
   const { searchParams } = new URL(request.url);
   const ticker = searchParams.get("ticker")?.toUpperCase();

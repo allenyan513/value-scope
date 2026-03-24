@@ -11,15 +11,7 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { PriceTargetConsensus, DailyPrice } from "@/types";
-
-function formatUSD(n: number): string {
-  return n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+import { formatCurrency } from "@/lib/format";
 
 function pctChange(from: number, to: number): { text: string; color: string } {
   if (from <= 0) return { text: "—", color: "text-muted-foreground" };
@@ -137,10 +129,10 @@ export function PriceTargetsSummary({
           According to Wall Street analysts, the average 1-year price target for{" "}
           {companyName} ({ticker}) is{" "}
           <span className="font-semibold text-foreground">
-            {formatUSD(avg)}
+            {formatCurrency(avg)}
           </span>{" "}
-          with a low forecast of {formatUSD(low)} and a high forecast of{" "}
-          {formatUSD(high)}. The current price is {formatUSD(currentPrice)}.
+          with a low forecast of {formatCurrency(low)} and a high forecast of{" "}
+          {formatCurrency(high)}. The current price is {formatCurrency(currentPrice)}.
         </p>
 
         {/* 3-Column Target Cards */}
@@ -158,7 +150,7 @@ export function PriceTargetsSummary({
                 {item.label}
               </div>
               <div className="text-lg font-bold font-mono">
-                {formatUSD(item.value)}
+                {formatCurrency(item.value)}
               </div>
               <div className={`text-sm font-semibold ${item.pct.color}`}>
                 {item.pct.text}
@@ -228,7 +220,7 @@ export function PriceTargetsSummary({
                       targetHigh: "High Target",
                       targetLow: "Low Target",
                     };
-                    return [formatUSD(Number(value)), labels[String(name)] ?? name];
+                    return [formatCurrency(Number(value)), labels[String(name)] ?? name];
                   }}
                   labelFormatter={(label) => {
                     const d = new Date(label + "T00:00:00");

@@ -11,6 +11,7 @@ import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import type { PeerComparison, ValuationSummary, AnalystEstimate } from "@/types";
 import { getKeyMetrics, getAnalystEstimates, getEVMetrics } from "@/lib/data/fmp";
+import { VERDICT_THRESHOLD } from "@/lib/constants";
 
 export async function GET(
   request: NextRequest,
@@ -38,8 +39,8 @@ export async function GET(
           const primaryFairValue = primaryModel?.fair_value ?? 0;
           const primaryUpside = primaryModel?.upside_percent ?? 0;
           let verdict: "undervalued" | "fairly_valued" | "overvalued";
-          if (primaryUpside > 15) verdict = "undervalued";
-          else if (primaryUpside < -15) verdict = "overvalued";
+          if (primaryUpside > VERDICT_THRESHOLD) verdict = "undervalued";
+          else if (primaryUpside < -VERDICT_THRESHOLD) verdict = "overvalued";
           else verdict = "fairly_valued";
 
           return NextResponse.json({
