@@ -7,6 +7,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates } from "@/lib/data/fmp";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
@@ -170,6 +171,8 @@ export async function GET(request: NextRequest) {
         } catch { /* non-critical */ }
 
         valuationSuccess++;
+        // Bust ISR cache so next visitor sees fresh data
+        revalidatePath(`/${ticker}`, "layout");
       } catch (error) {
         console.error(`Valuation error for ${ticker}:`, error);
         valuationErrors++;
@@ -189,6 +192,7 @@ export async function GET(request: NextRequest) {
         const result = await seedSingleCompany(pendingTicker);
         if (result.success) {
           await updateDataRequestStatus(pendingTicker, "completed");
+          revalidatePath(`/${pendingTicker}`, "layout");
           provisioned++;
         } else {
           await updateDataRequestStatus(pendingTicker, "failed", result.error);

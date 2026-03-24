@@ -4,6 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, getPriceHistory, upsertValuation, upsertEstimates } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
@@ -149,6 +150,9 @@ export async function GET(
     for (const model of summary.models) {
       await upsertValuation(upperTicker, model);
     }
+
+    // Bust ISR cache so page reflects fresh valuation
+    revalidatePath(`/${upperTicker}`, "layout");
 
     return NextResponse.json({ ...summary, cached: false });
   } catch (error) {

@@ -3,6 +3,7 @@ import { getCompany } from "@/lib/db/queries";
 import { SummaryCard } from "@/components/valuation/summary-card";
 import { PriceValueChart } from "@/components/charts/price-value-chart";
 import { ModelCardCompact } from "@/components/valuation/model-card-compact";
+import { TickerPending } from "@/components/provisioning/ticker-pending";
 import { getTickerData } from "./data";
 
 interface Props {
@@ -39,20 +40,9 @@ export default async function SummaryPage({ params }: Props) {
   const upperTicker = ticker.toUpperCase();
   const data = await getTickerData(upperTicker);
 
-  // Ticker not in DB at all — data request has been enqueued
+  // Ticker not in DB — trigger real-time provisioning via client component
   if (data.pending || !data.company) {
-    return (
-      <div className="py-16 text-center">
-        <div className="text-4xl mb-4">📊</div>
-        <h2 className="text-xl font-bold mb-3">{upperTicker}</h2>
-        <p className="text-muted-foreground mb-2">
-          We don&apos;t have data for this ticker yet.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          It has been queued for processing. Please check back later.
-        </p>
-      </div>
-    );
+    return <TickerPending ticker={upperTicker} />;
   }
 
   const { company, summary } = data;

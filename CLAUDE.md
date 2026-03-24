@@ -136,9 +136,10 @@ npm run test:coverage # With coverage report
 
 ## Testing
 - **Runner**: Vitest (config in `vitest.config.ts`)
-- **Tests**: `src/lib/valuation/__tests__/` — 101 tests covering all valuation models
+- **Tests**: `src/lib/valuation/__tests__/` + `src/app/api/*/__tests__/` — 111 tests total
 - **Fixtures**: `__tests__/fixtures.ts` — shared test data modeled after real financial patterns
-- Run `npm test` before committing valuation logic changes
+- Run `npm test` before committing any logic changes
+- **Rule**: When adding new code (API routes, lib functions, components with logic), always consider whether unit tests are needed. If the code has branching logic, state transitions, or error handling — add tests. Pure UI or one-liner glue code can skip.
 
 ## API Routes
 | Route | Method | Auth | Description |
@@ -151,6 +152,7 @@ npm run test:coverage # With coverage report
 | `/api/stripe/checkout` | POST | Bearer JWT | Create Stripe checkout session |
 | `/api/stripe/webhook` | POST | Stripe signature | Stripe event webhook |
 | `/api/stripe/portal` | POST | Bearer JWT | Create billing portal session |
+| `/api/provision/[ticker]` | POST | No | Real-time ticker provisioning (seed + compute + revalidate) |
 | `/api/multiples-history/[ticker]?days=` | GET | No | Historical P/E, P/S, P/B with stats & valuations |
 
 ## Cron Jobs
@@ -174,12 +176,18 @@ npm run test:coverage # With coverage report
 - **Phase 5**: SEO (sitemap, JSON-LD, robots.txt, meta) ✅
 - **Phase 6**: Stripe monetization (checkout, webhook, billing portal) ✅
 - **Phase 7**: Valuation accuracy (ERP calibration, dynamic terminal growth, analyst estimates integration, interactive DCF) ✅
-## On-Demand Stock Provisioning
-- Users visit unknown ticker → page shows "data preparing" + ticker enqueued in `data_requests` table
-- Only tickers matching `/^[A-Z]{1,5}$/` are enqueued (prevents junk)
-- Daily cron processes queue: `seedSingleCompany()` fetches profile → financials → estimates → prices
-- Search API uses FMP `/stable/profile` as fallback when DB has < 3 results
+## On-Demand Stock Provisioning (Real-Time)
+- Users visit unknown ticker → `<TickerPending>` client component shows spinner + triggers `/api/provision/[ticker]`
+- Provision API: `seedSingleCompany()` (~3s) → `computeFullValuation()` → `revalidatePath()` to bust ISR cache
+- Client polls every 3s, on "ready" calls `router.refresh()` — page renders with full data
+- Fallback: `data_requests` table still enqueued for cron backup (JS-disabled users)
+- Only tickers matching `/^[A-Z]{1,5}$/` are accepted
 - `data_requests` table: ticker (PK), status (pending/processing/completed/failed), request_count, error
+
+## ISR Cache Invalidation
+- `revalidatePath("/${ticker}", "layout")` called from: provision API, daily cron, valuation API
+- Ensures frontend pages reflect DB updates immediately (no 1-hour stale wait)
+- ISR `revalidate = 3600` remains as background refresh interval
 
 ## DCF Model Details
 - **Revenue**: analyst estimates (5Y) → fade to historical CAGR → fade to 3% GDP growth
