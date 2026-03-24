@@ -1,4 +1,4 @@
-import { getTickerData } from "../data";
+import { getCoreTickerData } from "../data";
 import { DCFModelNav } from "@/components/valuation/dcf-model-nav";
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -10,7 +10,7 @@ export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
 export default async function DCFLayout({ params, children }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const { summary } = await getTickerData(upperTicker);
+  const { summary } = await getCoreTickerData(upperTicker);
 
   const models = summary?.models.filter((m) =>
     ["dcf_3stage", "dcf_pe_exit_10y", "dcf_ebitda_exit_fcfe_10y"].includes(m.model_type)

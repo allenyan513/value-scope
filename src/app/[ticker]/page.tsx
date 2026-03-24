@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { SummaryCard } from "@/components/valuation/summary-card";
-import { PriceValueChart } from "@/components/charts/price-value-chart";
 import { ModelCardCompact } from "@/components/valuation/model-card-compact";
 import { TickerPending } from "@/components/provisioning/ticker-pending";
-import { getTickerData } from "./data";
+import { getCoreTickerData } from "./data";
+import { ValuationChartSection } from "./valuation-chart-section";
 interface Props {
   params: Promise<{ ticker: string }>;
 }
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SummaryPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const data = await getTickerData(upperTicker);
+  const data = await getCoreTickerData(upperTicker);
 
   // Ticker not in DB — trigger real-time provisioning via client component
   if (data.pending || !data.company) {
@@ -86,12 +87,20 @@ export default async function SummaryPage({ params }: Props) {
       {/* Valuation Summary */}
       <SummaryCard summary={summary} />
 
-      {/* Price vs Intrinsic Value Chart */}
+      {/* Price vs Intrinsic Value Chart — streamed via Suspense */}
       <div className="mt-8 rounded-lg border p-6">
         <h2 className="text-lg font-semibold mb-4">
           Valuation History
         </h2>
-        <PriceValueChart ticker={upperTicker} />
+        <Suspense
+          fallback={
+            <div className="h-80 flex items-center justify-center text-muted-foreground animate-pulse">
+              Loading chart...
+            </div>
+          }
+        >
+          <ValuationChartSection ticker={upperTicker} />
+        </Suspense>
       </div>
 
       {/* All Models Overview */}

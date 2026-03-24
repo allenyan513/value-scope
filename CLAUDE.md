@@ -55,6 +55,13 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - When adding new code with branching logic, state transitions, or error handling — add tests
 - Fixtures in `__tests__/fixtures.ts` — shared test data modeled after real financial patterns
 
+## Performance Rules — MUST follow
+- **Parallel by default**: Multiple independent DB/API calls MUST use `Promise.all()`. Never sequential `await` when calls don't depend on each other.
+- **No over-fetching**: Pages must only fetch data they render. Do not add queries to `getCoreTickerData()` unless ALL pages need the result. Page-specific data goes in its own `cache()` function.
+- **No client-side data waterfalls**: If data can be fetched server-side and passed as props, do that. Do not use `useEffect` + `fetch()` for data that the server already has access to.
+- **Heavy client components**: Recharts and other large libraries should only be imported in components that actually render charts. Use Suspense boundaries so chart loading doesn't block critical content.
+- **Performance tests required**: When adding or modifying data fetching functions, add or update performance tests in `__tests__/data.perf.test.ts` that verify parallelism and prevent over-fetching regression.
+
 ## Supabase Query Notes
 - Column renaming uses PostgREST syntax: `close:close_price` (NOT `close_price as close`)
 - The `as` SQL alias syntax silently fails and returns null/empty results
