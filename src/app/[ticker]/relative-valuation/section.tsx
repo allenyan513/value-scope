@@ -231,7 +231,7 @@ function CalculationColumn({
       <div className="font-medium text-muted-foreground mb-2">{title}</div>
       <div className="space-y-1.5">
         <CalcRow label={multipleLabel} value={`${multiple}x`} />
-        <CalcRow label={`(*) ${metricLabel}`} value={`$${formatNumber(metric)}`} op="×" />
+        <CalcRow label={`(*) ${metricLabel}`} value={`$${formatNumber(metric)}`} />
         <div className="border-t my-1" />
         <CalcRow
           label={isEVBased ? "Enterprise Value" : "Equity value"}
@@ -240,12 +240,12 @@ function CalculationColumn({
         />
         {isEVBased && netDebt !== null && (
           <>
-            <CalcRow label="(−) Net Debt" value={`$${formatNumber(netDebt)}`} op="−" />
+            <CalcRow label="(−) Net Debt" value={`$${formatNumber(netDebt)}`} />
             <div className="border-t my-1" />
             <CalcRow label="Equity value" value={`$${formatNumber(equityValue)}`} highlight />
           </>
         )}
-        <CalcRow label="(/) Outstanding shares" value={formatNumber(sharesOutstanding)} op="÷" />
+        <CalcRow label="(/) Outstanding shares" value={formatNumber(sharesOutstanding)} />
         <div className="border-t my-1" />
         <CalcRow label="Fair price" value={`$${fairPrice.toFixed(2)}`} highlight primary />
       </div>
