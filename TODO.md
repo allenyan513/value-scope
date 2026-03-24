@@ -16,7 +16,7 @@
 - [x] `estimate-chart.tsx` → extracted `estimate-kpi-row.tsx`, `estimate-beat-miss-table.tsx`
 
 ### Unused Code Cleanup
-- [ ] `fred.ts` — `getTreasuryYieldHistory()` exported but never called
-- [ ] `fmp.ts` — `getEnterpriseValue()` exported but never called
-- [ ] `dcf.ts` / `dcf-legacy.ts` — deprecated `DCFInputs`, `calculateDCFGrowthExit`, `calculateDCFEBITDAExit` (remove when confirmed no DB references)
-- [ ] 6 unused components: `wacc-card.tsx`, `tv-breakdown.tsx`, `dcf-tabs.tsx`, `football-field-chart.tsx`, `analyst-estimates-table.tsx`, `multiples-history-chart.tsx`
+- [x] `fred.ts` — removed `getTreasuryYieldHistory()`
+- [x] `fmp.ts` — removed `getEnterpriseValue()`
+- [x] `dcf-legacy.ts` — deleted entire file (deprecated `DCFInputs`, `calculateDCFGrowthExit`, `calculateDCFEBITDAExit`)
+- [x] Deleted 6 unused components: `wacc-card.tsx`, `tv-breakdown.tsx`, `dcf-tabs.tsx`, `football-field-chart.tsx`, `analyst-estimates-table.tsx`, `multiples-history-chart.tsx`

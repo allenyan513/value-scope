@@ -23,33 +23,6 @@ export async function getKeyMetrics(
   });
 }
 
-// --- Enterprise Value (via key-metrics) ---
-interface FMPEnterpriseValue {
-  date: string;
-  enterpriseValue: number;
-  marketCap: number;
-}
-
-export async function getEnterpriseValue(
-  ticker: string,
-  limit = 5
-): Promise<FMPEnterpriseValue[]> {
-  const data = await fmpFetch<
-    Array<{ date: string; enterpriseValue: number; marketCap: number }>
-  >("/key-metrics", {
-    symbol: ticker,
-    period: "annual",
-    limit: String(limit),
-  });
-  return (data ?? []).map((d) => ({
-    date: d.date,
-    enterpriseValue: d.enterpriseValue,
-    marketCap: d.marketCap,
-    marketCapitalization: d.marketCap,
-    numberOfShares: 0,
-  }));
-}
-
 // --- EV-based Multiples (via key-metrics) ---
 export interface FMPEVMetrics {
   evToEBITDA: number | null;
