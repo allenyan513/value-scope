@@ -15,6 +15,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provi
 ## Architecture Principles
 - **Simplicity first**: 3 services only — Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
 - **Compute on demand + cache**: Users visit → compute valuation → ISR cache 1 hour. S&P 500 batch precomputed daily via Vercel Cron.
+- **Frontend ↔ paid API isolation**: User requests NEVER directly trigger FMP calls. Unknown tickers are enqueued in `data_requests` table and processed by cron.
 - **Full TypeScript**: No Python. All valuation logic in TS.
 - **SEO priority**: SSG/ISR pages, structured data (JSON-LD), sitemap, meaningful meta tags.
 
@@ -113,11 +114,14 @@ src/
 
 ## FMP API Notes
 - Uses `/stable/` endpoints (legacy `/api/v3` deprecated after 2025-08-31)
-- Current plan max `limit=5` for financial statement endpoints
+- **Plan**: Starter ($19/mo) — 300 req/min, 5 years historical, US coverage, annual fundamentals
+- `limit=5` for all financial statement and analyst estimate endpoints (matches plan)
 - Ticker passed as `?symbol=` query param (not path param)
 - **Field name gotcha**: `/stable/key-metrics` uses `earningsYield`/`evToEBITDA` (NOT `peRatio`/`enterpriseValueOverEBITDA`). Use `/stable/ratios` for `priceToEarningsRatio`, `priceToSalesRatio`, `priceToBookRatio`.
 - `/stable/stock-peers` returns peer symbols for a ticker
 - `/stable/sector-pe-ratio` returns empty array (not available on stable API)
+- `/stable/search` returns empty on Starter plan — use `/stable/profile` with exact ticker as fallback
+- **Rate limiting**: `seedSingleCompany()` uses sequential calls with 300ms delay; cron adds 3s between companies
 - Seed Mag 7 only: `DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config src/lib/data/seed-mag7.ts`
 
 ## Commands
@@ -132,7 +136,7 @@ npm run test:coverage # With coverage report
 
 ## Testing
 - **Runner**: Vitest (config in `vitest.config.ts`)
-- **Tests**: `src/lib/valuation/__tests__/` — 72 tests covering all valuation models
+- **Tests**: `src/lib/valuation/__tests__/` — 101 tests covering all valuation models
 - **Fixtures**: `__tests__/fixtures.ts` — shared test data modeled after real financial patterns
 - Run `npm test` before committing valuation logic changes
 
@@ -152,9 +156,11 @@ npm run test:coverage # With coverage report
 ## Cron Jobs
 - **Daily Update**: `/api/cron/daily-update` — Runs weekdays at 10:30 PM ET via Vercel Cron (`vercel.json`)
   - Updates stock prices, recomputes all 7 models, stores valuation history snapshots
+  - Processes `data_requests` queue: seeds up to 10 new tickers per run (3s delay between companies)
+  - Manual trigger: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily-update`
 
 ## Database Tables
-`companies`, `financial_statements`, `daily_prices`, `analyst_estimates`, `valuations`, `valuation_history`, `price_target_consensus`, `watchlists`, `usage_tracking`, `subscriptions`
+`companies`, `financial_statements`, `daily_prices`, `analyst_estimates`, `valuations`, `valuation_history`, `price_target_consensus`, `watchlists`, `usage_tracking`, `subscriptions`, `data_requests`
 
 ## Supabase Query Notes
 - Column renaming in `.select()` uses PostgREST syntax: `close:close_price` (NOT `close_price as close`)
@@ -168,4 +174,22 @@ npm run test:coverage # With coverage report
 - **Phase 5**: SEO (sitemap, JSON-LD, robots.txt, meta) ✅
 - **Phase 6**: Stripe monetization (checkout, webhook, billing portal) ✅
 - **Phase 7**: Valuation accuracy (ERP calibration, dynamic terminal growth, analyst estimates integration, interactive DCF) ✅
-- **Remaining**: Data seeding (run seed script), Stripe Price IDs configuration, domain setup, Relative Valuation combined price, Summary card redesign
+## On-Demand Stock Provisioning
+- Users visit unknown ticker → page shows "data preparing" + ticker enqueued in `data_requests` table
+- Only tickers matching `/^[A-Z]{1,5}$/` are enqueued (prevents junk)
+- Daily cron processes queue: `seedSingleCompany()` fetches profile → financials → estimates → prices
+- Search API uses FMP `/stable/profile` as fallback when DB has < 3 results
+- `data_requests` table: ticker (PK), status (pending/processing/completed/failed), request_count, error
+
+## DCF Model Details
+- **Revenue**: analyst estimates (5Y) → fade to historical CAGR → fade to 3% GDP growth
+- **Net Margin**: derived per-year from analyst EPS × shares / revenue; fades to 5Y historical avg
+- **CapEx**: Maintenance (≈ D&A, grows at 20% of revenue growth) + Growth (intensity × revenue increase)
+- **Discount Rate**: Cost of Equity (CAPM), shown in projection table
+- **Terminal Value**: Gordon Growth, rate by archetype (profitable_growth=3.5%, mature_stable=3.0%, etc.)
+- **Sensitivity**: 5×5 matrix of Discount Rate × Terminal Growth
+
+## Remaining
+- Stripe Price IDs configuration, domain setup
+- Relative Valuation combined price, Summary card redesign
+- Terminal value improvement: normalize terminal FCFE, two-stage terminal, exit multiple cross-check
