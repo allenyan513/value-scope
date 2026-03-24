@@ -1,17 +1,10 @@
 "use client";
 
 import type { RelativeValuationData } from "./page";
+import { formatLargeNumber, formatCurrency } from "@/lib/format";
 
 function formatNumber(n: number, decimals = 1): string {
-  if (Math.abs(n) >= 1e12) return `${(n / 1e12).toFixed(decimals)}T`;
-  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(decimals)}B`;
-  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(decimals)}M`;
-  if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(decimals)}K`;
-  return n.toFixed(decimals);
-}
-
-function formatPrice(n: number): string {
-  return `$${n.toFixed(2)}`;
+  return formatLargeNumber(n, { prefix: "", decimals, includeK: true });
 }
 
 function UpsideBadge({ upside }: { upside: number }) {
@@ -42,11 +35,11 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-xs text-muted-foreground">Stock Price</div>
-              <div className="text-sm font-semibold">{formatPrice(data.currentPrice)}</div>
+              <div className="text-sm font-semibold">{formatCurrency(data.currentPrice)}</div>
             </div>
             <div className="text-right">
               <div className="text-xs text-muted-foreground">Fair Price</div>
-              <div className="text-sm font-semibold text-primary">{formatPrice(data.selectedFairPrice)}</div>
+              <div className="text-sm font-semibold text-primary">{formatCurrency(data.selectedFairPrice)}</div>
             </div>
             <UpsideBadge upside={data.selectedUpside} />
           </div>
@@ -81,10 +74,10 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
             <tr className="border-b">
               <td className="py-2 font-medium text-primary">Fair Price</td>
               <td className="py-2 text-center">
-                {hasTrailing && data.trailingFairPrice ? formatPrice(data.trailingFairPrice) : "—"}
-                {hasForward && data.forwardFairPrice ? ` – ${formatPrice(data.forwardFairPrice)}` : ""}
+                {hasTrailing && data.trailingFairPrice ? formatCurrency(data.trailingFairPrice) : "—"}
+                {hasForward && data.forwardFairPrice ? ` – ${formatCurrency(data.forwardFairPrice)}` : ""}
               </td>
-              <td className="py-2 text-center font-semibold text-primary">{formatPrice(data.selectedFairPrice)}</td>
+              <td className="py-2 text-center font-semibold text-primary">{formatCurrency(data.selectedFairPrice)}</td>
             </tr>
             <tr>
               <td className="py-2 font-medium">Upside</td>

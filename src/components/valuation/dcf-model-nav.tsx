@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { ValuationResult } from "@/types";
+import { getUpsideColor } from "@/lib/format";
 
 const SLUG_MAP: Record<string, { slug: string; label: string; desc: string }> = {
   dcf_3stage: {
@@ -22,12 +23,6 @@ const SLUG_MAP: Record<string, { slug: string; label: string; desc: string }> = 
     desc: "EV/EBITDA multiple terminal value",
   },
 };
-
-function getUpsideColor(upside: number) {
-  if (upside > 15) return "text-green-600 dark:text-green-400";
-  if (upside < -15) return "text-red-600 dark:text-red-400";
-  return "text-foreground";
-}
 
 interface Props {
   ticker: string;

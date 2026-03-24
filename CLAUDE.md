@@ -66,10 +66,12 @@ src/
 │   ├── sitemap.ts          # Dynamic sitemap (all tickers)
 │   └── robots.ts           # robots.txt
 ├── lib/
+│   ├── api/                # API route helpers (auth.ts — shared Supabase auth)
 │   ├── auth/               # Supabase auth client helpers
 │   ├── data/               # External API clients (fmp.ts, fred.ts, seed.ts)
 │   ├── db/                 # Supabase client + query helpers + migrations
-│   ├── valuation/          # 7 valuation model engines + dcf-narrative.ts
+│   ├── valuation/          # 7 valuation model engines (DCF split: dcf.ts, dcf-3stage.ts, dcf-helpers.ts, dcf-legacy.ts)
+│   ├── format.ts           # Shared formatting (formatLargeNumber, formatCurrency, formatMillions)
 │   └── stripe.ts           # Stripe client + plan definitions
 ├── components/
 │   ├── auth/               # AuthProvider context
@@ -118,6 +120,11 @@ src/
 - Valuation results include `assumptions` field for full transparency
 - ISR revalidation: 1 hour in prod, 0 in dev — controlled by `PAGE_REVALIDATE` in `src/lib/constants.ts`
 - All prices in USD
+
+## Shared Utilities — Do Not Duplicate
+- **Formatting** (`src/lib/format.ts`): Use `formatLargeNumber()`, `formatCurrency()`, `formatMillions()`, `getUpsideColor()`. Never create inline formatting functions in components — import from here.
+- **API Auth** (`src/lib/api/auth.ts`): Use `getAuthenticatedUser(request)` in API routes that need auth. Returns `{ user, supabase }` or a 401 `NextResponse`. Never inline Supabase client creation with auth headers.
+- **DCF Helpers** (`src/lib/valuation/dcf-helpers.ts`): Shared `cagr()`, `avg()`, `clamp()`, `projectRevenue()` — used by all DCF models. Do not redefine these.
 
 ## FMP API Notes
 - Uses `/stable/` endpoints (legacy `/api/v3` deprecated after 2025-08-31)

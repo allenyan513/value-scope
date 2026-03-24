@@ -12,19 +12,9 @@ import {
 } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { FinancialStatement, AnalystEstimate, EarningsSurprise } from "@/types";
+import { formatLargeNumber, formatCurrency } from "@/lib/format";
 
 // --- Helpers ---
-
-function formatLargeNumber(n: number): string {
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
-  return `$${n.toFixed(2)}`;
-}
-
-function formatEps(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
 
 function cagr(start: number, end: number, years: number): number | null {
   if (start <= 0 || end <= 0 || years <= 0) return null;
@@ -71,7 +61,7 @@ export function EstimateChart({
   estimates,
   earningsSurprises,
 }: Props) {
-  const fmt = metricType === "revenue" ? formatLargeNumber : formatEps;
+  const fmt = metricType === "revenue" ? formatLargeNumber : formatCurrency;
 
   // Sort financials oldest first
   const sortedFinancials = [...financials].sort(

@@ -14,14 +14,13 @@ import type {
   HistoricalMultiplesPoint,
 } from "@/types";
 import { calculateWACC, buildWACCInputs } from "./wacc";
+import { calculateDCF, type DCFFCFEInputs } from "./dcf";
 import {
-  calculateDCF,
   calculateDCF3Stage,
   calculateDCF3StagePEExit,
   calculateDCF3StageEBITDAExit,
-  type DCFFCFEInputs,
   type DCFExitMultipleInputs,
-} from "./dcf";
+} from "./dcf-3stage";
 import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,

@@ -3,7 +3,7 @@ import {
   calculateDCF3StagePEExit,
   calculateDCF3StageEBITDAExit,
   type DCFExitMultipleInputs,
-} from "../dcf";
+} from "../dcf-3stage";
 import { appleFinancials, testEstimates } from "./fixtures";
 
 const baseInputs: DCFExitMultipleInputs = {
