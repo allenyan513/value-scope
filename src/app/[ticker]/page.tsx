@@ -9,8 +9,7 @@ interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-import { PAGE_REVALIDATE } from "@/lib/constants";
-export const revalidate = PAGE_REVALIDATE;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   return [];
