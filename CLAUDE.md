@@ -19,11 +19,14 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provi
 - **Full TypeScript**: No Python. All valuation logic in TS.
 - **SEO priority**: SSG/ISR pages, structured data (JSON-LD), sitemap, meaningful meta tags.
 
-## Workflow: Multi-Branch Development
-This project uses parallel feature branches. At the start of every new session:
-1. `git fetch origin main` — check for new commits on main
-2. If behind, `git pull origin main` (or merge into current branch) and resolve conflicts
-3. Always resolve conflicts before starting new work
+## Workflow: Feature Branch Development
+**Never commit directly to main.** At the start of every new session:
+1. `git fetch origin main && git checkout main && git pull origin main` — sync main
+2. Create a feature branch: `git checkout -b feat/<short-description>` (or `fix/`, `chore/`, `docs/`)
+3. Develop on the feature branch, commit as needed
+4. When done, push and create a PR: `git push -u origin <branch> && gh pr create`
+5. Merge via PR (squash or merge commit) — never push directly to main
+6. If session work is small/trivial (e.g., typo fix), ask the user before deciding to branch or commit directly
 
 ## Database Migrations
 Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `execute_sql` for schema changes.
