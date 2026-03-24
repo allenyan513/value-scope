@@ -10,7 +10,7 @@ import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import type { PeerComparison, ValuationSummary, AnalystEstimate } from "@/types";
-import { getKeyMetrics, getAnalystEstimates } from "@/lib/data/fmp";
+import { getKeyMetrics, getAnalystEstimates, getEVMetrics } from "@/lib/data/fmp";
 
 export async function GET(
   request: NextRequest,
@@ -115,7 +115,10 @@ export async function GET(
 
     for (const peer of peerCompanies) {
       try {
-        const metrics = await getKeyMetrics(peer.ticker, "annual", 1);
+        const [metrics, evMetrics] = await Promise.all([
+          getKeyMetrics(peer.ticker, "annual", 1),
+          getEVMetrics(peer.ticker, 1),
+        ]);
         if (metrics.length > 0) {
           peers.push({
             ticker: peer.ticker,
@@ -123,8 +126,7 @@ export async function GET(
             market_cap: peer.market_cap,
             trailing_pe: metrics[0].priceToEarningsRatio ?? null,
             forward_pe: null,
-            ps_ratio: metrics[0].priceToSalesRatio ?? null,
-            pb_ratio: metrics[0].priceToBookRatio ?? null,
+            ev_ebitda: evMetrics[0]?.evToEBITDA ?? null,
           });
         }
       } catch {

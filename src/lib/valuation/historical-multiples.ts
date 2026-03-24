@@ -1,13 +1,12 @@
 // ============================================================
 // Historical Multiples Computation
-// Shared logic for computing P/E, P/S, P/B from price + financials
+// Shared logic for computing P/E, EV/EBITDA from price + financials
 // Used by both the API route and the SSR data layer
 // ============================================================
 
 import type {
   HistoricalMultiplesPoint,
   MultipleStats,
-  HistoricalRelativeValuation,
   FinancialStatement,
 } from "@/types";
 
@@ -44,10 +43,8 @@ export function computeHistoricalMultiples(
     const marketCap = price.close * shares;
     const eps = fin.eps_diluted || fin.eps;
     const pe = eps > 0 ? price.close / eps : null;
-    const ps = fin.revenue > 0 ? marketCap / fin.revenue : null;
-    const pb = fin.total_equity > 0 ? marketCap / fin.total_equity : null;
 
-    // EV/EBITDA: EV = Market Cap + Total Debt - Cash
+    // EV-based multiples: EV = Market Cap + Total Debt - Cash
     const totalDebt = fin.total_debt || 0;
     const cash = fin.cash_and_equivalents || 0;
     const ev = marketCap + totalDebt - cash;
@@ -57,8 +54,6 @@ export function computeHistoricalMultiples(
     result.push({
       date: price.date,
       pe: pe !== null ? Math.round(pe * 100) / 100 : null,
-      ps: ps !== null ? Math.round(ps * 100) / 100 : null,
-      pb: pb !== null ? Math.round(pb * 100) / 100 : null,
       ev_ebitda: evEbitda !== null ? Math.round(evEbitda * 100) / 100 : null,
     });
   }
@@ -68,7 +63,7 @@ export function computeHistoricalMultiples(
 
 // --- Statistics: compute avg, p25, p75, percentile for each multiple ---
 
-const CAPS: Record<string, number> = { pe: 200, ps: 100, pb: 50, ev_ebitda: 100 };
+const CAPS: Record<string, number> = { pe: 200, ev_ebitda: 100 };
 
 function computeStats(
   values: number[],
@@ -104,99 +99,11 @@ export function computeMultiplesStats(data: HistoricalMultiplesPoint[]) {
       data.map((d) => d.pe).filter((v): v is number => v !== null),
       CAPS.pe
     ),
-    ps: computeStats(
-      data.map((d) => d.ps).filter((v): v is number => v !== null),
-      CAPS.ps
-    ),
-    pb: computeStats(
-      data.map((d) => d.pb).filter((v): v is number => v !== null),
-      CAPS.pb
-    ),
     ev_ebitda: computeStats(
       data.map((d) => d.ev_ebitda).filter((v): v is number => v != null),
       CAPS.ev_ebitda
     ),
   };
-}
-
-// --- Valuations: compute fair value from historical averages ---
-
-export function computeHistoricalValuations(
-  stats: ReturnType<typeof computeMultiplesStats>,
-  latestFinancial: FinancialStatement,
-  sharesOutstanding: number
-): HistoricalRelativeValuation[] {
-  const result: HistoricalRelativeValuation[] = [];
-
-  // P/E valuation
-  const eps = latestFinancial.eps_diluted || latestFinancial.eps;
-  if (stats.pe && eps > 0) {
-    const fairValue = stats.pe.avg5y * eps;
-    result.push({
-      type: "pe",
-      label: "P/E Ratio",
-      currentMultiple: stats.pe.current,
-      historicalAvg: stats.pe.avg5y,
-      percentile: stats.pe.percentile,
-      fairValue: Math.round(fairValue * 100) / 100,
-      lowEstimate: Math.round(stats.pe.p25 * eps * 100) / 100,
-      highEstimate: Math.round(stats.pe.p75 * eps * 100) / 100,
-      currentMetric: Math.round(eps * 100) / 100,
-      metricLabel: "EPS",
-      deviation:
-        stats.pe.current !== null
-          ? Math.round(((stats.pe.current - stats.pe.avg5y) / stats.pe.avg5y) * 100)
-          : 0,
-    });
-  }
-
-  // P/S valuation
-  const revenue = latestFinancial.revenue;
-  if (stats.ps && revenue > 0 && sharesOutstanding > 0) {
-    const revenuePerShare = revenue / sharesOutstanding;
-    const fairValue = stats.ps.avg5y * revenuePerShare;
-    result.push({
-      type: "ps",
-      label: "P/S Ratio",
-      currentMultiple: stats.ps.current,
-      historicalAvg: stats.ps.avg5y,
-      percentile: stats.ps.percentile,
-      fairValue: Math.round(fairValue * 100) / 100,
-      lowEstimate: Math.round(stats.ps.p25 * revenuePerShare * 100) / 100,
-      highEstimate: Math.round(stats.ps.p75 * revenuePerShare * 100) / 100,
-      currentMetric: Math.round(revenuePerShare * 100) / 100,
-      metricLabel: "Revenue/Share",
-      deviation:
-        stats.ps.current !== null
-          ? Math.round(((stats.ps.current - stats.ps.avg5y) / stats.ps.avg5y) * 100)
-          : 0,
-    });
-  }
-
-  // P/B valuation
-  const equity = latestFinancial.total_equity;
-  if (stats.pb && equity > 0 && sharesOutstanding > 0) {
-    const bookPerShare = equity / sharesOutstanding;
-    const fairValue = stats.pb.avg5y * bookPerShare;
-    result.push({
-      type: "pb",
-      label: "P/B Ratio",
-      currentMultiple: stats.pb.current,
-      historicalAvg: stats.pb.avg5y,
-      percentile: stats.pb.percentile,
-      fairValue: Math.round(fairValue * 100) / 100,
-      lowEstimate: Math.round(stats.pb.p25 * bookPerShare * 100) / 100,
-      highEstimate: Math.round(stats.pb.p75 * bookPerShare * 100) / 100,
-      currentMetric: Math.round(bookPerShare * 100) / 100,
-      metricLabel: "Book Value/Share",
-      deviation:
-        stats.pb.current !== null
-          ? Math.round(((stats.pb.current - stats.pb.avg5y) / stats.pb.avg5y) * 100)
-          : 0,
-    });
-  }
-
-  return result;
 }
 
 // --- Helpers ---

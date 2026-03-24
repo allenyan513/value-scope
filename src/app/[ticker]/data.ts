@@ -81,8 +81,7 @@ export const getTickerData = cache(async (ticker: string) => {
           market_cap: peer.market_cap,
           trailing_pe: metrics[0].priceToEarningsRatio ?? null,
           forward_pe: null,
-          ps_ratio: metrics[0].priceToSalesRatio ?? null,
-          pb_ratio: metrics[0].priceToBookRatio ?? null,
+          ev_ebitda: null,
         } as PeerComparison;
       }
     } catch {

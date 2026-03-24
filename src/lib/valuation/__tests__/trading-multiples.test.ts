@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   calculatePEMultiples,
-  calculatePSMultiples,
-  calculatePBMultiples,
+  calculateEVEBITDAMultiples,
 } from "../trading-multiples";
 import {
   appleCompany,
@@ -22,7 +21,7 @@ describe("calculatePEMultiples", () => {
   };
 
   it("should use historical self-comparison when enough data points", () => {
-    const history = generateHistoricalMultiples(500, 25, 8, 10);
+    const history = generateHistoricalMultiples(500, 25);
     const result = calculatePEMultiples({ ...baseInputs, historicalMultiples: history });
 
     expect(result.model_type).toBe("pe_multiples");
@@ -33,7 +32,7 @@ describe("calculatePEMultiples", () => {
   });
 
   it("should fall back to peer-based when insufficient history", () => {
-    const history = generateHistoricalMultiples(50, 25, 8, 10); // < 100 points
+    const history = generateHistoricalMultiples(50, 25); // < 100 points
     const result = calculatePEMultiples({ ...baseInputs, historicalMultiples: history });
 
     expect((result.assumptions as Record<string, unknown>).method).toBe(
@@ -62,17 +61,16 @@ describe("calculatePEMultiples", () => {
   });
 
   it("should compute low/high from historical percentiles", () => {
-    const history = generateHistoricalMultiples(500, 25, 8, 10);
+    const history = generateHistoricalMultiples(500, 25);
     const result = calculatePEMultiples({ ...baseInputs, historicalMultiples: history });
 
     expect(result.low_estimate).toBeLessThanOrEqual(result.fair_value);
     expect(result.high_estimate).toBeGreaterThanOrEqual(result.fair_value);
-    // Range should be meaningfully different
     expect(result.high_estimate - result.low_estimate).toBeGreaterThan(0);
   });
 
   it("should include percentile in assumptions when using historical", () => {
-    const history = generateHistoricalMultiples(500, 25, 8, 10);
+    const history = generateHistoricalMultiples(500, 25);
     const result = calculatePEMultiples({ ...baseInputs, historicalMultiples: history });
     const assumptions = result.assumptions as Record<string, unknown>;
 
@@ -90,7 +88,11 @@ describe("calculatePEMultiples", () => {
   });
 });
 
-describe("calculatePSMultiples", () => {
+// ============================================================
+// EV/EBITDA Multiples
+// ============================================================
+
+describe("calculateEVEBITDAMultiples", () => {
   const baseInputs = {
     financials: appleFinancials[0],
     company: appleCompany,
@@ -98,62 +100,39 @@ describe("calculatePSMultiples", () => {
     peers: testPeers,
   };
 
-  it("should compute P/S fair value from revenue per share", () => {
-    const result = calculatePSMultiples(baseInputs);
+  it("should compute EV-based fair value with historical data", () => {
+    const history = generateHistoricalMultiples(500, 25, 20);
+    const result = calculateEVEBITDAMultiples({ ...baseInputs, historicalMultiples: history });
 
-    expect(result.model_type).toBe("ps_multiples");
+    expect(result.model_type).toBe("ev_ebitda_multiples");
     expect(result.fair_value).toBeGreaterThan(0);
-  });
-
-  it("should return N/A when revenue is zero", () => {
-    const noRevenue = { ...appleFinancials[0], revenue: 0 };
-    const result = calculatePSMultiples({
-      ...baseInputs,
-      financials: noRevenue,
-    });
-    expect(result.fair_value).toBe(0);
-  });
-
-  it("should use historical when available", () => {
-    const history = generateHistoricalMultiples(500, 25, 8, 10);
-    const result = calculatePSMultiples({ ...baseInputs, historicalMultiples: history });
-
     expect((result.assumptions as Record<string, unknown>).method).toBe(
       "historical_self_comparison"
     );
+    expect((result.assumptions as Record<string, unknown>).net_debt).toBeDefined();
+    expect((result.assumptions as Record<string, unknown>).shares_outstanding).toBeDefined();
   });
-});
 
-describe("calculatePBMultiples", () => {
-  const baseInputs = {
-    financials: appleFinancials[0],
-    company: appleCompany,
-    currentPrice: 200,
-    peers: testPeers,
-  };
-
-  it("should compute P/B fair value from book value per share", () => {
-    const result = calculatePBMultiples(baseInputs);
-
-    expect(result.model_type).toBe("pb_multiples");
+  it("should fall back to peer-based when insufficient history", () => {
+    const result = calculateEVEBITDAMultiples(baseInputs);
+    expect((result.assumptions as Record<string, unknown>).method).toBe(
+      "peer_comparison"
+    );
     expect(result.fair_value).toBeGreaterThan(0);
   });
 
-  it("should return N/A for negative equity", () => {
-    const negEquity = { ...appleFinancials[0], total_equity: -10e9 };
-    const result = calculatePBMultiples({
-      ...baseInputs,
-      financials: negEquity,
-    });
+  it("should return N/A for zero EBITDA", () => {
+    const noEbitda = { ...appleFinancials[0], ebitda: 0 };
+    const result = calculateEVEBITDAMultiples({ ...baseInputs, financials: noEbitda });
     expect(result.fair_value).toBe(0);
   });
 
-  it("should use historical when available", () => {
-    const history = generateHistoricalMultiples(500, 25, 8, 10);
-    const result = calculatePBMultiples({ ...baseInputs, historicalMultiples: history });
+  it("should compute low/high from EV → equity → price path", () => {
+    const history = generateHistoricalMultiples(500, 25, 20);
+    const result = calculateEVEBITDAMultiples({ ...baseInputs, historicalMultiples: history });
 
-    expect((result.assumptions as Record<string, unknown>).method).toBe(
-      "historical_self_comparison"
-    );
+    expect(result.low_estimate).toBeLessThanOrEqual(result.fair_value);
+    expect(result.high_estimate).toBeGreaterThanOrEqual(result.fair_value);
+    expect(result.high_estimate - result.low_estimate).toBeGreaterThan(0);
   });
 });

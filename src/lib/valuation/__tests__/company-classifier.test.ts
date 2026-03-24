@@ -69,14 +69,14 @@ describe("computeWeightedConsensus", () => {
   const models = [
     { model_type: "dcf_growth_exit_5y", fair_value: 100, low_estimate: 80, high_estimate: 120 },
     { model_type: "pe_multiples", fair_value: 150, low_estimate: 130, high_estimate: 170 },
-    { model_type: "ps_multiples", fair_value: 120, low_estimate: 100, high_estimate: 140 },
+    { model_type: "ev_ebitda_multiples", fair_value: 120, low_estimate: 100, high_estimate: 140 },
   ];
 
   it("should compute weighted average consensus", () => {
     const weights = {
       dcf_growth_exit_5y: 0.5,
       pe_multiples: 0.3,
-      ps_multiples: 0.2,
+      ev_ebitda_multiples: 0.2,
     };
 
     const result = computeWeightedConsensus(models, weights);
@@ -90,18 +90,18 @@ describe("computeWeightedConsensus", () => {
   it("should skip models with fair_value <= 0 (N/A)", () => {
     const modelsWithNA = [
       ...models,
-      { model_type: "pb_multiples", fair_value: 0, low_estimate: 0, high_estimate: 0 },
+      { model_type: "peter_lynch", fair_value: 0, low_estimate: 0, high_estimate: 0 },
     ];
     const weights = {
       dcf_growth_exit_5y: 0.4,
       pe_multiples: 0.3,
-      ps_multiples: 0.2,
-      pb_multiples: 0.1,
+      ev_ebitda_multiples: 0.2,
+      peter_lynch: 0.1,
     };
 
     const result = computeWeightedConsensus(modelsWithNA, weights);
 
-    // PB should be skipped, weights renormalized
+    // peter_lynch should be skipped, weights renormalized
     expect(result.modelContributions).toHaveLength(3);
     expect(result.consensus).toBeGreaterThan(0);
   });
@@ -125,7 +125,7 @@ describe("computeWeightedConsensus", () => {
     const weights = {
       dcf_growth_exit_5y: 0.5,
       pe_multiples: 0.5,
-      ps_multiples: 0, // zero weight
+      ev_ebitda_multiples: 0, // zero weight
     };
 
     const result = computeWeightedConsensus(models, weights);

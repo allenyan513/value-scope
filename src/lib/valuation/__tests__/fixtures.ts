@@ -34,9 +34,9 @@ export const testEstimates: AnalystEstimate[] = [
 ];
 
 export const testPeers: PeerComparison[] = [
-  { ticker: "PEER1", name: "Peer One", market_cap: 2e12, trailing_pe: 25, forward_pe: 22, ps_ratio: 8, pb_ratio: 10 },
-  { ticker: "PEER2", name: "Peer Two", market_cap: 1.5e12, trailing_pe: 30, forward_pe: 27, ps_ratio: 10, pb_ratio: 12 },
-  { ticker: "PEER3", name: "Peer Three", market_cap: 1e12, trailing_pe: 22, forward_pe: 20, ps_ratio: 7, pb_ratio: 8 },
+  { ticker: "PEER1", name: "Peer One", market_cap: 2e12, trailing_pe: 25, forward_pe: 22, ev_ebitda: 20 },
+  { ticker: "PEER2", name: "Peer Two", market_cap: 1.5e12, trailing_pe: 30, forward_pe: 27, ev_ebitda: 25 },
+  { ticker: "PEER3", name: "Peer Three", market_cap: 1e12, trailing_pe: 22, forward_pe: 20, ev_ebitda: 18 },
 ];
 
 // --- Company with negative earnings ---
@@ -56,8 +56,6 @@ export const unprofitableFinancials: FinancialStatement[] = [
 export function generateHistoricalMultiples(
   days: number,
   basePE: number,
-  basePS: number,
-  basePB: number,
   baseEVEBITDA?: number
 ): HistoricalMultiplesPoint[] {
   const result: HistoricalMultiplesPoint[] = [];
@@ -72,8 +70,6 @@ export function generateHistoricalMultiples(
     result.push({
       date: date.toISOString().split("T")[0],
       pe: Math.round((basePE * (1 + noise)) * 100) / 100,
-      ps: Math.round((basePS * (1 + noise * 0.8)) * 100) / 100,
-      pb: Math.round((basePB * (1 + noise * 0.6)) * 100) / 100,
       ev_ebitda: baseEVEBITDA ? Math.round((baseEVEBITDA * (1 + noise * 0.7)) * 100) / 100 : null,
     });
   }

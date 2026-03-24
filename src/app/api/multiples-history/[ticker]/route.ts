@@ -1,7 +1,7 @@
 // ============================================================
 // GET /api/multiples-history/[ticker]
-// Compute historical P/E, P/S, P/B from daily prices + financials
-// Returns enhanced response with stats & valuations
+// Compute historical P/E, EV/EBITDA from daily prices + financials
+// Returns enhanced response with stats
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +9,6 @@ import { getFinancials, getPriceHistory } from "@/lib/db/queries";
 import {
   computeHistoricalMultiples,
   computeMultiplesStats,
-  computeHistoricalValuations,
   sampleData,
 } from "@/lib/valuation/historical-multiples";
 
@@ -32,31 +31,17 @@ export async function GET(
     if (financials.length === 0 || prices.length === 0) {
       return NextResponse.json({
         history: [],
-        stats: { pe: null, ps: null, pb: null },
-        valuations: [],
+        stats: { pe: null, ev_ebitda: null },
       });
     }
 
     const fullData = computeHistoricalMultiples(financials, prices);
     const stats = computeMultiplesStats(fullData);
-
-    // Get latest financial for valuation computation
-    const sortedFinancials = [...financials].sort(
-      (a, b) => b.fiscal_year - a.fiscal_year
-    );
-    const latest = sortedFinancials[0];
-    const shares = latest.shares_outstanding;
-
-    const valuations = shares
-      ? computeHistoricalValuations(stats, latest, shares)
-      : [];
-
     const sampled = sampleData(fullData, 250);
 
     return NextResponse.json({
       history: sampled,
       stats,
-      valuations,
     });
   } catch (error) {
     console.error(`Multiples history error for ${upperTicker}:`, error);
