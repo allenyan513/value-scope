@@ -29,7 +29,7 @@ function delayed<T>(value: T): Promise<T> {
 
 // React cache() — passthrough in test environment
 vi.mock("react", () => ({
-  cache: (fn: Function) => fn,
+  cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
 const mockGetPriceTargets = vi.fn();

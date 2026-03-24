@@ -134,9 +134,9 @@ export default async function RelativeValuationPage({ params }: Props) {
   }
 
   // For forward P/E — use analyst estimates if available
-  const estimates = summary.models.find((m) => m.model_type === "pe_multiples")?.assumptions;
-  let peForwardFairPrice: number | null = null;
-  let peForwardUpside: number | null = null;
+  const _estimates = summary.models.find((m) => m.model_type === "pe_multiples")?.assumptions;
+  const peForwardFairPrice: number | null = null;
+  const peForwardUpside: number | null = null;
   const forwardProfit: number | null = null; // TODO: integrate analyst forward earnings
 
   const peSelectedFairPrice = peTrailingFairPrice ?? 0;

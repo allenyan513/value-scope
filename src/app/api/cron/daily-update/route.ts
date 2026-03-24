@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     for (const ticker of tickers) {
       try {
-        let [companyData, historicals, estimates] = await Promise.all([
+        const [companyData, historicals, estimates] = await Promise.all([
           db.from("companies").select("*").eq("ticker", ticker).single(),
           getFinancials(ticker, "annual", 5),
           getEstimates(ticker),
