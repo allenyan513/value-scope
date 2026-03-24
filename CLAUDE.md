@@ -141,7 +141,7 @@ npm run test:coverage # With coverage report
 - **Runner**: Vitest (config in `vitest.config.ts`)
 - **Tests**: `src/lib/valuation/__tests__/` + `src/app/api/*/__tests__/` — 111 tests total
 - **Fixtures**: `__tests__/fixtures.ts` — shared test data modeled after real financial patterns
-- Run `npm test` before committing any logic changes
+- Run `npm test` before and after making logic changes — ensure no regressions before committing
 - **Rule**: When adding new code (API routes, lib functions, components with logic), always consider whether unit tests are needed. If the code has branching logic, state transitions, or error handling — add tests. Pure UI or one-liner glue code can skip.
 
 ## API Routes
