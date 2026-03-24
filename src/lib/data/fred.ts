@@ -54,28 +54,3 @@ export async function getTenYearTreasuryYield(): Promise<number> {
   return 0.0425;
 }
 
-/**
- * Get historical 10Y Treasury yields for a date range.
- */
-export async function getTreasuryYieldHistory(
-  startDate: string,
-  endDate: string
-): Promise<Array<{ date: string; yield: number }>> {
-  const url = new URL(`${FRED_BASE}/series/observations`);
-  url.searchParams.set("series_id", "DGS10");
-  url.searchParams.set("api_key", apiKey());
-  url.searchParams.set("file_type", "json");
-  url.searchParams.set("observation_start", startDate);
-  url.searchParams.set("observation_end", endDate);
-
-  const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
-  if (!res.ok) throw new Error(`FRED API error: ${res.status}`);
-  const data = (await res.json()) as FREDSeriesResponse;
-
-  return data.observations
-    .filter((o) => o.value !== ".")
-    .map((o) => ({
-      date: o.date,
-      yield: parseFloat(o.value) / 100,
-    }));
-}
