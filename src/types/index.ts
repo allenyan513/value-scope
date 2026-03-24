@@ -115,6 +115,8 @@ export type ValuationModelType =
   | "dcf_ebitda_exit_5y"
   | "dcf_ebitda_exit_10y"
   | "dcf_3stage"
+  | "dcf_pe_exit_10y"
+  | "dcf_ebitda_exit_fcfe_10y"
   | "pe_multiples"
   | "ps_multiples"
   | "pb_multiples"
@@ -142,6 +144,7 @@ export interface DCFProjectionYearFCFE {
   discount_factor: number;
   pv_fcfe: number;
   stage?: 1 | 2; // Three-stage DCF: 1 = analyst-driven, 2 = transition
+  ebitda?: number; // For exit multiple terminal value methods
 }
 
 export interface DCFFCFEResult extends ValuationResult {
@@ -298,6 +301,7 @@ export interface HistoricalMultiplesPoint {
   pe: number | null;
   ps: number | null;
   pb: number | null;
+  ev_ebitda?: number | null; // Enterprise Value / EBITDA
 }
 
 export interface MultipleStats {
@@ -329,6 +333,7 @@ export interface HistoricalMultiplesResponse {
     pe: MultipleStats | null;
     ps: MultipleStats | null;
     pb: MultipleStats | null;
+    ev_ebitda?: MultipleStats | null;
   };
   valuations: HistoricalRelativeValuation[];
 }

@@ -5,6 +5,42 @@ import { Card } from "@/components/ui/card";
 import type { ValuationResult, WACCResult } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
 
+/** Highlight key data in narrative: $amounts, percentages, multiples, verdict words */
+function highlightNarrative(text: string): React.ReactNode[] {
+  // Match: $123.45, 24.5%, 37.4x, "undervalued", "overvalued", "fairly valued"
+  const pattern = /(\$[\d,.]+[TB]?|\d+(?:\.\d+)?%|\d+(?:\.\d+)?x|undervalued|overvalued|fairly valued)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const value = match[0];
+    const isVerdict = value === "undervalued" || value === "overvalued" || value === "fairly valued";
+    parts.push(
+      <span
+        key={match.index}
+        className={
+          isVerdict
+            ? "font-semibold text-foreground"
+            : "font-semibold text-foreground tabular-nums"
+        }
+      >
+        {value}
+      </span>
+    );
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
 /** Format number in millions (e.g., 125000000 → "125,000") */
 function formatMillions(n: number): string {
   const inMillions = n / 1e6;
@@ -70,9 +106,10 @@ interface Props {
   model: ValuationResult;
   currentPrice: number;
   wacc: WACCResult;
+  narrative?: string;
 }
 
-export function DCFCards({ model, currentPrice, wacc }: Props) {
+export function DCFCards({ model, currentPrice, wacc, narrative }: Props) {
   const details = model.details as Record<string, unknown>;
   const assumptions = model.assumptions as Record<string, unknown>;
 
@@ -85,9 +122,14 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
     fcfe: number;
     pv_fcfe: number;
     stage?: 1 | 2;
+    ebitda?: number;
   }>;
 
   const isThreeStage = projections.some((p) => p.stage !== undefined);
+  const terminalMethod = assumptions.terminal_method as string | undefined;
+  const isExitMultiple = terminalMethod === "pe_exit" || terminalMethod === "ebitda_exit";
+  const isPEExit = terminalMethod === "pe_exit";
+  const isEBITDAExit = terminalMethod === "ebitda_exit";
 
   const cashAndEquiv = details.cash_and_equivalents as number;
   const totalDebt = details.total_debt as number;
@@ -97,21 +139,29 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
   const defaultDiscountRate = assumptions.discount_rate as number;
   const defaultTerminalGrowth = assumptions.terminal_growth_rate as number;
   const defaultForecastYears = projections.length;
+  const defaultExitMultiple = isPEExit
+    ? (assumptions.exit_pe as number)
+    : isEBITDAExit
+      ? (assumptions.exit_ev_ebitda as number)
+      : 0;
 
   // Interactive state
   const [discountRate, setDiscountRate] = useState(defaultDiscountRate);
   const [terminalGrowth, setTerminalGrowth] = useState(defaultTerminalGrowth);
   const [forecastYears, setForecastYears] = useState(defaultForecastYears);
+  const [exitMultiple, setExitMultiple] = useState(defaultExitMultiple);
 
-  const isCustom =
-    discountRate !== defaultDiscountRate ||
-    terminalGrowth !== defaultTerminalGrowth ||
-    forecastYears !== defaultForecastYears;
+  const isCustom = isExitMultiple
+    ? discountRate !== defaultDiscountRate || exitMultiple !== defaultExitMultiple
+    : discountRate !== defaultDiscountRate ||
+      terminalGrowth !== defaultTerminalGrowth ||
+      forecastYears !== defaultForecastYears;
 
   const resetDefaults = () => {
     setDiscountRate(defaultDiscountRate);
     setTerminalGrowth(defaultTerminalGrowth);
     setForecastYears(defaultForecastYears);
+    setExitMultiple(defaultExitMultiple);
   };
 
   // Recalculate when parameters change
@@ -128,8 +178,25 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
       return { ...p, discount_factor: discountFactor, pv_fcfe: pvFcfe };
     });
 
-    const lastFCFE = rows[n - 1].fcfe;
-    const terminalValue = ke > g ? (lastFCFE * (1 + g)) / (ke - g) : lastFCFE * 20;
+    const lastRow = rows[n - 1];
+
+    // Terminal value depends on method
+    let terminalValue: number;
+    if (isPEExit) {
+      // P/E Exit: TV = Year N Net Income × Exit P/E
+      terminalValue = lastRow.net_income * exitMultiple;
+    } else if (isEBITDAExit) {
+      // EV/EBITDA Exit: TV_EV = Year N EBITDA × Exit EV/EBITDA, minus net debt for equity
+      const year10EBITDA = lastRow.ebitda ?? 0;
+      const netDebt = totalDebt - cashAndEquiv;
+      const termEV = year10EBITDA * exitMultiple;
+      terminalValue = Math.max(0, termEV - netDebt);
+    } else {
+      // Gordon Growth perpetuity
+      const lastFCFE = lastRow.fcfe;
+      terminalValue = ke > g ? (lastFCFE * (1 + g)) / (ke - g) : lastFCFE * 20;
+    }
+
     const pvTerminal = terminalValue / Math.pow(1 + ke, n);
     const pvFCFETotal = rows.reduce((sum, p) => sum + p.pv_fcfe, 0);
     const totalPV = pvFCFETotal + pvTerminal;
@@ -137,15 +204,14 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
     const fairVal = Math.max(0, equityVal / sharesOut);
     const upsidePercent = ((fairVal - currentPrice) / currentPrice) * 100;
 
-    // Terminal year derived values
-    const lastRow = rows[n - 1];
+    // Terminal year derived values (for perpetuity display)
     const termRevenue = lastRow.revenue * (1 + g);
     const termNetIncome = termRevenue * lastRow.net_margin;
-    const termCapex = termRevenue * (lastRow.net_capex / lastRow.revenue);
+    const termCapex = lastRow.revenue > 0 ? termRevenue * (lastRow.net_capex / lastRow.revenue) : 0;
     const termFCFE = termNetIncome - termCapex;
     const termYear = lastRow.year + 1;
 
-    const keLeG = ke <= g;
+    const keLeG = !isExitMultiple && ke <= g;
 
     return {
       rows,
@@ -162,7 +228,7 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
       termYear,
       keLeG,
     };
-  }, [discountRate, terminalGrowth, forecastYears, projections, cashAndEquiv, totalDebt, sharesOut, currentPrice]);
+  }, [discountRate, terminalGrowth, exitMultiple, forecastYears, projections, cashAndEquiv, totalDebt, sharesOut, currentPrice, isPEExit, isEBITDAExit, isExitMultiple]);
 
   const colSpan = calc.rows.length + 2;
 
@@ -174,7 +240,7 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ===== Card 1: DCF Value ===== */}
+      {/* ===== Card 1: DCF Value — narrative + metrics ===== */}
       <Card className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <h3 className="font-semibold text-lg">DCF Value</h3>
@@ -184,25 +250,38 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Current Price</div>
-            <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Fair Value</div>
-            <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Range</div>
-            <div className="text-lg font-medium font-mono text-muted-foreground">
-              ${model.low_estimate.toFixed(2)} – ${model.high_estimate.toFixed(2)}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left: Narrative */}
+          {narrative && (
+            <div className="lg:col-span-3">
+              <p className="text-[15px] leading-7 text-foreground/80">
+                {highlightNarrative(narrative)}
+              </p>
             </div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Upside</div>
-            <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
-              {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
+          )}
+          {/* Right: Metrics */}
+          <div className={narrative ? "lg:col-span-2" : "lg:col-span-5"}>
+            <div className="grid grid-cols-2 gap-y-5 gap-x-6">
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">Current Price</div>
+                <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">Fair Value</div>
+                <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">Upside</div>
+                <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
+                  {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">Range</div>
+                <div className="text-lg font-medium font-mono text-muted-foreground">
+                  ${model.low_estimate.toFixed(2)} – ${model.high_estimate.toFixed(2)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -240,15 +319,27 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
             step={0.25}
             suffix="%"
           />
-          <ParamInput
-            label="Terminal Growth"
-            value={terminalGrowth}
-            onChange={setTerminalGrowth}
-            min={0}
-            max={6}
-            step={0.25}
-            suffix="%"
-          />
+          {isExitMultiple ? (
+            <ParamInput
+              label={isPEExit ? "Exit P/E" : "Exit EV/EBITDA"}
+              value={exitMultiple}
+              onChange={setExitMultiple}
+              min={5}
+              max={60}
+              step={0.5}
+              suffix="x"
+            />
+          ) : (
+            <ParamInput
+              label="Terminal Growth"
+              value={terminalGrowth}
+              onChange={setTerminalGrowth}
+              min={0}
+              max={6}
+              step={0.25}
+              suffix="%"
+            />
+          )}
           {!isThreeStage ? (
             <ParamInput
               label="Forecast Period"
@@ -422,8 +513,8 @@ export function DCFCards({ model, currentPrice, wacc }: Props) {
           secondAxisValues={growthValues}
           prices={prices}
           currentPrice={currentPrice}
-          xLabel="Terminal Growth Rate"
-          isPercent={true}
+          xLabel={isExitMultiple ? "Exit Multiple" : "Terminal Growth Rate"}
+          isPercent={!isExitMultiple}
         />
       </Card>
 

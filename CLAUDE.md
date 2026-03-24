@@ -3,7 +3,7 @@
 # ValuScope - Stock Valuation SaaS
 
 ## Project Overview
-Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provides 7 automated valuation models with daily updates. Target: SEO-driven organic growth.
+Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provides 8 automated valuation models with daily updates. Target: SEO-driven organic growth.
 
 ## Tech Stack
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5
@@ -51,6 +51,7 @@ STRIPE_API_PRICE_ID            # Stripe Price ID for API plan
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── [ticker]/           # Dynamic stock page (ISR 1hr) + JSON-LD
+│   │   └── dcf-valuation/  # DCF sub-routes: /perpetual-growth, /pe-exit, /ev-ebitda-exit
 │   ├── methodology/        # Valuation methodology explanation
 │   ├── pricing/            # Pricing plans (Free / Pro / API)
 │   ├── watchlist/          # User's watchlist (requires auth)
@@ -68,7 +69,7 @@ src/
 │   ├── auth/               # Supabase auth client helpers
 │   ├── data/               # External API clients (fmp.ts, fred.ts, seed.ts)
 │   ├── db/                 # Supabase client + query helpers + migrations
-│   ├── valuation/          # 7 valuation model engines
+│   ├── valuation/          # 8 valuation model engines + dcf-narrative.ts
 │   └── stripe.ts           # Stripe client + plan definitions
 ├── components/
 │   ├── auth/               # AuthProvider context
@@ -81,11 +82,14 @@ src/
 ```
 
 ## Valuation Models (src/lib/valuation/)
-1. **DCF FCFE 5Y** — Revenue (analyst estimates) → Net Margin (analyst-derived, dynamic per year) → Net Income → CapEx (maintenance D&A + growth) → FCFE, discounted by Cost of Equity, Gordon Growth terminal value
-2. **P/E Multiples** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
-3. **P/S Multiples** — Historical 5Y avg P/S × Revenue/Share (same fallback logic)
-4. **P/B Multiples** — Historical 5Y avg P/B × Book Value/Share (same fallback logic)
-5. **Peter Lynch Fair Value** — PEG-based (Growth Rate × 100 × EPS, growth clamped 5%–25%)
+1. **DCF FCFE 5Y** — Revenue (analyst estimates) → Net Margin → Net Income → CapEx → FCFE, discounted by Cost of Equity, Gordon Growth terminal value
+2. **DCF 3-Stage Perpetual Growth 10Y** — Same FCFE pipeline, 10Y projection (Y1–5 analyst, Y6–10 transition fade), Gordon Growth terminal value. Primary DCF model on `/dcf-valuation` page.
+3. **DCF P/E Exit 10Y** — Same 10Y FCFE projections, terminal value = Year 10 Net Income × historical 5Y avg P/E. Cross-validation only (not in consensus).
+4. **DCF EV/EBITDA Exit 10Y** — Same 10Y FCFE projections, terminal value = Year 10 EBITDA × historical 5Y avg EV/EBITDA − net debt. Cross-validation only.
+5. **P/E Multiples** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
+6. **P/S Multiples** — Historical 5Y avg P/S × Revenue/Share (same fallback logic)
+7. **P/B Multiples** — Historical 5Y avg P/B × Book Value/Share (same fallback logic)
+8. **Peter Lynch Fair Value** — PEG-based (Growth Rate × 100 × EPS, growth clamped 5%–25%)
 
 ### Relative Valuation Approach
 - **Primary method**: Historical self-comparison (company's own 5Y average multiples)
@@ -160,7 +164,7 @@ npm run test:coverage # With coverage report
 
 ## Cron Jobs
 - **Daily Update**: `/api/cron/daily-update` — Runs weekdays at 10:30 PM ET via Vercel Cron (`vercel.json`)
-  - Updates stock prices, recomputes all 7 models, stores valuation history snapshots
+  - Updates stock prices, recomputes all 8 models, stores valuation history snapshots
   - Processes `data_requests` queue: seeds up to 10 new tickers per run (3s delay between companies)
   - Manual trigger: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/daily-update`
 

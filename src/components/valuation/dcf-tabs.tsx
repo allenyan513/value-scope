@@ -12,6 +12,9 @@ import type { ValuationResult, ValuationModelType } from "@/types";
 const DCF_MODELS: { key: ValuationModelType; label: string }[] = [
   { key: "dcf_growth_exit_5y", label: "Growth Exit 5Y" },
   { key: "dcf_growth_exit_10y", label: "Growth Exit 10Y" },
+  { key: "dcf_3stage", label: "Perpetual Growth" },
+  { key: "dcf_pe_exit_10y", label: "P/E Exit 10Y" },
+  { key: "dcf_ebitda_exit_fcfe_10y", label: "EV/EBITDA Exit 10Y" },
   { key: "dcf_ebitda_exit_5y", label: "EBITDA Exit 5Y" },
   { key: "dcf_ebitda_exit_10y", label: "EBITDA Exit 10Y" },
 ];
