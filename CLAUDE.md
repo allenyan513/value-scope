@@ -15,7 +15,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). Provi
 ## Architecture Principles
 - **Simplicity first**: 3 services only — Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
 - **Compute on demand + cache**: Users visit → compute valuation → ISR cache 1 hour. S&P 500 batch precomputed daily via Vercel Cron.
-- **Frontend ↔ paid API isolation**: User requests NEVER directly trigger FMP calls. Unknown tickers are enqueued in `data_requests` table and processed by cron.
+- **Frontend ↔ paid API isolation**: Browser/client code never calls FMP directly. All FMP calls go through server-side API routes (`/api/provision/[ticker]` for real-time seed, cron for batch updates).
 - **Full TypeScript**: No Python. All valuation logic in TS.
 - **SEO priority**: SSG/ISR pages, structured data (JSON-LD), sitemap, meaningful meta tags.
 
