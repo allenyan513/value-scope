@@ -37,8 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
-# claude code local config
-.claude/
+# claude code — ignore local config, keep shared rules
+.claude/settings.local.json
+.claude/launch.json
+.claude/worktrees/
 
 # typescript
 *.tsbuildinfo
