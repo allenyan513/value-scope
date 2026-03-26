@@ -19,7 +19,12 @@ paths:
 ## Rate Limiting
 - `seedSingleCompany()` uses sequential calls with 300ms delay
 - Cron adds 3s between companies
-- Seed Mag 7 only: `DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config src/lib/data/seed-mag7.ts`
+
+## ADR Currency Conversion
+- `seedSingleCompany()` detects `reportedCurrency` from FMP income statements
+- Non-USD financials are converted to USD at ingestion via `getFXRateToUSD()` + `convertFinancialToUSD()`
+- FX rate stored on `companies.fx_rate_to_usd` for auditability
+- Fallback rates in `fmp-fx.ts` cover 23 currencies; FMP live forex is primary source
 
 ## Analyst Estimates
 - Daily cron fetches from FMP `getAnalystEstimates()` → `analyst_estimates` table

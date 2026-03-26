@@ -6,13 +6,11 @@ paths:
 
 # Database & API Notes
 
-## On-Demand Stock Provisioning
-- Unknown ticker → `<TickerPending>` component → `/api/provision/[ticker]`
-- Provision: `seedSingleCompany()` (~3s) → `computeFullValuation()` → `revalidatePath()`
-- Client polls every 3s, on "ready" calls `router.refresh()`
-- Only tickers matching `TICKER_REGEX` accepted (supports BRK-B style)
-- `data_requests` table enqueued as cron backup
+## Data Ingestion
+- All S&P 500 data is **pre-seeded** via `seedSingleCompany()` — no on-demand provisioning
+- Unknown tickers show a static "not currently covered" message (no FMP calls from user visits)
+- `seedSingleCompany()` detects `reportedCurrency` from FMP and converts non-USD financials to USD at ingestion
 
 ## ISR Cache Invalidation
-- `revalidatePath("/${ticker}", "layout")` called from: provision API, daily cron, valuation API
+- `revalidatePath("/${ticker}", "layout")` called from: daily cron, valuation API
 - Ensures pages reflect DB updates immediately (no 1-hour stale wait)

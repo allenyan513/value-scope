@@ -10,6 +10,7 @@ import {
   getCashFlowStatements,
   getAnalystEstimates,
   getHistoricalPrices,
+  getFXRateToUSD,
 } from "./fmp";
 import { SP500_TICKERS } from "./sp500-tickers";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../db/queries";
 import type { FinancialStatement } from "@/types";
 import { FMP_API_DELAY_MS, DESCRIPTION_MAX_LENGTH } from "@/lib/constants";
+import { convertFinancialToUSD, convertEstimateToUSD } from "./fx-convert";
 import { toDateString } from "@/lib/format";
 import { createServerClient } from "@/lib/db/supabase";
 
@@ -41,6 +43,20 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
       return { success: false, error: "No profile found — ticker may not exist" };
     }
 
+    // 2. Fetch income statements first to detect reporting currency
+    await sleep(FMP_API_DELAY_MS);
+    const incomeStmts = await getIncomeStatements(ticker, "annual", 5);
+    await sleep(FMP_API_DELAY_MS);
+
+    // Detect reporting currency from FMP data and get FX rate if non-USD
+    const reportedCurrency = incomeStmts[0]?.reportedCurrency || profile.currency || "USD";
+    let fxRate = 1.0;
+    if (reportedCurrency.toUpperCase() !== "USD") {
+      fxRate = await getFXRateToUSD(reportedCurrency);
+      await sleep(FMP_API_DELAY_MS);
+      console.log(`  [FX] ${ticker}: ${reportedCurrency} → USD (rate: ${fxRate})`);
+    }
+
     await upsertCompany({
       ticker: profile.symbol,
       name: profile.companyName,
@@ -53,13 +69,9 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
       exchange: profile.exchange,
       description: profile.description?.slice(0, DESCRIPTION_MAX_LENGTH) || "",
       logo_url: profile.image || null,
+      reporting_currency: reportedCurrency.toUpperCase(),
+      fx_rate_to_usd: fxRate,
     });
-
-    await sleep(FMP_API_DELAY_MS);
-
-    // 2. Fetch financial statements sequentially to avoid rate limits
-    const incomeStmts = await getIncomeStatements(ticker, "annual", 5);
-    await sleep(FMP_API_DELAY_MS);
     const balanceSheets = await getBalanceSheets(ticker, "annual", 5);
     await sleep(FMP_API_DELAY_MS);
     const cashFlows = await getCashFlowStatements(ticker, "annual", 5);
@@ -78,10 +90,10 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
           ? is.incomeTaxExpense / is.incomeBeforeTax
           : 0.21;
 
-      financialRows.push({
+      const rawRow = {
         ticker,
         period: is.calendarYear,
-        period_type: "annual",
+        period_type: "annual" as const,
         fiscal_year: year,
         fiscal_quarter: null,
         // Income Statement
@@ -115,12 +127,13 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
         free_cash_flow: cf?.freeCashFlow || 0,
         depreciation_amortization: cf?.depreciationAndAmortization || 0,
         dividends_paid: cf?.commonDividendsPaid || 0,
-        // Derived
+        // Derived (ratios — not converted by FX)
         tax_rate: Math.max(0, Math.min(0.5, taxRate)),
         gross_margin: is.revenue > 0 ? is.grossProfit / is.revenue : 0,
         operating_margin: is.revenue > 0 ? is.operatingIncome / is.revenue : 0,
         net_margin: is.revenue > 0 ? is.netIncome / is.revenue : 0,
-      });
+      };
+      financialRows.push(convertFinancialToUSD(rawRow, fxRate));
     }
 
     if (financialRows.length > 0) {
@@ -133,17 +146,22 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
 
     if (estimates.length > 0) {
       await upsertEstimates(
-        estimates.map((e) => ({
-          ticker,
-          period: e.date.split("-")[0], // extract year
-          revenue_estimate: e.revenueAvg,
-          eps_estimate: e.epsAvg,
-          revenue_low: e.revenueLow,
-          revenue_high: e.revenueHigh,
-          eps_low: e.epsLow,
-          eps_high: e.epsHigh,
-          number_of_analysts: e.numAnalystsRevenue,
-        }))
+        estimates.map((e) =>
+          convertEstimateToUSD(
+            {
+              ticker,
+              period: e.date.split("-")[0], // extract year
+              revenue_estimate: e.revenueAvg,
+              eps_estimate: e.epsAvg,
+              revenue_low: e.revenueLow,
+              revenue_high: e.revenueHigh,
+              eps_low: e.epsLow,
+              eps_high: e.epsHigh,
+              number_of_analysts: e.numAnalystsRevenue,
+            },
+            fxRate
+          )
+        )
       );
     }
 

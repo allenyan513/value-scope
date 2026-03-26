@@ -54,7 +54,6 @@ vi.mock("@/lib/db/queries", () => ({
     ])
   ),
   getValuationHistory: vi.fn(() => delayed([])),
-  enqueueDataRequest: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@/lib/data/fred", () => ({

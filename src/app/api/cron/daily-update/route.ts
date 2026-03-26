@@ -9,13 +9,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
-import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates } from "@/lib/data/fmp";
+import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates, getFXRateToUSD } from "@/lib/data/fmp";
+import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates, getPendingDataRequests, updateDataRequestStatus } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
-import { CRON_COMPANY_DELAY_MS } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
 
 export const maxDuration = 300; // 5 min max for Vercel Pro
@@ -94,22 +94,29 @@ export async function GET(request: NextRequest) {
         const currentPrice = quoteMap.get(ticker)?.price ?? company.price ?? 0;
         if (currentPrice <= 0) continue;
 
-        // Refresh analyst estimates from FMP
+        // Refresh analyst estimates from FMP (convert non-USD to USD)
         try {
           const fmpEstimates = await getAnalystEstimates(ticker, "annual", 5);
           if (fmpEstimates.length > 0) {
+            const currency = company.reporting_currency || "USD";
+            const fxRate = currency !== "USD" ? await getFXRateToUSD(currency) : 1.0;
             await upsertEstimates(
-              fmpEstimates.map((e) => ({
-                ticker,
-                period: e.date.split("-")[0],
-                revenue_estimate: e.revenueAvg,
-                eps_estimate: e.epsAvg,
-                revenue_low: e.revenueLow,
-                revenue_high: e.revenueHigh,
-                eps_low: e.epsLow,
-                eps_high: e.epsHigh,
-                number_of_analysts: e.numAnalystsRevenue,
-              }))
+              fmpEstimates.map((e) =>
+                convertEstimateToUSD(
+                  {
+                    ticker,
+                    period: e.date.split("-")[0],
+                    revenue_estimate: e.revenueAvg,
+                    eps_estimate: e.epsAvg,
+                    revenue_low: e.revenueLow,
+                    revenue_high: e.revenueHigh,
+                    eps_low: e.epsLow,
+                    eps_high: e.epsHigh,
+                    number_of_analysts: e.numAnalystsRevenue,
+                  },
+                  fxRate
+                )
+              )
             );
             // Re-fetch estimates from DB so valuation uses fresh data
             estimates = await getEstimates(ticker);
@@ -186,42 +193,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 5. Process pending data requests (new tickers users have requested)
-    // Rate budget: ~6 FMP calls per company, 300ms between each = ~2s per company
-    // With 3s gap between companies, ~10 companies/min, well under 300 req/min
-    let provisioned = 0;
-    let provisionErrors = 0;
-    try {
-      const { seedSingleCompany } = await import("@/lib/data/seed");
-      const pendingTickers = await getPendingDataRequests(10); // max 10 per run
-      for (const pendingTicker of pendingTickers) {
-        await updateDataRequestStatus(pendingTicker, "processing");
-        const result = await seedSingleCompany(pendingTicker);
-        if (result.success) {
-          await updateDataRequestStatus(pendingTicker, "completed");
-          revalidatePath(`/${pendingTicker}`, "layout");
-          provisioned++;
-        } else {
-          await updateDataRequestStatus(pendingTicker, "failed", result.error);
-          provisionErrors++;
-        }
-        // Rate limit: wait between companies to stay well under 300 req/min
-        if (pendingTickers.indexOf(pendingTicker) < pendingTickers.length - 1) {
-          await new Promise((r) => setTimeout(r, CRON_COMPANY_DELAY_MS));
-        }
-      }
-    } catch (error) {
-      console.error("Data request processing error:", error);
-    }
-
     return NextResponse.json({
       message: "Daily update complete",
       date: today,
       prices_updated: priceRows.length,
       valuations_computed: valuationSuccess,
       valuation_errors: valuationErrors,
-      new_tickers_provisioned: provisioned,
-      new_tickers_failed: provisionErrors,
     });
   } catch (error) {
     console.error("Daily update error:", error);
