@@ -1,7 +1,15 @@
 {
   "crons": [
     {
-      "path": "/api/cron/daily-update",
+      "path": "/api/cron/update-prices",
+      "schedule": "30 21 * * 1-5"
+    },
+    {
+      "path": "/api/cron/refresh-estimates",
+      "schedule": "0 22 * * 1-5"
+    },
+    {
+      "path": "/api/cron/recompute-valuations",
       "schedule": "30 22 * * 1-5"
     }
   ]

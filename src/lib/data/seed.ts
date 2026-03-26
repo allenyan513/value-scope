@@ -4,7 +4,6 @@
 // ============================================================
 
 import {
-  getSP500Constituents,
   getCompanyProfile,
   getIncomeStatements,
   getBalanceSheets,
@@ -12,6 +11,7 @@ import {
   getAnalystEstimates,
   getHistoricalPrices,
 } from "./fmp";
+import { SP500_TICKERS } from "./sp500-tickers";
 import {
   upsertCompany,
   upsertFinancials,
@@ -21,6 +21,7 @@ import {
 import type { FinancialStatement } from "@/types";
 import { FMP_API_DELAY_MS, DESCRIPTION_MAX_LENGTH } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
+import { createServerClient } from "@/lib/db/supabase";
 
 // Rate limiter: FMP Starter allows 300 req/min
 async function sleep(ms: number) {
@@ -180,16 +181,23 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
 async function main() {
   console.log("🚀 Starting S&P 500 data seeding...\n");
 
-  // 1. Get S&P 500 constituent list
-  const constituents = await getSP500Constituents();
-  console.log(`Found ${constituents.length} S&P 500 companies\n`);
+  // 1. Use static S&P 500 ticker list (FMP /sp500-constituent requires higher plan)
+  const allTickers = [...SP500_TICKERS];
+  console.log(`S&P 500 list: ${allTickers.length} companies\n`);
+
+  // 2. Fetch existing tickers from DB to enable resume (skip already-seeded)
+  const db = createServerClient();
+  const { data: existingRows } = await db.from("companies").select("ticker");
+  const existingTickers = new Set((existingRows ?? []).map((r) => r.ticker));
+  const toSeed = allTickers.filter((t) => !existingTickers.has(t));
+  console.log(`${existingTickers.size} already in DB, ${toSeed.length} to seed\n`);
 
   let success = 0;
   let failed = 0;
 
-  for (let i = 0; i < constituents.length; i++) {
-    const { symbol } = constituents[i];
-    console.log(`[${i + 1}/${constituents.length}] Seeding ${symbol}...`);
+  for (let i = 0; i < toSeed.length; i++) {
+    const symbol = toSeed[i];
+    console.log(`[${i + 1}/${toSeed.length}] Seeding ${symbol}...`);
 
     const result = await seedSingleCompany(symbol);
     if (result.success) success++;
@@ -199,7 +207,7 @@ async function main() {
     await sleep(1200);
   }
 
-  console.log(`\n✅ Seeding complete: ${success} success, ${failed} failed`);
+  console.log(`\n✅ Seeding complete: ${success} success, ${failed} failed (${existingTickers.size} skipped)`);
 }
 
 // Only run if executed directly via: npx tsx src/lib/data/seed.ts

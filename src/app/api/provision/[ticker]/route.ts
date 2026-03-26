@@ -23,6 +23,7 @@ import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import { createServerClient } from "@/lib/db/supabase";
 import type { PeerComparison } from "@/types";
+import { TICKER_REGEX } from "@/lib/constants";
 
 export const maxDuration = 30;
 
@@ -34,7 +35,7 @@ export async function POST(
   const upperTicker = ticker.toUpperCase();
 
   // Validate ticker format
-  if (!/^[A-Z]{1,5}$/.test(upperTicker)) {
+  if (!TICKER_REGEX.test(upperTicker)) {
     return NextResponse.json(
       { status: "failed", error: "Invalid ticker format" },
       { status: 400 }

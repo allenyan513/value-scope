@@ -10,7 +10,7 @@ paths:
 - Unknown ticker → `<TickerPending>` component → `/api/provision/[ticker]`
 - Provision: `seedSingleCompany()` (~3s) → `computeFullValuation()` → `revalidatePath()`
 - Client polls every 3s, on "ready" calls `router.refresh()`
-- Only tickers matching `/^[A-Z]{1,5}$/` accepted
+- Only tickers matching `TICKER_REGEX` accepted (supports BRK-B style)
 - `data_requests` table enqueued as cron backup
 
 ## ISR Cache Invalidation
