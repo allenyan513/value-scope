@@ -113,7 +113,7 @@ export async function seedSingleCompany(ticker: string): Promise<{ success: bool
         capital_expenditure: cf?.capitalExpenditure || 0,
         free_cash_flow: cf?.freeCashFlow || 0,
         depreciation_amortization: cf?.depreciationAndAmortization || 0,
-        dividends_paid: cf?.dividendsPaid || 0,
+        dividends_paid: cf?.commonDividendsPaid || 0,
         // Derived
         tax_rate: Math.max(0, Math.min(0.5, taxRate)),
         gross_margin: is.revenue > 0 ? is.grossProfit / is.revenue : 0,

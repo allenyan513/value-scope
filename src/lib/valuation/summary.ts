@@ -28,7 +28,7 @@ import {
   calculateEVEBITDAMultiples,
   type TradingMultiplesInputs,
 } from "./trading-multiples";
-import { calculatePeterLynch } from "./peter-lynch";
+import { calculatePEG } from "./peg";
 import { classifyCompany, computeWeightedConsensus, getTerminalGrowthRate } from "./company-classifier";
 
 export interface FullValuationInputs {
@@ -140,11 +140,13 @@ export function computeFullValuation(
   models.push(calculatePEMultiples(tradingInputs));
   models.push(calculateEVEBITDAMultiples(tradingInputs));
 
-  // Peter Lynch
+  // PEG Fair Value (forward estimates + dividend yield)
   models.push(
-    calculatePeterLynch({
+    calculatePEG({
       historicals: sortedHistoricals,
       currentPrice,
+      estimates,
+      marketCap: company.market_cap || currentPrice * company.shares_outstanding,
     })
   );
 

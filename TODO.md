@@ -1,7 +1,7 @@
 # ValuScope TODO
 
 ## Bugs
-- [ ] Peter Lynch Fair Value 数据异常 — AAPL 算出 $37.30（Growth 4.3% 被 clamp 到 5%），GOOGL 算出 $160.25。需要排查：1) Net Income CAGR 计算是否正确（AAPL 近年 net income 波动大，4Y CAGR 仅 4.3% 是否合理）；2) 公式是否应该用 EPS growth 而非 Net Income growth；3) Clamp 范围 5%-25% 是否合理（导致 AAPL 这种低增长高利润公司结果失真）
+- [x] PEG Fair Value 重新设计 — 改用 forward EPS CAGR + dividend yield + NTM EPS，growth floor 8%，AAPL $37→$108
 
 ## Features
 - [ ] Stripe Price IDs configuration, domain setup

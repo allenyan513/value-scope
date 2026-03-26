@@ -11,7 +11,7 @@ export type ValuationModelType =
   | "dcf_ebitda_exit_fcfe_10y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
-  | "peter_lynch";
+  | "peg";
 
 export interface ValuationResult {
   model_type: ValuationModelType;

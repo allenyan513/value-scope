@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["recharts", "lucide-react"],
   },
+  async redirects() {
+    return [
+      {
+        source: "/:ticker/valuation/peter-lynch",
+        destination: "/:ticker/valuation/peg",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

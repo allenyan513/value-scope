@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | ValuScope",
   },
   description:
-    "Free stock intrinsic value calculator. DCF, Trading Multiples, Peter Lynch models with transparent assumptions. Updated daily.",
+    "Free stock intrinsic value calculator. DCF, Trading Multiples, PEG models with transparent assumptions. Updated daily.",
   keywords: [
     "stock valuation",
     "intrinsic value",
