@@ -77,7 +77,7 @@ export function generateHistoricalMultiples(
 }
 
 // --- Helper to build FinancialStatement ---
-function makeFinancial(
+export function makeFinancial(
   year: number,
   overrides: Partial<FinancialStatement>
 ): FinancialStatement {
