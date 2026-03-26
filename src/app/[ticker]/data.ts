@@ -11,13 +11,13 @@ import {
   enqueueDataRequest,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getKeyMetrics, getEarningsSurprises } from "@/lib/data/fmp";
+import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
-import type { PeerComparison, EarningsSurprise } from "@/types";
+import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDowngrade } from "@/types";
 
 /**
  * Core ticker data — needed by ALL pages.
@@ -111,15 +111,26 @@ export const getCoreTickerData = cache(async (ticker: string) => {
 
 /**
  * Analyst-only data — needed only by /analyst-estimates page.
- * Fetches price targets, earnings surprises, and 2-year price history.
+ * Fetches price targets, earnings surprises, price history, recommendations,
+ * upgrades/downgrades, and next earnings date — all in parallel.
  */
 export const getAnalystData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
 
-  const [priceTargets, rawSurprises, priceHistory] = await Promise.all([
+  const [
+    priceTargets,
+    rawSurprises,
+    priceHistory,
+    rawRecommendations,
+    rawUpgrades,
+    rawEarningsCalendar,
+  ] = await Promise.all([
     getPriceTargets(upperTicker).catch(() => null),
     getEarningsSurprises(upperTicker, 12).catch(() => []),
     getPriceHistory(upperTicker, 365 * 2).catch(() => []),
+    getAnalystRecommendations(upperTicker).catch(() => null),
+    getUpgradesDowngrades(upperTicker, 10).catch(() => []),
+    getEarningsCalendar(upperTicker).catch(() => null),
   ]);
 
   const earningsSurprises: EarningsSurprise[] = rawSurprises.map((s) => ({
@@ -133,7 +144,41 @@ export const getAnalystData = cache(async (ticker: string) => {
         : 0,
   }));
 
-  return { priceTargets, earningsSurprises, priceHistory };
+  const recommendations: AnalystRecommendation | null = rawRecommendations
+    ? {
+        strongBuy: rawRecommendations.strongBuy,
+        buy: rawRecommendations.buy,
+        hold: rawRecommendations.hold,
+        sell: rawRecommendations.sell,
+        strongSell: rawRecommendations.strongSell,
+        totalAnalysts:
+          rawRecommendations.strongBuy +
+          rawRecommendations.buy +
+          rawRecommendations.hold +
+          rawRecommendations.sell +
+          rawRecommendations.strongSell,
+        consensus: rawRecommendations.consensus,
+      }
+    : null;
+
+  const upgradesDowngrades: UpgradeDowngrade[] = rawUpgrades.map((u) => ({
+    date: u.publishedDate,
+    gradingCompany: u.gradingCompany,
+    previousGrade: u.previousGrade,
+    newGrade: u.newGrade,
+    action: u.action,
+  }));
+
+  const nextEarningsDate: string | null = rawEarningsCalendar?.date ?? null;
+
+  return {
+    priceTargets,
+    earningsSurprises,
+    priceHistory,
+    recommendations,
+    upgradesDowngrades,
+    nextEarningsDate,
+  };
 });
 
 /**

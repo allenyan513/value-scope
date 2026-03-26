@@ -80,6 +80,26 @@ export interface EarningsSurprise {
   surprise_percent: number;
 }
 
+// --- Analyst Recommendation (Buy/Hold/Sell distribution) ---
+export interface AnalystRecommendation {
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+  totalAnalysts: number;
+  consensus: string;
+}
+
+// --- Upgrade / Downgrade ---
+export interface UpgradeDowngrade {
+  date: string;
+  gradingCompany: string;
+  previousGrade: string;
+  newGrade: string;
+  action: string;
+}
+
 // --- Daily Price ---
 export interface DailyPrice {
   ticker: string;

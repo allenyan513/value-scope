@@ -71,6 +71,15 @@ vi.mock("@/lib/data/fmp", () => ({
     ])
   ),
   getHistoricalPrices: vi.fn(() => delayed([])),
+  getAnalystRecommendations: vi.fn(() =>
+    delayed({ strongBuy: 10, buy: 8, hold: 5, sell: 1, strongSell: 0, consensus: "Buy" })
+  ),
+  getUpgradesDowngrades: vi.fn(() =>
+    delayed([{ publishedDate: "2025-03-01", gradingCompany: "Morgan Stanley", previousGrade: "Hold", newGrade: "Buy", action: "upgrade" }])
+  ),
+  getEarningsCalendar: vi.fn(() =>
+    delayed({ date: "2025-04-24", symbol: "TEST", eps: null, epsEstimated: 1.5, revenue: null, revenueEstimated: 95000000000 })
+  ),
 }));
 
 vi.mock("@/lib/valuation/summary", () => ({
@@ -139,16 +148,19 @@ describe("getAnalystData — parallelism", () => {
     vi.clearAllMocks();
   });
 
-  it("completes within 200ms (3 parallel 100ms queries)", async () => {
+  it("completes within 200ms (6 parallel 100ms queries)", async () => {
     const start = performance.now();
     const result = await getAnalystData("TEST");
     const duration = performance.now() - start;
 
-    // If parallel: ~100ms. If sequential: 300ms
+    // If parallel: ~100ms. If sequential: 600ms
     expect(duration).toBeLessThan(200);
     expect(result).toHaveProperty("priceTargets");
     expect(result).toHaveProperty("earningsSurprises");
     expect(result).toHaveProperty("priceHistory");
+    expect(result).toHaveProperty("recommendations");
+    expect(result).toHaveProperty("upgradesDowngrades");
+    expect(result).toHaveProperty("nextEarningsDate");
   });
 
   it("normalizes earnings surprises correctly", async () => {

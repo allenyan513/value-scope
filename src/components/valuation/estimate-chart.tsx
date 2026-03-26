@@ -9,8 +9,8 @@ import {
   ResponsiveContainer,
   Cell,
   ReferenceLine,
+  ErrorBar,
 } from "recharts";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { FinancialStatement, AnalystEstimate, EarningsSurprise } from "@/types";
 import { formatLargeNumber, formatCurrency } from "@/lib/format";
 import { EstimateKPIRow } from "./estimate-kpi-row";
@@ -29,7 +29,9 @@ interface ChartDataPoint {
   year: string;
   value: number;
   isEstimate: boolean;
-  beatMiss: number | null; // surprise %, positive = beat
+  beatMiss: number | null;
+  errorUp: number; // distance from value to high estimate
+  errorDown: number; // distance from value to low estimate
 }
 
 interface Props {
@@ -65,19 +67,16 @@ export function EstimateChart({
 
     let beatMiss: number | null = null;
     if (metricType === "eps" && earningsSurprises) {
-      // Match annual: find surprises in the same fiscal year
       const yearSurprises = earningsSurprises.filter(
         (s) => s.date.startsWith(year) || s.date.startsWith(String(f.fiscal_year + 1))
       );
       if (yearSurprises.length > 0) {
-        // Use the average surprise across quarters
         const avgSurprise =
           yearSurprises.reduce((sum, s) => sum + s.surprise_percent, 0) /
           yearSurprises.length;
         beatMiss = avgSurprise;
       }
     } else if (metricType === "revenue") {
-      // Find matching estimate for this year
       const est = estimates.find((e) => e.period === year);
       if (est && est.revenue_estimate > 0) {
         beatMiss =
@@ -85,20 +84,27 @@ export function EstimateChart({
       }
     }
 
-    return { year, value, isEstimate: false, beatMiss };
+    return { year, value, isEstimate: false, beatMiss, errorUp: 0, errorDown: 0 };
   });
 
-  // Build estimate data points (only future years not in financials)
+  // Build estimate data points with range whiskers
   const actualYears = new Set(sortedFinancials.map((f) => String(f.fiscal_year)));
   const estimatePoints: ChartDataPoint[] = [...estimates]
     .filter((e) => !actualYears.has(e.period))
     .sort((a, b) => a.period.localeCompare(b.period))
-    .map((e) => ({
-      year: e.period,
-      value: metricType === "revenue" ? e.revenue_estimate : e.eps_estimate,
-      isEstimate: true,
-      beatMiss: null,
-    }));
+    .map((e) => {
+      const value = metricType === "revenue" ? e.revenue_estimate : e.eps_estimate;
+      const low = metricType === "revenue" ? e.revenue_low : e.eps_low;
+      const high = metricType === "revenue" ? e.revenue_high : e.eps_high;
+      return {
+        year: e.period,
+        value,
+        isEstimate: true,
+        beatMiss: null,
+        errorUp: high > 0 && value > 0 ? high - value : 0,
+        errorDown: low > 0 && value > 0 ? value - low : 0,
+      };
+    });
 
   const allPoints = [...actualPoints, ...estimatePoints];
 
@@ -127,100 +133,116 @@ export function EstimateChart({
         )
       : null;
 
-  // Compute beat/miss values
   const beatMissValues = actualPoints
     .map((p) => p.beatMiss)
     .filter((v): v is number => v !== null);
 
+  const hasWhiskers = estimatePoints.some((p) => p.errorUp > 0 || p.errorDown > 0);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">
-          {ticker} {title} Estimates
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <EstimateKPIRow
-          pastCAGR={pastCAGR}
-          estCAGR={estCAGR}
-          actualsCount={actuals.length}
-          estCount={estPoints.length}
-          beatMissValues={beatMissValues}
-          companyName={companyName}
-          title={title}
-        />
+    <div className="val-card">
+      <h3 className="val-card-title">
+        {ticker} {title} Estimates
+      </h3>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 bg-slate-700 rounded-sm inline-block" />
-            Actual
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 bg-sky-400 rounded-sm inline-block" />
-            Estimate
-          </span>
-        </div>
+      <EstimateKPIRow
+        pastCAGR={pastCAGR}
+        estCAGR={estCAGR}
+        actualsCount={actuals.length}
+        estCount={estPoints.length}
+        beatMissValues={beatMissValues}
+        companyName={companyName}
+        title={title}
+      />
 
-        {/* Bar Chart */}
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart
-            data={allPoints}
-            margin={{ top: 20, right: 10, left: 10, bottom: 30 }}
-          >
-            <XAxis
-              dataKey="year"
-              tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
-              tickLine={false}
-              axisLine={{ stroke: "oklch(1 0 0 / 12%)" }}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => {
-                if (metricType === "revenue") {
-                  if (Math.abs(v) >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
-                  if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(0)}B`;
-                  if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
-                  return `${v}`;
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 bg-slate-600 rounded-sm inline-block" />
+          Actual
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 bg-sky-400 rounded-sm inline-block" />
+          Estimate
+        </span>
+        {hasWhiskers && (
+          <span className="flex items-center gap-1.5">
+            <span className="w-0.5 h-3 bg-sky-300 inline-block" />
+            Low–High Range
+          </span>
+        )}
+      </div>
+
+      {/* Bar Chart */}
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart
+          data={allPoints}
+          margin={{ top: 20, right: 10, left: 10, bottom: 30 }}
+        >
+          <XAxis
+            dataKey="year"
+            tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
+            tickLine={false}
+            axisLine={{ stroke: "oklch(1 0 0 / 12%)" }}
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v: number) => {
+              if (metricType === "revenue") {
+                if (Math.abs(v) >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
+                if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(0)}B`;
+                if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+                return `${v}`;
+              }
+              return `$${v.toFixed(1)}`;
+            }}
+            width={55}
+            orientation="right"
+          />
+          <ReferenceLine y={0} stroke="oklch(1 0 0 / 12%)" />
+          <Tooltip
+            contentStyle={{
+              background: "oklch(0.22 0.015 260)",
+              border: "1px solid oklch(1 0 0 / 12%)",
+              borderRadius: "4px",
+              fontSize: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              color: "oklch(0.95 0.005 260)",
+            }}
+            formatter={(value, name) => {
+              if (name === "value") return [fmt(Number(value)), title];
+              return [null, null];
+            }}
+            labelFormatter={(label) => `FY ${label}`}
+          />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>
+            {hasWhiskers && (
+              <ErrorBar
+                dataKey="errorUp"
+                width={6}
+                strokeWidth={1.5}
+                stroke="oklch(0.75 0.12 220)"
+                direction="y"
+              />
+            )}
+            {allPoints.map((entry, index) => (
+              <Cell
+                key={index}
+                fill={
+                  entry.isEstimate
+                    ? "oklch(0.70 0.14 220)"
+                    : "oklch(0.50 0.04 260)"
                 }
-                return `$${v.toFixed(1)}`;
-              }}
-              width={55}
-              orientation="right"
-            />
-            <ReferenceLine y={0} stroke="oklch(1 0 0 / 12%)" />
-            <Tooltip
-              contentStyle={{
-                background: "oklch(0.22 0.015 260)",
-                border: "1px solid oklch(1 0 0 / 12%)",
-                borderRadius: "4px",
-                fontSize: "12px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                color: "oklch(0.95 0.005 260)",
-              }}
-              formatter={(value) => [fmt(Number(value)), title]}
-              labelFormatter={(label) => `FY ${label}`}
-            />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>
-              {allPoints.map((entry, index) => (
-                <Cell
-                  key={index}
-                  fill={
-                    entry.isEstimate
-                      ? "oklch(0.70 0.14 220)"
-                      : "oklch(0.50 0.04 260)"
-                  }
-                  fillOpacity={entry.isEstimate ? 0.7 : 1}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+                fillOpacity={entry.isEstimate ? 0.7 : 1}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
 
-        <EstimateBeatMissTable actualPoints={actualPoints} />
-      </CardContent>
-    </Card>
+      <EstimateBeatMissTable actualPoints={actualPoints} />
+    </div>
   );
 }
