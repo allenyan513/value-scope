@@ -10,7 +10,8 @@ import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import type { PeerComparison, ValuationSummary, AnalystEstimate } from "@/types";
-import { getKeyMetrics, getAnalystEstimates, getEVMetrics } from "@/lib/data/fmp";
+import { getKeyMetrics, getAnalystEstimates, getEVMetrics, getFXRateToUSD } from "@/lib/data/fmp";
+import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 import { VERDICT_THRESHOLD } from "@/lib/constants";
 
 export async function GET(
@@ -73,18 +74,25 @@ export async function GET(
       try {
         const fmpEstimates = await getAnalystEstimates(upperTicker, "annual", 3);
         if (fmpEstimates.length > 0) {
+          const currency = company?.reporting_currency || "USD";
+          const fxRate = currency !== "USD" ? await getFXRateToUSD(currency) : 1.0;
           await upsertEstimates(
-            fmpEstimates.map((e) => ({
-              ticker: upperTicker,
-              period: e.date.split("-")[0],
-              revenue_estimate: e.revenueAvg,
-              eps_estimate: e.epsAvg,
-              revenue_low: e.revenueLow,
-              revenue_high: e.revenueHigh,
-              eps_low: e.epsLow,
-              eps_high: e.epsHigh,
-              number_of_analysts: e.numAnalystsRevenue,
-            }))
+            fmpEstimates.map((e) =>
+              convertEstimateToUSD(
+                {
+                  ticker: upperTicker,
+                  period: e.date.split("-")[0],
+                  revenue_estimate: e.revenueAvg,
+                  eps_estimate: e.epsAvg,
+                  revenue_low: e.revenueLow,
+                  revenue_high: e.revenueHigh,
+                  eps_low: e.epsLow,
+                  eps_high: e.epsHigh,
+                  number_of_analysts: e.numAnalystsRevenue,
+                },
+                fxRate
+              )
+            )
           );
           estimates = await getEstimates(upperTicker);
         }
