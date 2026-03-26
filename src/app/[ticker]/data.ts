@@ -137,15 +137,19 @@ export const getChartHistory = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
   const days = DEFAULT_HISTORY_DAYS;
 
-  // Try real valuation history first
-  const history = await getValuationHistory(upperTicker, days);
-  if (history.length > 0) {
+  // Fetch both valuation history and price history in parallel
+  const [history, dbPrices] = await Promise.all([
+    getValuationHistory(upperTicker, days),
+    getPriceHistory(upperTicker, days),
+  ]);
+
+  // If we have enough valuation history (>30 days), use it directly
+  if (history.length >= 30) {
     return history;
   }
 
-  // Fallback 1: daily_prices table
+  // Otherwise, build from daily_prices as the price backbone
   let closePrices: { date: string; close: number }[] = [];
-  const dbPrices = await getPriceHistory(upperTicker, days);
   if (dbPrices.length > 0) {
     closePrices = dbPrices.map((p) => ({ date: p.date, close: p.close }));
   }
@@ -188,10 +192,15 @@ export const getChartHistory = cache(async (ticker: string) => {
   const discountFactor =
     lastPrice > 0 ? Math.min(lastEma / lastPrice, 0.95) : 0.7;
 
+  // Merge real intrinsic values from valuation_history where available
+  const realIVMap = new Map(
+    history.map((h) => [h.date, h.intrinsic_value])
+  );
+
   const syntheticHistory = closePrices.map((p, i) => ({
     date: p.date,
     close_price: p.close,
-    intrinsic_value: Math.round(emaValues[i] * discountFactor * 100) / 100,
+    intrinsic_value: realIVMap.get(p.date) ?? Math.round(emaValues[i] * discountFactor * 100) / 100,
   }));
 
   // Sample to ~500 points max

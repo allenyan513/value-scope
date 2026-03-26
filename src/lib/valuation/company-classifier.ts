@@ -2,7 +2,8 @@
 // Company Classifier — Determines company archetype and model applicability
 // ============================================================
 
-import type { FinancialStatement, Company, AnalystEstimate } from "@/types";
+import type { FinancialStatement, Company, AnalystEstimate, ConsensusAdjustment } from "@/types";
+import { OUTLIER_HALF_THRESHOLD, OUTLIER_QUARTER_THRESHOLD } from "@/lib/constants";
 
 // --- Company Archetypes ---
 
@@ -179,100 +180,114 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
 }> = {
   high_growth: {
     label: "High Growth",
-    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while PEG provides growth-adjusted anchor.",
+    description: "Fast-growing company with strong revenue momentum. PEG provides the most reliable growth-adjusted anchor.",
     weights: {
-      dcf_3stage: 0.20,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.08,
+      dcf_ebitda_exit_fcfe_10y: 0.07,
       pe_multiples: 0.10,
-      ev_ebitda_multiples: 0.15,
-      peg: 0.35,
+      ev_ebitda_multiples: 0.20,
+      peg: 0.40,
     },
   },
   profitable_growth: {
     label: "Profitable Growth",
-    description: "Company with both strong growth and healthy profitability. DCF provides the most reliable estimate, complemented by multiples.",
+    description: "Company with both strong growth and healthy profitability. PEG best captures the balance of growth and earnings quality.",
     weights: {
-      dcf_3stage: 0.20,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
-      pe_multiples: 0.20,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.08,
+      dcf_ebitda_exit_fcfe_10y: 0.07,
+      pe_multiples: 0.15,
       ev_ebitda_multiples: 0.15,
-      peg: 0.25,
+      peg: 0.40,
     },
   },
   mature_stable: {
     label: "Mature & Stable",
-    description: "Well-established company with predictable cash flows. DCF and trading multiples are most reliable.",
+    description: "Well-established company with predictable earnings. P/E peer comparison is the most intuitive and reliable valuation approach.",
     weights: {
       dcf_3stage: 0.15,
       dcf_pe_exit_10y: 0.10,
       dcf_ebitda_exit_fcfe_10y: 0.10,
-      pe_multiples: 0.25,
-      ev_ebitda_multiples: 0.15,
-      peg: 0.25,
+      pe_multiples: 0.40,
+      ev_ebitda_multiples: 0.10,
+      peg: 0.15,
     },
   },
   dividend_payer: {
     label: "Dividend Payer",
-    description: "Company returning significant cash to shareholders via dividends. Cash flow stability and payout sustainability are key.",
+    description: "Company returning significant cash to shareholders via dividends. DCF is the most reliable model for predictable cash flows.",
     weights: {
-      dcf_3stage: 0.15,
+      dcf_3stage: 0.40,
       dcf_pe_exit_10y: 0.10,
       dcf_ebitda_exit_fcfe_10y: 0.10,
-      pe_multiples: 0.25,
-      ev_ebitda_multiples: 0.15,
-      peg: 0.25,
+      pe_multiples: 0.15,
+      ev_ebitda_multiples: 0.10,
+      peg: 0.15,
     },
   },
   cyclical: {
     label: "Cyclical",
-    description: "Earnings fluctuate significantly with economic cycles. EV/EBITDA and DCF are preferred over point-in-time P/E.",
+    description: "Earnings fluctuate significantly with economic cycles. EV/EBITDA is more stable than point-in-time P/E for cyclical businesses.",
     weights: {
       dcf_3stage: 0.15,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
+      dcf_pe_exit_10y: 0.07,
+      dcf_ebitda_exit_fcfe_10y: 0.08,
       pe_multiples: 0.10,
-      ev_ebitda_multiples: 0.20,
-      peg: 0.35,
+      ev_ebitda_multiples: 0.40,
+      peg: 0.20,
     },
   },
   turnaround: {
     label: "Turnaround",
-    description: "Currently unprofitable but showing improving trends. DCF and EV/EBITDA are prioritized.",
+    description: "Currently unprofitable but showing improving trends. EV/EBITDA is the best alternative when earnings-based models are unreliable.",
     weights: {
-      dcf_3stage: 0.20,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.05,
+      dcf_ebitda_exit_fcfe_10y: 0.05,
       pe_multiples: 0.00,
-      ev_ebitda_multiples: 0.25,
+      ev_ebitda_multiples: 0.40,
       peg: 0.35,
     },
   },
   asset_heavy: {
     label: "Asset-Heavy",
-    description: "Capital-intensive business with significant tangible assets. DCF and EV/EBITDA are key metrics.",
+    description: "Capital-intensive business with significant tangible assets. EV/EBITDA is the industry standard for asset-heavy valuations.",
     weights: {
-      dcf_3stage: 0.15,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
-      pe_multiples: 0.15,
-      ev_ebitda_multiples: 0.20,
-      peg: 0.30,
+      dcf_3stage: 0.12,
+      dcf_pe_exit_10y: 0.08,
+      dcf_ebitda_exit_fcfe_10y: 0.08,
+      pe_multiples: 0.12,
+      ev_ebitda_multiples: 0.40,
+      peg: 0.20,
     },
   },
   loss_making: {
     label: "Loss-Making",
-    description: "Company is currently unprofitable. EV/EBITDA provides an alternative anchor when earnings-based models are not applicable.",
+    description: "Company is currently unprofitable. EV/EBITDA provides the only reliable anchor when earnings-based models are not applicable.",
     weights: {
-      dcf_3stage: 0.15,
-      dcf_pe_exit_10y: 0.10,
-      dcf_ebitda_exit_fcfe_10y: 0.10,
+      dcf_3stage: 0.10,
+      dcf_pe_exit_10y: 0.05,
+      dcf_ebitda_exit_fcfe_10y: 0.05,
       pe_multiples: 0.00,
-      ev_ebitda_multiples: 0.25,
+      ev_ebitda_multiples: 0.40,
       peg: 0.40,
     },
   },
+};
+
+// --- Primary Model per Archetype ---
+// The single most appropriate model for each company type, weighted at 40%.
+
+export const PRIMARY_MODEL_MAP: Record<CompanyArchetype, string> = {
+  high_growth: "peg",
+  profitable_growth: "peg",
+  mature_stable: "pe_multiples",
+  dividend_payer: "dcf_3stage",
+  cyclical: "ev_ebitda_multiples",
+  turnaround: "ev_ebitda_multiples",
+  asset_heavy: "ev_ebitda_multiples",
+  loss_making: "ev_ebitda_multiples",
 };
 
 function determineArchetype(m: ClassificationMetrics): CompanyArchetype {
@@ -506,37 +521,89 @@ export function classifyCompany(
   };
 }
 
+// --- Helpers ---
+
+function computeMedian(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 /**
  * Compute weighted consensus fair value from model results.
- * Returns null values for models that returned fair_value=0 (N/A).
+ * Applies outlier penalty: models deviating >50% from median get half weight,
+ * >100% get quarter weight. Returns primary model info and adjustment log.
  */
 export function computeWeightedConsensus(
   models: Array<{ model_type: string; fair_value: number; low_estimate: number; high_estimate: number }>,
-  weights: ModelWeights
-): { consensus: number; low: number; high: number; modelContributions: Array<{ model: string; weight: number; value: number }> } {
+  weights: ModelWeights,
+  archetype?: CompanyArchetype
+): {
+  consensus: number;
+  low: number;
+  high: number;
+  primaryModel: string;
+  modelContributions: Array<{ model: string; weight: number; value: number }>;
+  adjustments: ConsensusAdjustment[];
+} {
+  const primaryModel = archetype ? PRIMARY_MODEL_MAP[archetype] : "";
+
+  // 1. Filter valid models
+  const validModels = models.filter((m) => m.fair_value > 0 && (weights[m.model_type] ?? 0) > 0);
+
+  if (validModels.length === 0) {
+    return { consensus: 0, low: 0, high: 0, primaryModel, modelContributions: [], adjustments: [] };
+  }
+
+  // 2. Compute median fair value for outlier detection
+  const medianFV = computeMedian(validModels.map((m) => m.fair_value));
+  const adjustments: ConsensusAdjustment[] = [];
+
+  // 3. Apply outlier penalty and accumulate weighted sums
   let totalWeight = 0;
   let weightedSum = 0;
   let weightedLow = 0;
   let weightedHigh = 0;
   const contributions: Array<{ model: string; weight: number; value: number }> = [];
 
-  for (const m of models) {
-    if (m.fair_value <= 0) continue;
-    const w = weights[m.model_type] ?? 0;
-    if (w <= 0) continue;
+  for (const m of validModels) {
+    const originalWeight = weights[m.model_type] ?? 0;
+    let adjustedWeight = originalWeight;
 
-    totalWeight += w;
-    weightedSum += m.fair_value * w;
-    weightedLow += m.low_estimate * w;
-    weightedHigh += m.high_estimate * w;
-    contributions.push({ model: m.model_type, weight: w, value: m.fair_value });
+    // Outlier detection (only meaningful with 3+ models and non-zero median)
+    if (medianFV > 0 && validModels.length >= 3) {
+      const deviation = Math.abs(m.fair_value - medianFV) / medianFV;
+      if (deviation > OUTLIER_QUARTER_THRESHOLD) {
+        adjustedWeight = originalWeight * 0.25;
+        adjustments.push({
+          model: m.model_type,
+          originalWeight,
+          adjustedWeight,
+          reason: `${(deviation * 100).toFixed(0)}% from median (weight quartered)`,
+        });
+      } else if (deviation > OUTLIER_HALF_THRESHOLD) {
+        adjustedWeight = originalWeight * 0.5;
+        adjustments.push({
+          model: m.model_type,
+          originalWeight,
+          adjustedWeight,
+          reason: `${(deviation * 100).toFixed(0)}% from median (weight halved)`,
+        });
+      }
+    }
+
+    totalWeight += adjustedWeight;
+    weightedSum += m.fair_value * adjustedWeight;
+    weightedLow += m.low_estimate * adjustedWeight;
+    weightedHigh += m.high_estimate * adjustedWeight;
+    contributions.push({ model: m.model_type, weight: adjustedWeight, value: m.fair_value });
   }
 
   if (totalWeight === 0) {
-    return { consensus: 0, low: 0, high: 0, modelContributions: [] };
+    return { consensus: 0, low: 0, high: 0, primaryModel, modelContributions: [], adjustments };
   }
 
-  // Normalize weights (in case some models were N/A)
+  // 4. Normalize weights
   const normalizedContributions = contributions.map((c) => ({
     ...c,
     weight: c.weight / totalWeight,
@@ -546,6 +613,8 @@ export function computeWeightedConsensus(
     consensus: weightedSum / totalWeight,
     low: weightedLow / totalWeight,
     high: weightedHigh / totalWeight,
+    primaryModel,
     modelContributions: normalizedContributions,
+    adjustments,
   };
 }

@@ -150,22 +150,23 @@ export function computeFullValuation(
     })
   );
 
-  // 4. Compute weighted consensus using classification weights
-  const { consensus, low, high } = computeWeightedConsensus(
+  // 4. Compute weighted consensus using classification weights + outlier penalty
+  const { consensus, low, high, primaryModel: primaryModelType, adjustments } = computeWeightedConsensus(
     models,
-    classification.model_weights
+    classification.model_weights,
+    classification.archetype
   );
 
   const consensusUpside = currentPrice > 0
     ? ((consensus - currentPrice) / currentPrice) * 100
     : 0;
 
-  // 5. Determine primary valuation (DCF Perpetual Growth as fallback)
-  const primaryModel = models.find(
-    (m) => m.model_type === "dcf_3stage"
-  );
-  const primaryFairValue = primaryModel?.fair_value ?? 0;
-  const primaryUpside = primaryModel?.upside_percent ?? 0;
+  // 5. Determine primary valuation (based on archetype's primary model)
+  const primaryResult = models.find(
+    (m) => m.model_type === primaryModelType
+  ) ?? models.find((m) => m.model_type === "dcf_3stage");
+  const primaryFairValue = primaryResult?.fair_value ?? 0;
+  const primaryUpside = primaryResult?.upside_percent ?? 0;
 
   // 6. Determine verdict based on consensus (not just primary model)
   const verdictUpside = consensus > 0 ? consensusUpside : primaryUpside;
@@ -196,6 +197,8 @@ export function computeFullValuation(
     consensus_low: low,
     consensus_high: high,
     consensus_upside: consensusUpside,
+    consensus_primary_model: primaryModelType,
+    consensus_adjustments: adjustments,
     models,
     wacc: waccResult,
     classification,

@@ -130,18 +130,30 @@ export interface WACCResult {
   total_equity: number;
 }
 
+// --- Consensus Adjustments ---
+export interface ConsensusAdjustment {
+  model: string;
+  originalWeight: number;
+  adjustedWeight: number;
+  reason: string;
+}
+
 // --- Valuation Summary ---
 export interface ValuationSummary {
   ticker: string;
   company_name: string;
   current_price: number;
-  primary_fair_value: number; // DCF Growth Exit 5Y
+  primary_fair_value: number;
   primary_upside: number;
   // Weighted consensus across all applicable models
   consensus_fair_value: number;
   consensus_low: number;
   consensus_high: number;
   consensus_upside: number;
+  /** The model_type of the primary (dominant) model for this archetype */
+  consensus_primary_model: string;
+  /** Outlier adjustments applied during consensus calculation */
+  consensus_adjustments: ConsensusAdjustment[];
   models: ValuationResult[];
   wacc: WACCResult;
   classification: CompanyClassification;
