@@ -112,6 +112,11 @@ export async function POST(
                 trailing_pe: metrics[0].priceToEarningsRatio ?? null,
                 forward_pe: null,
                 ev_ebitda: null,
+                price_to_book: metrics[0].priceToBookRatio ?? null,
+                price_to_sales: metrics[0].priceToSalesRatio ?? null,
+                revenue_growth: null,
+                net_margin: null,
+                roe: null,
               });
             }
           } catch {

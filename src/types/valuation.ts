@@ -11,6 +11,9 @@ export type ValuationModelType =
   | "dcf_ebitda_exit_fcfe_10y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
+  | "pb_multiples"
+  | "ps_multiples"
+  | "p_fcf_multiples"
   | "peg";
 
 export interface ValuationResult {
@@ -103,6 +106,11 @@ export interface PeerComparison {
   trailing_pe: number | null;
   forward_pe: number | null;
   ev_ebitda: number | null;
+  price_to_book: number | null;
+  price_to_sales: number | null;
+  revenue_growth: number | null;
+  net_margin: number | null;
+  roe: number | null;
 }
 
 export interface TradingMultiplesResult extends ValuationResult {
@@ -174,6 +182,9 @@ export interface HistoricalMultiplesPoint {
   date: string;
   pe: number | null;
   ev_ebitda: number | null;
+  pb: number | null;
+  ps: number | null;
+  p_fcf: number | null;
 }
 
 export interface MultipleStats {
@@ -190,5 +201,8 @@ export interface HistoricalMultiplesResponse {
   stats: {
     pe: MultipleStats | null;
     ev_ebitda: MultipleStats | null;
+    pb: MultipleStats | null;
+    ps: MultipleStats | null;
+    p_fcf: MultipleStats | null;
   };
 }

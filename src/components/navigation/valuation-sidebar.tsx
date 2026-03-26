@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const SIDEBAR_ITEMS = [
   { label: "Valuation Summary", href: "/summary", segment: "summary" },
   { label: "Discounted Cash Flow", href: "/dcf/perpetual-growth", segment: "dcf" },
-  { label: "Trading Multiples", href: "/relative/pe-multiples", segment: "relative" },
+  { label: "Trading Multiples", href: "/trading-multiples", segment: "trading-multiples" },
   { label: "PEG Fair Value", href: "/peg", segment: "peg" },
   { label: "Analyst Estimates", href: "/analyst-estimates", segment: "analyst-estimates" },
   { label: "Dividend Discount Model", href: "/ddm", segment: "ddm", badge: "Soon" },

@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
-      url: `${baseUrl}/${ticker}/relative-valuation`,
+      url: `${baseUrl}/${ticker}/valuation/trading-multiples`,
       lastModified: new Date(),
       changeFrequency: "daily" as const,
       priority: 0.7,
