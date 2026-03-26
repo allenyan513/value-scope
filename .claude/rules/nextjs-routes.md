@@ -18,6 +18,13 @@ Never destructure params synchronously — it will silently fail.
 - After DB mutations: always call `revalidatePath("/${ticker}", "layout")` to bust cache immediately
 - `generateStaticParams()` returns `[]` — all routes are on-demand ISR, not precompiled
 
+## ISR + Dynamic APIs — NEVER MIX (CRITICAL)
+ISR pages (`revalidate = 3600`) must **never** access dynamic APIs:
+- `searchParams`, `cookies()`, `headers()` — all trigger `DYNAMIC_SERVER_USAGE` error in production
+- If a page needs query params (e.g., `?strategy=`), read them in a **client component** via `useSearchParams()` hook
+- Server component renders with default values; client component handles URL-driven variations
+- This was a production incident (500 on `/AAPL/valuation/summary`) — do not repeat
+
 ## Ticker Normalization
 Normalize immediately at route entry:
 ```ts

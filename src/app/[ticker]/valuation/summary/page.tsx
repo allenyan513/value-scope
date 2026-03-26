@@ -1,20 +1,13 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
-import { SummaryCard } from "@/components/valuation/summary-card";
 import { TickerPending } from "@/components/provisioning/ticker-pending";
 import { getCoreTickerData } from "../../data";
-import { computeFullValuation } from "@/lib/valuation/summary";
-import { DEFAULT_CONSENSUS_STRATEGY } from "@/lib/constants";
 import { ValuationChartSection } from "./valuation-chart-section";
-import { StrategySwitcher } from "./strategy-switcher";
-import type { ConsensusStrategy } from "@/types";
-
-const VALID_STRATEGIES = new Set<ConsensusStrategy>(["dcf_primary", "median", "weighted"]);
+import { SummaryWithStrategy } from "./summary-with-strategy";
 
 interface Props {
   params: Promise<{ ticker: string }>;
-  searchParams: Promise<{ strategy?: string }>;
 }
 
 export const revalidate = 3600; // ISR: 1 hour (must be literal for Next.js)
@@ -42,38 +35,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function SummaryPage({ params, searchParams }: Props) {
+export default async function SummaryPage({ params }: Props) {
   const { ticker } = await params;
-  const { strategy: strategyParam } = await searchParams;
   const upperTicker = ticker.toUpperCase();
   const data = await getCoreTickerData(upperTicker);
 
-  // Ticker not in DB — trigger real-time provisioning via client component
   if (data.pending || !data.company) {
     return <TickerPending ticker={upperTicker} />;
   }
 
   const { company } = data;
-
-  // Determine strategy from query param (fallback to default)
-  const strategy: ConsensusStrategy =
-    strategyParam && VALID_STRATEGIES.has(strategyParam as ConsensusStrategy)
-      ? (strategyParam as ConsensusStrategy)
-      : DEFAULT_CONSENSUS_STRATEGY;
-
-  // Re-compute with chosen strategy (pure CPU math, ~1ms)
-  const summary = strategy !== data.summary?.consensus_strategy
-    ? computeFullValuation({
-        company: data.company,
-        historicals: data.historicals,
-        estimates: data.estimates,
-        peers: data.peers,
-        currentPrice: data.summary?.current_price ?? company.price ?? 0,
-        riskFreeRate: data.summary?.wacc.risk_free_rate ?? 0.04,
-        historicalMultiples: data.historicalMultiples,
-        consensusStrategy: strategy,
-      })
-    : data.summary;
+  const summary = data.summary;
 
   if (!summary) {
     return (
@@ -112,17 +84,22 @@ export default async function SummaryPage({ params, searchParams }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Valuation Summary */}
-      <SummaryCard
-        summary={summary}
-        strategySwitcher={<StrategySwitcher current={strategy} ticker={upperTicker} />}
+      {/* Client component handles ?strategy= param without breaking ISR */}
+      <SummaryWithStrategy
+        defaultSummary={summary}
+        ticker={upperTicker}
+        company={data.company}
+        historicals={data.historicals}
+        estimates={data.estimates}
+        peers={data.peers}
+        historicalMultiples={data.historicalMultiples}
+        riskFreeRate={summary.wacc.risk_free_rate}
+        currentPrice={summary.current_price}
       />
 
-      {/* Price vs Intrinsic Value Chart — streamed via Suspense */}
+      {/* Price vs Intrinsic Value Chart */}
       <div className="mt-8 val-card">
-        <h3 className="val-card-title">
-          Valuation History
-        </h3>
+        <h3 className="val-card-title">Valuation History</h3>
         <Suspense
           fallback={
             <div className="h-80 flex items-center justify-center text-muted-foreground animate-pulse">
