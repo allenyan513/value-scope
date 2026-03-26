@@ -91,33 +91,8 @@ export default async function PeterLynchPage({ params }: Props) {
 
       {/* Fair Value Calculation */}
       <div className="val-card">
-        <h3 className="val-h3">Fair Value Calculation</h3>
+        <h3 className="val-card-title">Fair Value Calculation</h3>
 
-        {/* Formula */}
-        <div className="rounded-md border bg-muted/30 p-5 font-mono text-sm space-y-1">
-          <div>
-            <span className="text-primary">{company.name} Fair Value</span>
-            <span className="text-muted-foreground"> = {d.dividend_yield > 0 ? "(EPS Growth + Div Yield)" : "EPS Growth"} × 100 × {d.ntm_eps ? "NTM" : "TTM"} EPS</span>
-          </div>
-          <div className="pl-[1ch]">
-            <span className="text-muted-foreground">= </span>
-            <span>{d.dividend_yield > 0 ? `(${(d.growth_rate * 100).toFixed(1)}% + ${(d.dividend_yield * 100).toFixed(1)}%)` : `${(d.growth_rate * 100).toFixed(1)}%`}</span>
-            <span className="text-muted-foreground"> × 100 × </span>
-            <span>${d.eps_used.toFixed(2)}</span>
-          </div>
-          <div className="pl-[1ch]">
-            <span className="text-muted-foreground">= </span>
-            <span>{d.fair_pe.toFixed(1)}x</span>
-            <span className="text-muted-foreground"> × </span>
-            <span>${d.eps_used.toFixed(2)}</span>
-          </div>
-          <div className="pl-[1ch]">
-            <span className="text-muted-foreground">= </span>
-            <span className="text-primary font-bold">{formatCurrency(model.fair_value)}</span>
-          </div>
-        </div>
-
-        {/* Calculation details */}
         <div className="max-w-lg">
           <table className="w-full text-sm">
             <tbody>
@@ -156,7 +131,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
       {/* Growth Story: Forward vs Historical */}
       <div className="val-card">
-        <h3 className="val-h3">Growth Analysis</h3>
+        <h3 className="val-card-title">Growth Analysis</h3>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Forward estimates */}
@@ -274,7 +249,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
       {/* Methodology */}
       <div className="val-card">
-        <h3 className="val-h3">Methodology</h3>
+        <h3 className="val-card-title">Methodology</h3>
         <div className="val-prose space-y-2">
           <p>
             The Peter Lynch Fair Value uses the PEG (Price/Earnings-to-Growth) framework.
