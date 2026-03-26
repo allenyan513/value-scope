@@ -3,7 +3,7 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Methodology — How We Value Stocks",
   description:
-    "Learn how ValuScope calculates intrinsic value using 7 valuation models: DCF, P/E, EV/EBITDA, and Peter Lynch. Fully transparent assumptions.",
+    "Learn how ValuScope calculates intrinsic value using 7 valuation models: DCF, P/E, EV/EBITDA, and PEG. Fully transparent assumptions.",
 };
 
 export default function MethodologyPage() {
@@ -156,23 +156,23 @@ export default function MethodologyPage() {
         </div>
       </section>
 
-      {/* Peter Lynch */}
+      {/* PEG Fair Value */}
       <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">7. Peter Lynch Fair Value</h2>
+        <h2 className="text-2xl font-bold mb-4">7. PEG Fair Value</h2>
         <p className="text-muted-foreground mb-4">
-          A PEG-based model inspired by Peter Lynch&apos;s investing philosophy:
-          a fairly priced stock has a P/E equal to its growth rate.
+          A fairly priced stock has a P/E ratio equal to its earnings growth rate (PEG = 1.0).
+          Includes dividend yield for the full PEGY variant.
         </p>
         <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
-            <strong>Fair Value</strong> = Earnings Growth Rate &times; TTM EPS
+            <strong>Fair Value</strong> = (EPS Growth Rate + Dividend Yield) &times; 100 &times; NTM EPS
           </div>
           <div>
-            <strong>Growth Rate</strong>: 5-year Net Income CAGR, clamped to
-            5%&ndash;25%
+            <strong>Growth Rate</strong>: Forward analyst consensus EPS CAGR (fallback: historical EPS CAGR), clamped to
+            8%&ndash;25%
           </div>
           <div>
-            <strong>Example</strong>: 15% growth &times; $6.50 EPS = $97.50 fair
+            <strong>Example</strong>: 12.7% adjusted growth &times; $8.48 NTM EPS = $108 fair
             value
           </div>
           <div className="text-muted-foreground pt-2 border-t">

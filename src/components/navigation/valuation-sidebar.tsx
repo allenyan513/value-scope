@@ -8,7 +8,7 @@ const SIDEBAR_ITEMS = [
   { label: "Valuation Summary", href: "/summary", segment: "summary" },
   { label: "Discounted Cash Flow", href: "/dcf/perpetual-growth", segment: "dcf" },
   { label: "Trading Multiples", href: "/relative/pe-multiples", segment: "relative" },
-  { label: "Peter Lynch Fair Value", href: "/peter-lynch", segment: "peter-lynch" },
+  { label: "PEG Fair Value", href: "/peg", segment: "peg" },
   { label: "Analyst Estimates", href: "/analyst-estimates", segment: "analyst-estimates" },
   { label: "Dividend Discount Model", href: "/ddm", segment: "ddm", badge: "Soon" },
   { label: "WACC", href: "/wacc", segment: "wacc" },

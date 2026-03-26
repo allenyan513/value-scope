@@ -9,7 +9,7 @@ const MODEL_NAMES: Record<string, string> = {
   dcf_ebitda_exit_fcfe_10y: "DCF (EV/EBITDA Exit 10Y)",
   pe_multiples: "P/E Multiples",
   ev_ebitda_multiples: "EV/EBITDA Multiples",
-  peter_lynch: "Peter Lynch Fair Value",
+  peg: "PEG Fair Value",
 };
 
 const MODEL_LINKS: Record<string, string> = {
@@ -18,7 +18,7 @@ const MODEL_LINKS: Record<string, string> = {
   dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
   pe_multiples: "/valuation/relative/pe-multiples",
   ev_ebitda_multiples: "/valuation/relative/ev-ebitda-multiples",
-  peter_lynch: "/valuation/peter-lynch",
+  peg: "/valuation/peg",
 };
 
 const VERDICT_CONFIG = {

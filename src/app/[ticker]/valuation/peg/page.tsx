@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { ValuationHero } from "@/components/valuation/valuation-hero";
 import { PEGGauge } from "@/components/valuation/peg-gauge";
 import { Badge } from "@/components/ui/badge";
-import type { PeterLynchDetails } from "@/lib/valuation/peter-lynch";
+import type { PEGDetails } from "@/lib/valuation/peg";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -20,12 +20,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const company = await getCompany(upperTicker);
 
   return {
-    title: `${upperTicker} Peter Lynch Fair Value${company ? ` — ${company.name}` : ""} | ValuScope`,
-    description: `Peter Lynch PEG-based Fair Value for ${company?.name ?? upperTicker} (${upperTicker}). Uses forward earnings growth, dividend yield, and analyst consensus. Updated daily.`,
+    title: `${upperTicker} PEG Fair Value${company ? ` — ${company.name}` : ""} | ValuScope`,
+    description: `PEG Fair Value analysis for ${company?.name ?? upperTicker} (${upperTicker}). Uses forward earnings growth, dividend yield, and analyst consensus. Updated daily.`,
   };
 }
 
-export default async function PeterLynchPage({ params }: Props) {
+export default async function PEGFairValuePage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
   const { company, summary } = await getCoreTickerData(upperTicker);
@@ -33,28 +33,28 @@ export default async function PeterLynchPage({ params }: Props) {
   if (!summary || !company) {
     return (
       <p className="text-muted-foreground py-8 text-center">
-        Financial data not yet available for Peter Lynch analysis.
+        Financial data not yet available for PEG analysis.
       </p>
     );
   }
 
-  const model = summary.models.find((m) => m.model_type === "peter_lynch");
+  const model = summary.models.find((m) => m.model_type === "peg");
   if (!model || model.fair_value === 0) {
     return (
       <p className="text-muted-foreground py-8 text-center">
-        Peter Lynch Fair Value not available — requires positive trailing EPS and at least 2 years of earnings data.
+        PEG Fair Value not available — requires positive trailing EPS and at least 2 years of earnings data.
       </p>
     );
   }
 
-  const d = model.details as unknown as PeterLynchDetails;
+  const d = model.details as unknown as PEGDetails;
   const currentPrice = summary.current_price;
   const upside = model.upside_percent;
 
   return (
     <div className="val-page">
       <h2 className="val-h2">
-        {company.name} ({upperTicker}) Peter Lynch Fair Value
+        {company.name} ({upperTicker}) PEG Fair Value
       </h2>
 
       {/* Hero: Fair Value / Price / Upside / Verdict */}
@@ -64,7 +64,7 @@ export default async function PeterLynchPage({ params }: Props) {
         upside={upside}
         narrative={
           <>
-            Using the Peter Lynch PEG framework with{" "}
+            Using the PEG framework with{" "}
             {d.growth_source === "forward" ? "analyst consensus forward" : "historical"}{" "}
             EPS growth of {(d.growth_rate * 100).toFixed(1)}%
             {d.dividend_yield > 0 && ` plus ${(d.dividend_yield * 100).toFixed(1)}% dividend yield`}
@@ -252,7 +252,7 @@ export default async function PeterLynchPage({ params }: Props) {
         <h3 className="val-card-title">Methodology</h3>
         <div className="val-prose space-y-2">
           <p>
-            The Peter Lynch Fair Value uses the PEG (Price/Earnings-to-Growth) framework.
+            The PEG Fair Value uses the PEG (Price/Earnings-to-Growth) framework.
             A stock is fairly valued when its P/E ratio equals its earnings growth rate (PEG = 1.0).
             This model adds dividend yield to the growth rate per Lynch&apos;s original PEGY formula.
           </p>

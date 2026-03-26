@@ -7,7 +7,7 @@ const jsonLd = {
   name: "ValuScope",
   url: "https://valuscope.com",
   description:
-    "Free stock intrinsic value calculator. DCF, Trading Multiples, Peter Lynch models with transparent assumptions.",
+    "Free stock intrinsic value calculator. DCF, Trading Multiples, PEG models with transparent assumptions.",
   potentialAction: {
     "@type": "SearchAction",
     target: "https://valuscope.com/{ticker}",
@@ -29,7 +29,7 @@ const features = [
   {
     icon: BarChart3,
     title: "7 Models, One Summary",
-    desc: "DCF (4 variants), P/E, EV/EBITDA, Peter Lynch — all in one page with a clear verdict.",
+    desc: "DCF (4 variants), P/E, EV/EBITDA, PEG — all in one page with a clear verdict.",
   },
   {
     icon: Shield,
@@ -90,7 +90,7 @@ export default function HomePage() {
               {
                 step: "2",
                 title: "7 Valuation Models",
-                desc: "DCF, Trading Multiples, Peter Lynch — each model with fully transparent assumptions you can inspect.",
+                desc: "DCF, Trading Multiples, PEG — each model with fully transparent assumptions you can inspect.",
               },
               {
                 step: "3",

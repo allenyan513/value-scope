@@ -12,7 +12,7 @@ const MODEL_NAMES: Record<string, string> = {
   dcf_ebitda_exit_fcfe_10y: "DCF EV/EBITDA Exit",
   pe_multiples: "P/E Multiples",
   ev_ebitda_multiples: "EV/EBITDA Multiples",
-  peter_lynch: "Peter Lynch Fair Value",
+  peg: "PEG Fair Value",
 };
 
 interface Props {
@@ -154,7 +154,7 @@ export function ModelCard({ model, currentPrice }: Props) {
               </div>
             )}
 
-          {/* Peter Lynch: Earnings history */}
+          {/* PEG: Earnings history */}
           {model.details &&
             "earnings_history" in model.details &&
             Array.isArray((model.details as Record<string, unknown>).earnings_history) && (

@@ -179,14 +179,14 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
 }> = {
   high_growth: {
     label: "High Growth",
-    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while Peter Lynch provides growth-adjusted anchor.",
+    description: "Fast-growing company with strong revenue momentum. DCF captures future potential while PEG provides growth-adjusted anchor.",
     weights: {
       dcf_3stage: 0.20,
       dcf_pe_exit_10y: 0.10,
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.10,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.35,
+      peg: 0.35,
     },
   },
   profitable_growth: {
@@ -198,7 +198,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.20,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.25,
+      peg: 0.25,
     },
   },
   mature_stable: {
@@ -210,7 +210,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.25,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.25,
+      peg: 0.25,
     },
   },
   dividend_payer: {
@@ -222,7 +222,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.25,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.25,
+      peg: 0.25,
     },
   },
   cyclical: {
@@ -234,7 +234,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.10,
       ev_ebitda_multiples: 0.20,
-      peter_lynch: 0.35,
+      peg: 0.35,
     },
   },
   turnaround: {
@@ -246,7 +246,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.00,
       ev_ebitda_multiples: 0.25,
-      peter_lynch: 0.35,
+      peg: 0.35,
     },
   },
   asset_heavy: {
@@ -258,7 +258,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.15,
       ev_ebitda_multiples: 0.20,
-      peter_lynch: 0.30,
+      peg: 0.30,
     },
   },
   loss_making: {
@@ -270,7 +270,7 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.00,
       ev_ebitda_multiples: 0.25,
-      peter_lynch: 0.40,
+      peg: 0.40,
     },
   },
 };
@@ -431,10 +431,10 @@ function buildModelApplicability(
     });
   }
 
-  // Peter Lynch
+  // PEG
   if (m.latestEPS <= 0) {
     applicability.push({
-      model_type: "peter_lynch",
+      model_type: "peg",
       applicable: false,
       reason: "Requires positive EPS and meaningful earnings growth",
       confidence: "high",
@@ -442,15 +442,15 @@ function buildModelApplicability(
     });
   } else if (archetype === "mature_stable" && m.revenueCAGR < 0.05) {
     applicability.push({
-      model_type: "peter_lynch",
+      model_type: "peg",
       applicable: true,
-      reason: "Low growth company results in conservative Lynch valuation",
+      reason: "Low growth company results in conservative PEG valuation",
       confidence: "low",
       role: "sanity_check",
     });
   } else {
     applicability.push({
-      model_type: "peter_lynch",
+      model_type: "peg",
       applicable: true,
       reason: "PEG-based approach provides a quick growth-adjusted sanity check",
       confidence: "medium",

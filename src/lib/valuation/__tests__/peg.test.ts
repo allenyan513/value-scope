@@ -1,21 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { calculatePeterLynch, type PeterLynchDetails } from "../peter-lynch";
+import { calculatePEG, type PEGDetails } from "../peg";
 import { appleFinancials, testEstimates, unprofitableFinancials, makeFinancial } from "./fixtures";
 
-function getDetails(result: { details: Record<string, unknown> }): PeterLynchDetails {
-  return result.details as unknown as PeterLynchDetails;
+function getDetails(result: { details: Record<string, unknown> }): PEGDetails {
+  return result.details as unknown as PEGDetails;
 }
 
-describe("calculatePeterLynch", () => {
+describe("calculatePEG", () => {
   // ---- Core formula ----
 
   it("should compute fair value = fair_pe × eps_used", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
 
-    expect(result.model_type).toBe("peter_lynch");
+    expect(result.model_type).toBe("peg");
     expect(result.fair_value).toBeGreaterThan(0);
 
     const d = getDetails(result);
@@ -23,7 +23,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should use forward growth when estimates are available", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
       estimates: testEstimates,
@@ -38,7 +38,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should fall back to historical growth without estimates", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -59,7 +59,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: 50e9, eps: 4.0, eps_diluted: 4.0, shares_outstanding: 12.5e9 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: buybackCompany,
       currentPrice: 100,
     });
@@ -74,7 +74,7 @@ describe("calculatePeterLynch", () => {
   // ---- Growth clamping ----
 
   it("should clamp growth rate between 8% and 25%", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -90,7 +90,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: 10e9, eps: 5.0, eps_diluted: 5.0 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: highGrowth,
       currentPrice: 100,
     });
@@ -106,7 +106,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: 50e9, eps: 5.0, eps_diluted: 5.0 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: flatGrowth,
       currentPrice: 100,
     });
@@ -130,7 +130,7 @@ describe("calculatePeterLynch", () => {
       }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: withDividends,
       currentPrice: 100,
       marketCap: 1000e9, // $100 price × 10B shares
@@ -145,7 +145,7 @@ describe("calculatePeterLynch", () => {
   // ---- Range estimates ----
 
   it("should produce different low and high estimates", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -157,7 +157,7 @@ describe("calculatePeterLynch", () => {
   // ---- PEG ratio ----
 
   it("should compute PEG ratio", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -174,7 +174,7 @@ describe("calculatePeterLynch", () => {
   // ---- Edge cases ----
 
   it("should return N/A for negative EPS", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: unprofitableFinancials,
       currentPrice: 50,
     });
@@ -184,7 +184,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should return N/A with insufficient data (< 2 years)", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: [appleFinancials[0]],
       currentPrice: 200,
     });
@@ -193,7 +193,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should return N/A for empty historicals", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: [],
       currentPrice: 200,
     });
@@ -209,7 +209,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: 30e9, eps: 5.0, eps_diluted: 5.0 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: mixedFinancials,
       currentPrice: 100,
     });
@@ -225,7 +225,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: -3e9, eps: 2.0, eps_diluted: 2.0 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: edgeCase,
       currentPrice: 50,
     });
@@ -242,7 +242,7 @@ describe("calculatePeterLynch", () => {
       makeFinancial(2024, { net_income: 55e9, eps: 3.5, eps_diluted: 3.5 }),
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: twoYears,
       currentPrice: 100,
     });
@@ -253,7 +253,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should include earnings history with EPS-based YoY growth", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -265,7 +265,7 @@ describe("calculatePeterLynch", () => {
   });
 
   it("should compute upside correctly", () => {
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
@@ -283,7 +283,7 @@ describe("calculatePeterLynch", () => {
         number_of_analysts: 2 }, // Too few
     ];
 
-    const result = calculatePeterLynch({
+    const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
       estimates: weakEstimates,

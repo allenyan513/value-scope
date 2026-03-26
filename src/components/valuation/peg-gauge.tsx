@@ -10,19 +10,19 @@ interface PEGGaugeProps {
   rawGrowth: number; // unclamped decimal, for classification
 }
 
-/** Lynch's 6 stock categories — PEG is most useful for Stalwarts and Fast Growers */
-type LynchCategory = {
+/** PEG stock categories — most useful for Stalwarts and Fast Growers */
+type PEGCategory = {
   label: string;
   applicability: "high" | "medium" | "low";
   note: string;
 };
 
-function classifyByGrowth(rawGrowth: number): LynchCategory {
+function classifyByGrowth(rawGrowth: number): PEGCategory {
   const g = rawGrowth * 100;
   if (g < 0) return { label: "Turnaround", applicability: "low", note: "PEG is unreliable for companies with declining earnings." };
   if (g < 8) return { label: "Slow Grower", applicability: "low", note: "PEG tends to undervalue slow growers — consider dividend yield and asset value instead." };
   if (g < 15) return { label: "Stalwart", applicability: "high", note: "PEG works well for steady growers with predictable earnings." };
-  if (g <= 25) return { label: "Fast Grower", applicability: "high", note: "PEG is most informative for high-growth companies — Lynch's sweet spot." };
+  if (g <= 25) return { label: "Fast Grower", applicability: "high", note: "PEG is most informative for high-growth companies — the PEG sweet spot." };
   return { label: "Fast Grower", applicability: "medium", note: "Growth above 25% is capped — hypergrowth may not be sustainable long-term." };
 }
 
@@ -108,12 +108,12 @@ export function PEGGauge({ peg, currentPE, adjustedGrowth, dividendYield, rawGro
         <span className={cn("font-bold", zone.color)}>{peg.toFixed(2)}</span>
       </div>
 
-      {/* Lynch's rule */}
+      {/* PEG rule of thumb */}
       <p className="text-xs text-muted-foreground">
-        Peter Lynch: PEG &lt; 1 = bargain, 1–1.5 = fair, &gt; 2 = expensive.
+        PEG &lt; 1 = bargain, 1–1.5 = fair, &gt; 2 = expensive.
       </p>
 
-      {/* Lynch classification + applicability */}
+      {/* Growth classification + applicability */}
       <div className={cn(
         "rounded-md border px-4 py-3 text-xs",
         category.applicability === "high" ? "border-green-500/30 bg-green-500/5" :
@@ -121,7 +121,7 @@ export function PEGGauge({ peg, currentPE, adjustedGrowth, dividendYield, rawGro
         "border-orange-500/30 bg-orange-500/5",
       )}>
         <span className="font-medium text-foreground">
-          Lynch Category: {category.label}
+          Growth Category: {category.label}
         </span>
         <span className={cn(
           "ml-2",

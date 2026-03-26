@@ -28,7 +28,7 @@ describe("classifyCompany", () => {
     expect(result.model_weights).toHaveProperty("dcf_ebitda_exit_fcfe_10y");
     expect(result.model_weights).toHaveProperty("pe_multiples");
     expect(result.model_weights).toHaveProperty("ev_ebitda_multiples");
-    expect(result.model_weights).toHaveProperty("peter_lynch");
+    expect(result.model_weights).toHaveProperty("peg");
     // Weights should sum to 1.0
     const total = Object.values(result.model_weights).reduce((a, b) => a + b, 0);
     expect(total).toBeCloseTo(1, 5);
@@ -78,7 +78,7 @@ describe("computeWeightedConsensus", () => {
     { model_type: "dcf_ebitda_exit_fcfe_10y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
     { model_type: "pe_multiples", fair_value: 150, low_estimate: 130, high_estimate: 170 },
     { model_type: "ev_ebitda_multiples", fair_value: 120, low_estimate: 100, high_estimate: 140 },
-    { model_type: "peter_lynch", fair_value: 80, low_estimate: 60, high_estimate: 100 },
+    { model_type: "peg", fair_value: 80, low_estimate: 60, high_estimate: 100 },
   ];
 
   it("should compute weighted average consensus across all 6 models", () => {
@@ -88,7 +88,7 @@ describe("computeWeightedConsensus", () => {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.20,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.25,
+      peg: 0.25,
     };
 
     const result = computeWeightedConsensus(models, weights);
@@ -103,7 +103,7 @@ describe("computeWeightedConsensus", () => {
   it("should skip models with fair_value <= 0 (N/A)", () => {
     const modelsWithNA = [
       ...models.slice(0, 5),
-      { model_type: "peter_lynch", fair_value: 0, low_estimate: 0, high_estimate: 0 },
+      { model_type: "peg", fair_value: 0, low_estimate: 0, high_estimate: 0 },
     ];
     const weights = {
       dcf_3stage: 0.20,
@@ -111,12 +111,12 @@ describe("computeWeightedConsensus", () => {
       dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.20,
       ev_ebitda_multiples: 0.15,
-      peter_lynch: 0.25,
+      peg: 0.25,
     };
 
     const result = computeWeightedConsensus(modelsWithNA, weights);
 
-    // peter_lynch should be skipped, weights renormalized
+    // peg should be skipped, weights renormalized
     expect(result.modelContributions).toHaveLength(5);
     expect(result.consensus).toBeGreaterThan(0);
   });

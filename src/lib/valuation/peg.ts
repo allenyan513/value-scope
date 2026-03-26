@@ -1,33 +1,33 @@
 // ============================================================
-// Peter Lynch Fair Value Model (PEG-based)
+// PEG Fair Value Model
 //
 // Fair Value = (EPS Growth Rate + Dividend Yield) × NTM EPS
 //
 // Growth priority: forward analyst consensus → historical EPS CAGR
-// Includes dividend yield per Lynch's original PEGY formula
+// Includes dividend yield (PEGY variant)
 // ============================================================
 
 import type { FinancialStatement, AnalystEstimate, ValuationResult } from "@/types";
 import { cagr, clamp } from "./dcf-helpers";
 
-/** Growth rate bounds (Peter Lynch methodology) */
+/** Growth rate bounds (PEG methodology) */
 const GROWTH_FLOOR = 0.08; // 8% — minimum sensible P/E of 8x
 const GROWTH_CEILING = 0.25; // 25% — cap for hypergrowth
 
-export interface PeterLynchInputs {
+export interface PEGInputs {
   historicals: FinancialStatement[];
   currentPrice: number;
   estimates?: AnalystEstimate[];
   marketCap?: number;
 }
 
-export type LynchGrowthSource = "forward" | "historical" | "blended";
+export type PEGGrowthSource = "forward" | "historical" | "blended";
 
-export interface PeterLynchDetails {
+export interface PEGDetails {
   // Core calculation
   growth_rate: number; // Clamped decimal used for fair value
   raw_growth_rate: number; // Unclamped decimal
-  growth_source: LynchGrowthSource;
+  growth_source: PEGGrowthSource;
   dividend_yield: number; // Decimal (e.g., 0.005 for 0.5%)
   adjusted_growth: number; // growth_rate + dividend_yield (before clamp)
   fair_pe: number;
@@ -64,12 +64,12 @@ export interface PeterLynchDetails {
 }
 
 /**
- * Calculate Peter Lynch Fair Value using PEG framework.
+ * Calculate PEG Fair Value.
  *
  * Priority: forward analyst EPS growth → historical EPS CAGR
- * Includes dividend yield per Lynch's PEGY formula.
+ * Includes dividend yield (PEGY variant).
  */
-export function calculatePeterLynch(inputs: PeterLynchInputs): ValuationResult {
+export function calculatePEG(inputs: PEGInputs): ValuationResult {
   const { historicals, currentPrice, estimates, marketCap } = inputs;
 
   // Sort annual financials ascending by year
@@ -96,7 +96,7 @@ export function calculatePeterLynch(inputs: PeterLynchInputs): ValuationResult {
 
   // --- 3. Pick growth source ---
   let rawGrowthRate: number;
-  let growthSource: LynchGrowthSource;
+  let growthSource: PEGGrowthSource;
 
   if (forwardResult.growth !== null && forwardResult.years >= 2) {
     // Forward estimates available with enough data points
@@ -154,7 +154,7 @@ export function calculatePeterLynch(inputs: PeterLynchInputs): ValuationResult {
         : null,
   }));
 
-  const details: PeterLynchDetails = {
+  const details: PEGDetails = {
     growth_rate: clampedGrowth,
     raw_growth_rate: rawGrowthRate,
     growth_source: growthSource,
@@ -180,7 +180,7 @@ export function calculatePeterLynch(inputs: PeterLynchInputs): ValuationResult {
   };
 
   return {
-    model_type: "peter_lynch",
+    model_type: "peg",
     fair_value: fairValue,
     upside_percent: upside,
     low_estimate: lowEstimate,
@@ -345,7 +345,7 @@ function computeDividendYield(
 
 function naResult(note: string): ValuationResult {
   return {
-    model_type: "peter_lynch",
+    model_type: "peg",
     fair_value: 0,
     upside_percent: 0,
     low_estimate: 0,
