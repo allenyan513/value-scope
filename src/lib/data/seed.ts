@@ -22,6 +22,7 @@ import {
 import type { FinancialStatement } from "@/types";
 import { FMP_API_DELAY_MS, DESCRIPTION_MAX_LENGTH } from "@/lib/constants";
 import { convertFinancialToUSD, convertEstimateToUSD } from "./fx-convert";
+import { recomputeAllValuations } from "./recompute";
 import { toDateString } from "@/lib/format";
 import { createServerClient } from "@/lib/db/supabase";
 
@@ -226,6 +227,13 @@ async function main() {
   }
 
   console.log(`\n✅ Seeding complete: ${success} success, ${failed} failed (${existingTickers.size} skipped)`);
+
+  // Recompute valuations for all companies (including previously seeded)
+  if (success > 0) {
+    console.log("\n📊 Recomputing valuations for all companies...\n");
+    const result = await recomputeAllValuations();
+    console.log(`✅ Valuations: ${result.success} computed, ${result.skipped} skipped, ${result.errors} errors`);
+  }
 }
 
 // Only run if executed directly via: npx tsx src/lib/data/seed.ts
