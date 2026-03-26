@@ -3,7 +3,6 @@ import { formatLargeNumber } from "@/lib/format";
 
 interface Props {
   multiples: MultipleSummary[];
-  currentPrice: number;
   sharesOutstanding: number;
   netDebt: number;
 }
@@ -12,7 +11,7 @@ function fmt(n: number): string {
   return formatLargeNumber(n, { prefix: "", decimals: 1, includeK: true });
 }
 
-export function MultipleBreakdownCards({ multiples, currentPrice, sharesOutstanding, netDebt }: Props) {
+export function MultipleBreakdownCards({ multiples, sharesOutstanding, netDebt }: Props) {
   const available = multiples.filter((m) => m.fairValue !== null && m.fairValue > 0);
 
   if (available.length === 0) return null;
@@ -25,7 +24,6 @@ export function MultipleBreakdownCards({ multiples, currentPrice, sharesOutstand
           <BreakdownCard
             key={m.key}
             data={m}
-            currentPrice={currentPrice}
             sharesOutstanding={sharesOutstanding}
             netDebt={netDebt}
           />
@@ -37,12 +35,10 @@ export function MultipleBreakdownCards({ multiples, currentPrice, sharesOutstand
 
 function BreakdownCard({
   data,
-  currentPrice,
   sharesOutstanding,
   netDebt,
 }: {
   data: MultipleSummary;
-  currentPrice: number;
   sharesOutstanding: number;
   netDebt: number;
 }) {

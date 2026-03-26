@@ -76,7 +76,6 @@ export default async function RelativeValuationPage({ params }: Props) {
       {/* 5. Valuation by Multiple — per-multiple calculation */}
       <MultipleBreakdownCards
         multiples={data.multiples}
-        currentPrice={data.currentPrice}
         sharesOutstanding={data.sharesOutstanding}
         netDebt={data.netDebt}
       />

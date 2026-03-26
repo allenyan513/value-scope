@@ -32,14 +32,19 @@ export function HistoricalMultiplesChart({ ticker }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/multiples-history/${ticker}`)
       .then((r) => r.json())
       .then((d: HistoricalMultiplesResponse) => {
-        setData(d);
-        setLoading(false);
+        if (!cancelled) {
+          setData(d);
+          setLoading(false);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [ticker]);
 
   const stats = data?.stats?.[selected] ?? null;
