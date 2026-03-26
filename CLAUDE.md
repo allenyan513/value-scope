@@ -2,7 +2,7 @@
 
 # ValuScope - Stock Valuation SaaS
 
-Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 7 automated valuation models with daily updates. SEO-driven organic growth.
+Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 9 automated valuation models (3 DCF + 5 Trading Multiples + PEG) with daily updates. SEO-driven organic growth.
 
 ## Tech Stack
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5
@@ -16,7 +16,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 7 aut
 npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
-npm test             # Run unit tests (Vitest, 125 tests)
+npm test             # Run unit tests (Vitest, 199 tests)
 npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```

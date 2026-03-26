@@ -146,6 +146,22 @@ export interface ConsensusAdjustment {
   reason: string;
 }
 
+// --- Consensus Strategy ---
+export type ConsensusStrategy = "median" | "weighted" | "dcf_primary";
+
+// --- Three-Tier Pillar Structure ---
+export interface ValuationPillar {
+  fairValue: number;
+  upside: number;
+  models: ValuationResult[];
+}
+
+export interface ValuationPillars {
+  dcf: ValuationPillar;
+  tradingMultiples: ValuationPillar;
+  peg: ValuationPillar;
+}
+
 // --- Valuation Summary ---
 export interface ValuationSummary {
   ticker: string;
@@ -153,15 +169,19 @@ export interface ValuationSummary {
   current_price: number;
   primary_fair_value: number;
   primary_upside: number;
-  // Weighted consensus across all applicable models
+  // Consensus across all applicable models
   consensus_fair_value: number;
   consensus_low: number;
   consensus_high: number;
   consensus_upside: number;
-  /** The model_type of the primary (dominant) model for this archetype */
+  /** The strategy used for consensus: "median" (3 pillars) or "weighted" (archetype-based) */
+  consensus_strategy: ConsensusStrategy;
+  /** The model_type of the primary (dominant) model for this archetype (weighted strategy only) */
   consensus_primary_model: string;
-  /** Outlier adjustments applied during consensus calculation */
+  /** Outlier adjustments applied during consensus calculation (weighted strategy only) */
   consensus_adjustments: ConsensusAdjustment[];
+  /** Three-tier pillar breakdown (median strategy) */
+  pillars: ValuationPillars;
   models: ValuationResult[];
   wacc: WACCResult;
   classification: CompanyClassification;

@@ -1,7 +1,9 @@
 // ============================================================
 // Valuation Summary Aggregator
-// Combines all model results into a unified summary with
-// company classification and weighted consensus
+// Combines all model results into a unified summary.
+// Supports two consensus strategies:
+//   - "median": Three-tier pillars (DCF / Trading Multiples / PEG) → median
+//   - "weighted": Archetype-based weighted average (legacy, switchable)
 // ============================================================
 
 import type {
@@ -12,8 +14,10 @@ import type {
   Company,
   PeerComparison,
   HistoricalMultiplesPoint,
+  ConsensusStrategy,
+  ValuationPillars,
 } from "@/types";
-import { VERDICT_THRESHOLD } from "@/lib/constants";
+import { VERDICT_THRESHOLD, DEFAULT_CONSENSUS_STRATEGY } from "@/lib/constants";
 import { calculateWACC, buildWACCInputs } from "./wacc";
 import type { DCFFCFEInputs } from "./dcf";
 import {
@@ -26,6 +30,9 @@ import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,
   calculateEVEBITDAMultiples,
+  calculatePBMultiples,
+  calculatePSMultiples,
+  calculatePFCFMultiples,
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePEG } from "./peg";
@@ -40,6 +47,85 @@ export interface FullValuationInputs {
   riskFreeRate: number;
   /** Historical multiples for self-comparison valuation (optional) */
   historicalMultiples?: HistoricalMultiplesPoint[];
+  /** Override consensus strategy (defaults to DEFAULT_CONSENSUS_STRATEGY) */
+  consensusStrategy?: ConsensusStrategy;
+}
+
+// --- DCF model types for pillar grouping ---
+const DCF_MODEL_TYPES = new Set([
+  "dcf_3stage",
+  "dcf_pe_exit_10y",
+  "dcf_ebitda_exit_fcfe_10y",
+]);
+
+const TRADING_MULTIPLES_MODEL_TYPES = new Set([
+  "pe_multiples",
+  "ev_ebitda_multiples",
+  "pb_multiples",
+  "ps_multiples",
+  "p_fcf_multiples",
+]);
+
+// --- Median helper ---
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Build three-tier pillars from model results and compute median consensus.
+ */
+function computeMedianConsensus(
+  models: ValuationResult[],
+  currentPrice: number
+): {
+  pillars: ValuationPillars;
+  consensus: number;
+  low: number;
+  high: number;
+} {
+  // Group models into pillars
+  const dcfModels = models.filter(m => DCF_MODEL_TYPES.has(m.model_type) && m.fair_value > 0);
+  const tmModels = models.filter(m => TRADING_MULTIPLES_MODEL_TYPES.has(m.model_type) && m.fair_value > 0);
+  const pegModel = models.find(m => m.model_type === "peg");
+
+  // Pillar fair values: median within each group
+  const dcfFairValue = dcfModels.length > 0 ? median(dcfModels.map(m => m.fair_value)) : 0;
+  const tmFairValue = tmModels.length > 0 ? median(tmModels.map(m => m.fair_value)) : 0;
+  const pegFairValue = pegModel && pegModel.fair_value > 0 ? pegModel.fair_value : 0;
+
+  const upside = (fv: number) => currentPrice > 0 ? ((fv - currentPrice) / currentPrice) * 100 : 0;
+
+  const pillars: ValuationPillars = {
+    dcf: {
+      fairValue: dcfFairValue,
+      upside: upside(dcfFairValue),
+      models: models.filter(m => DCF_MODEL_TYPES.has(m.model_type)),
+    },
+    tradingMultiples: {
+      fairValue: tmFairValue,
+      upside: upside(tmFairValue),
+      models: models.filter(m => TRADING_MULTIPLES_MODEL_TYPES.has(m.model_type)),
+    },
+    peg: {
+      fairValue: pegFairValue,
+      upside: upside(pegFairValue),
+      models: pegModel ? [pegModel] : [],
+    },
+  };
+
+  // Final consensus: median of pillar fair values (only those > 0)
+  const pillarValues = [dcfFairValue, tmFairValue, pegFairValue].filter(v => v > 0);
+  const consensus = pillarValues.length > 0 ? median(pillarValues) : 0;
+
+  // Low/high: median of all model lows/highs
+  const validModels = models.filter(m => m.fair_value > 0);
+  const low = validModels.length > 0 ? median(validModels.map(m => m.low_estimate)) : 0;
+  const high = validModels.length > 0 ? median(validModels.map(m => m.high_estimate)) : 0;
+
+  return { pillars, consensus, low, high };
 }
 
 /**
@@ -57,6 +143,8 @@ export function computeFullValuation(
     riskFreeRate,
   } = inputs;
 
+  const strategy: ConsensusStrategy = inputs.consensusStrategy ?? DEFAULT_CONSENSUS_STRATEGY;
+
   // Ensure historicals are sorted descending (most recent first)
   const sortedHistoricals = [...historicals].sort(
     (a, b) => b.fiscal_year - a.fiscal_year
@@ -67,7 +155,7 @@ export function computeFullValuation(
     throw new Error(`No financial data available for ${company.ticker}`);
   }
 
-  // 0. Classify the company
+  // 0. Classify the company (used for terminal growth + display label in both strategies)
   const classification = classifyCompany(company, sortedHistoricals, estimates);
 
   // 1. Calculate WACC
@@ -94,10 +182,10 @@ export function computeFullValuation(
     terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
   };
 
-  // 3. Run all 6 models — all participate in weighted consensus
+  // 3. Run all 6 models
   const models: ValuationResult[] = [];
 
-  // DCF: Perpetual Growth (10Y: Y1–5 analyst, Y6–10 transition, terminal via Gordon Growth)
+  // DCF: Perpetual Growth
   try {
     models.push(calculateDCF3Stage(dcfInputs));
   } catch {
@@ -105,7 +193,6 @@ export function computeFullValuation(
   }
 
   // DCF: Exit multiple terminal values (P/E and EV/EBITDA)
-  // Compute historical multiples stats for exit P/E and EV/EBITDA
   const multiplesStats = inputs.historicalMultiples
     ? computeMultiplesStats(inputs.historicalMultiples)
     : null;
@@ -128,7 +215,7 @@ export function computeFullValuation(
     /* skip if insufficient data */
   }
 
-  // Trading Multiples (uses historical self-comparison when data available)
+  // Trading Multiples
   const tradingInputs: TradingMultiplesInputs = {
     financials: latestFinancial,
     company,
@@ -139,8 +226,11 @@ export function computeFullValuation(
 
   models.push(calculatePEMultiples(tradingInputs));
   models.push(calculateEVEBITDAMultiples(tradingInputs));
+  models.push(calculatePBMultiples(tradingInputs));
+  models.push(calculatePSMultiples(tradingInputs));
+  models.push(calculatePFCFMultiples(tradingInputs));
 
-  // PEG Fair Value (forward estimates + dividend yield)
+  // PEG Fair Value
   models.push(
     calculatePEG({
       historicals: sortedHistoricals,
@@ -150,41 +240,82 @@ export function computeFullValuation(
     })
   );
 
-  // 4. Compute weighted consensus using classification weights + outlier penalty
-  const { consensus, low, high, primaryModel: primaryModelType, adjustments } = computeWeightedConsensus(
-    models,
-    classification.model_weights,
-    classification.archetype
-  );
+  // 4. Compute consensus based on strategy
+  // Always build pillars for display regardless of strategy
+  const medianResult = computeMedianConsensus(models, currentPrice);
+  const pillars: ValuationPillars = medianResult.pillars;
+
+  let consensus: number;
+  let low: number;
+  let high: number;
+  let primaryModelType: string;
+  let adjustments: ValuationSummary["consensus_adjustments"];
+
+  if (strategy === "dcf_primary") {
+    // --- DCF Perpetual Growth as single source of truth ---
+    const dcfModel = models.find(m => m.model_type === "dcf_3stage" && m.fair_value > 0);
+    consensus = dcfModel?.fair_value ?? 0;
+    low = dcfModel?.low_estimate ?? 0;
+    high = dcfModel?.high_estimate ?? 0;
+    primaryModelType = "dcf_3stage";
+    adjustments = [];
+  } else if (strategy === "median") {
+    // --- Three-tier median consensus ---
+    consensus = medianResult.consensus;
+    low = medianResult.low;
+    high = medianResult.high;
+    primaryModelType = "";
+    adjustments = [];
+  } else {
+    // --- Legacy weighted consensus ---
+    const result = computeWeightedConsensus(
+      models,
+      classification.model_weights,
+      classification.archetype
+    );
+    consensus = result.consensus;
+    low = result.low;
+    high = result.high;
+    primaryModelType = result.primaryModel;
+    adjustments = result.adjustments;
+  }
 
   const consensusUpside = currentPrice > 0
     ? ((consensus - currentPrice) / currentPrice) * 100
     : 0;
 
-  // 5. Determine primary valuation (based on archetype's primary model)
-  const primaryResult = models.find(
-    (m) => m.model_type === primaryModelType
-  ) ?? models.find((m) => m.model_type === "dcf_3stage");
-  const primaryFairValue = primaryResult?.fair_value ?? 0;
-  const primaryUpside = primaryResult?.upside_percent ?? 0;
+  // 5. Primary valuation
+  const primaryResult = primaryModelType
+    ? models.find((m) => m.model_type === primaryModelType)
+    : undefined;
+  const primaryFairValue = primaryResult?.fair_value ?? consensus;
+  const primaryUpside = primaryResult?.upside_percent ?? consensusUpside;
 
-  // 6. Determine verdict based on consensus (not just primary model)
+  // 6. Determine verdict
   const verdictUpside = consensus > 0 ? consensusUpside : primaryUpside;
   let verdict: "undervalued" | "fairly_valued" | "overvalued";
   let verdictText: string;
 
   const modelCount = models.filter(m => m.fair_value > 0).length;
   const absUpside = Math.abs(verdictUpside).toFixed(1);
+  const pillarCount = [pillars.dcf.fairValue, pillars.tradingMultiples.fairValue, pillars.peg.fairValue]
+    .filter(v => v > 0).length;
+
+  const methodDescription = strategy === "dcf_primary"
+    ? "our 10-year DCF model with perpetual growth terminal value"
+    : strategy === "median"
+      ? `${pillarCount} valuation pillars (DCF, Trading Multiples, PEG) covering ${modelCount} models`
+      : `${modelCount} valuation models`;
 
   if (verdictUpside > VERDICT_THRESHOLD) {
     verdict = "undervalued";
-    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is undervalued by ${absUpside}%.`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${methodDescription}, ${company.name} (${company.ticker}) is undervalued by ${absUpside}%.`;
   } else if (verdictUpside < -VERDICT_THRESHOLD) {
     verdict = "overvalued";
-    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) is overvalued by ${absUpside}%.`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${methodDescription}, ${company.name} (${company.ticker}) is overvalued by ${absUpside}%.`;
   } else {
     verdict = "fairly_valued";
-    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${modelCount} models, ${company.name} (${company.ticker}) appears fairly valued (${verdictUpside > 0 ? "+" : ""}${verdictUpside.toFixed(1)}%).`;
+    verdictText = `Based on the market price of $${currentPrice.toFixed(2)} and our intrinsic valuation across ${methodDescription}, ${company.name} (${company.ticker}) appears fairly valued (${verdictUpside > 0 ? "+" : ""}${verdictUpside.toFixed(1)}%).`;
   }
 
   return {
@@ -197,8 +328,10 @@ export function computeFullValuation(
     consensus_low: low,
     consensus_high: high,
     consensus_upside: consensusUpside,
+    consensus_strategy: strategy,
     consensus_primary_model: primaryModelType,
     consensus_adjustments: adjustments,
+    pillars,
     models,
     wacc: waccResult,
     classification,
