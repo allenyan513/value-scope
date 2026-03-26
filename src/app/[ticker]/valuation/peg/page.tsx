@@ -120,10 +120,6 @@ export default async function PEGFairValuePage({ params }: Props) {
                 highlight
               />
               <Row label="Fair Value" value={formatCurrency(model.fair_value)} primary />
-              <Row
-                label="Range"
-                value={`${formatCurrency(model.low_estimate)} – ${formatCurrency(model.high_estimate)}`}
-              />
             </tbody>
           </table>
         </div>

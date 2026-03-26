@@ -142,16 +142,16 @@ describe("calculatePEG", () => {
     expect(d.adjusted_growth).toBeGreaterThan(d.raw_growth_rate);
   });
 
-  // ---- Range estimates ----
+  // ---- Single-point model ----
 
-  it("should produce different low and high estimates", () => {
+  it("should set low and high equal to fair value (single-point model)", () => {
     const result = calculatePEG({
       historicals: appleFinancials,
       currentPrice: 200,
     });
 
-    expect(result.low_estimate).toBeLessThan(result.fair_value);
-    expect(result.high_estimate).toBeGreaterThan(result.fair_value);
+    expect(result.low_estimate).toBe(result.fair_value);
+    expect(result.high_estimate).toBe(result.fair_value);
   });
 
   // ---- PEG ratio ----

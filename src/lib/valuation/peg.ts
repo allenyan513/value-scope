@@ -132,11 +132,7 @@ export function calculatePEG(inputs: PEGInputs): ValuationResult {
   const fairValue = fairPE * epsUsed;
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
-  // --- 7. Range: ±15% to reflect uncertainty ---
-  const lowEstimate = fairPE * (ntmEPS ? (forwardResult.epsLow ?? epsUsed * 0.85) : epsUsed * 0.85);
-  const highEstimate = Math.min(GROWTH_CEILING, adjustedGrowth * 1.15) * 100 * (ntmEPS ? (forwardResult.epsHigh ?? epsUsed * 1.15) : epsUsed * 1.15);
-
-  // --- 8. PEG ratio ---
+  // --- 7. PEG ratio ---
   const currentPE = epsUsed > 0 ? currentPrice / epsUsed : null;
   const pegRatio =
     currentPE !== null && adjustedGrowth > 0
@@ -183,8 +179,8 @@ export function calculatePEG(inputs: PEGInputs): ValuationResult {
     model_type: "peg",
     fair_value: fairValue,
     upside_percent: upside,
-    low_estimate: lowEstimate,
-    high_estimate: highEstimate,
+    low_estimate: fairValue,
+    high_estimate: fairValue,
     assumptions: {
       earnings_growth_rate: Math.round(clampedGrowth * 10000) / 100,
       raw_growth_rate: Math.round(rawGrowthRate * 10000) / 100,
