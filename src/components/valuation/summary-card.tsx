@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ValuationHero } from "./valuation-hero";
 import type { ValuationSummary } from "@/types";
 
 const MODEL_NAMES: Record<string, string> = {
@@ -50,57 +50,29 @@ export function SummaryCard({ summary }: Props) {
   const upsideText = `${upsideSign}${summary.consensus_upside.toFixed(1)}%`;
 
   return (
-    <Card className="p-6">
-      {/* SEO heading with company name */}
-      <h2 className="text-lg font-semibold mb-6">
+    <div className="val-page">
+      {/* SEO heading with company name — outside the card */}
+      <h2 className="val-h2">
         {summary.company_name} ({summary.ticker}) Valuation Summary
       </h2>
 
-      {/* Key metrics — horizontal stat row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Intrinsic Value
-          </div>
-          <div className="text-2xl font-bold font-mono">
-            ${summary.consensus_fair_value.toFixed(2)}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Market Price
-          </div>
-          <div className="text-2xl font-bold font-mono">
-            ${summary.current_price.toFixed(2)}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Upside / Downside
-          </div>
-          <div className={`text-2xl font-bold font-mono ${verdict.color}`}>
-            {upsideText}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Verdict
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant={verdict.badge}>{verdict.label}</Badge>
-          </div>
-        </div>
-      </div>
+    <ValuationHero
+      fairValue={summary.consensus_fair_value}
+      currentPrice={summary.current_price}
+      upside={summary.consensus_upside}
+      narrative={
+        <>
+          Based on {applicableModels.length} valuation models, {summary.company_name} ({summary.ticker}) has
+          a consensus intrinsic value of ${summary.consensus_fair_value.toFixed(2)} (range: $
+          {summary.consensus_low.toFixed(2)} – ${summary.consensus_high.toFixed(2)}),
+          suggesting the stock is {verdict.label.toLowerCase()} by{" "}
+          {Math.abs(summary.consensus_upside).toFixed(1)}% relative to its current
+          market price of ${summary.current_price.toFixed(2)}.
+        </>
+      }
+    />
 
-      {/* SEO summary paragraph */}
-      <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-        Based on {applicableModels.length} valuation models, {summary.company_name} ({summary.ticker}) has
-        a consensus intrinsic value of ${summary.consensus_fair_value.toFixed(2)} (range: $
-        {summary.consensus_low.toFixed(2)} – ${summary.consensus_high.toFixed(2)}),
-        suggesting the stock is {verdict.label.toLowerCase()} by{" "}
-        {Math.abs(summary.consensus_upside).toFixed(1)}% relative to its current
-        market price of ${summary.current_price.toFixed(2)}.
-      </p>
+    <Card className="p-6">
 
       {/* Models table with weights and contributions */}
       <div className="overflow-x-auto">
@@ -182,5 +154,6 @@ export function SummaryCard({ summary }: Props) {
         </table>
       </div>
     </Card>
+    </div>
   );
 }

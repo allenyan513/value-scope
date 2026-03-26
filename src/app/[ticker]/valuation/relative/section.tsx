@@ -2,6 +2,7 @@
 
 import type { RelativeValuationData } from "./data";
 import { formatLargeNumber, formatCurrency } from "@/lib/format";
+import { ValuationHero } from "@/components/valuation/valuation-hero";
 
 function formatNumber(n: number, decimals = 1): string {
   return formatLargeNumber(n, { prefix: "", decimals, includeK: true });
@@ -27,46 +28,26 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
   const hasForward = data.forwardMultiple !== null;
   const upside = data.selectedUpside;
 
+  const multipleLabel = data.type === "pe" ? "P/E" : "EV/EBITDA";
+
   return (
-    <div className="rounded-lg border bg-card p-6">
-      {/* Key stats row */}
+    <div className="space-y-6">
       {data.selectedFairPrice > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Fair Value
-            </div>
-            <div className="text-2xl font-bold font-mono">
-              {formatCurrency(data.selectedFairPrice)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Market Price
-            </div>
-            <div className="text-2xl font-bold font-mono">
-              {formatCurrency(data.currentPrice)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Upside / Downside
-            </div>
-            <div className={`text-2xl font-bold font-mono ${upside >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {upside >= 0 ? "+" : ""}{upside.toFixed(1)}%
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Method
-            </div>
-            <div className="text-lg font-medium mt-1">
-              {data.label}
-            </div>
-          </div>
-        </div>
+        <ValuationHero
+          fairValue={data.selectedFairPrice}
+          currentPrice={data.currentPrice}
+          upside={upside}
+          narrative={
+            <>
+              Based on {multipleLabel} relative valuation, {data.companyName} ({data.ticker}) has
+              an estimated fair value of {formatCurrency(data.selectedFairPrice)} using
+              the industry median {multipleLabel} multiple of {data.trailingMultiple?.selected ?? data.forwardMultiple?.selected}x.
+            </>
+          }
+        />
       )}
 
+    <div className="val-card">
       {/* Summary Table */}
       <div className="mb-6 overflow-x-auto">
         <table className="w-full text-sm">
@@ -116,7 +97,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
 
       {/* Peer Comparison Table */}
       <div className="mb-6">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        <h4 className="val-h3">
           Relative Valuation — Benchmarking {data.type === "pe" ? "P/E" : "EV/EBITDA"} against peers
         </h4>
         <p className="text-xs text-muted-foreground mb-3">(USD in millions except Fair Price)</p>
@@ -181,7 +162,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
 
       {/* Calculation Breakdown */}
       <div className="mb-2">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        <h4 className="val-h3">
           Calculation
         </h4>
         <div className={`grid gap-6 ${hasForward ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -213,6 +194,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
@@ -286,8 +268,8 @@ function CalcRow({
   primary?: boolean;
 }) {
   return (
-    <div className={`flex justify-between items-center py-0.5 ${highlight ? "font-semibold" : ""} ${primary ? "text-primary" : ""}`}>
-      <span className="text-muted-foreground">{label}</span>
+    <div className={`val-row ${highlight ? "val-row-highlight" : ""} ${primary ? "val-row-primary" : ""}`}>
+      <span className="val-row-label">{label}</span>
       <span>{value}</span>
     </div>
   );

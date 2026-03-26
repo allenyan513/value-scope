@@ -27,9 +27,9 @@ function pct(n: number): string {
 export default async function WACCPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
-  const { summary } = await getCoreTickerData(upperTicker);
+  const { company, summary } = await getCoreTickerData(upperTicker);
 
-  if (!summary) {
+  if (!summary || !company) {
     return (
       <p className="text-muted-foreground py-8 text-center">
         Financial data not yet available for WACC analysis.
@@ -40,10 +40,10 @@ export default async function WACCPage({ params }: Props) {
   const w = summary.wacc;
 
   return (
-    <>
-      <h2 className="text-xl font-bold mb-6">WACC — Discount Rate Breakdown</h2>
+    <div className="val-page">
+      <h2 className="val-h2">{company.name} ({upperTicker}) WACC — Discount Rate Breakdown</h2>
 
-      <div className="rounded-lg border bg-card p-6 space-y-8">
+      <div className="val-card">
         {/* WACC Result */}
         <div className="text-center">
           <div className="text-sm text-muted-foreground">Weighted Average Cost of Capital</div>
@@ -57,7 +57,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Cost of Equity (CAPM) */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Cost of Equity (CAPM)
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -82,7 +82,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Cost of Debt */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Cost of Debt
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -99,7 +99,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Capital Structure */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Capital Structure
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -137,7 +137,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Final WACC Calculation */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             WACC Calculation
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -154,7 +154,7 @@ export default async function WACCPage({ params }: Props) {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -170,8 +170,8 @@ function Row({
   primary?: boolean;
 }) {
   return (
-    <div className={`flex justify-between items-center py-0.5 ${highlight ? "font-semibold" : ""} ${primary ? "text-primary" : ""}`}>
-      <span className="text-muted-foreground">{label}</span>
+    <div className={`val-row ${highlight ? "val-row-highlight" : ""} ${primary ? "val-row-primary" : ""}`}>
+      <span className="val-row-label">{label}</span>
       <span>{value}</span>
     </div>
   );

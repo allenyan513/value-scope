@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Card } from "@/components/ui/card";
 import type { ValuationResult } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
+import { ValuationHero } from "./valuation-hero";
 import { formatMillions, getUpsideColor } from "@/lib/format";
 
 /** Highlight key data in narrative: $amounts, percentages, multiples, verdict words */
@@ -230,52 +230,19 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
   return (
     <div className="space-y-6">
       {/* ===== Card 1: DCF Value — stats + narrative ===== */}
-      <Card className="p-6">
-        {/* Stat row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Fair Value {isCustom && <span className="text-amber-400 normal-case">(custom)</span>}
-            </div>
-            <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Market Price
-            </div>
-            <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Upside / Downside
-            </div>
-            <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
-              {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Range
-            </div>
-            <div className="text-lg font-medium font-mono text-muted-foreground mt-1">
-              ${model.low_estimate.toFixed(2)} – ${model.high_estimate.toFixed(2)}
-            </div>
-          </div>
-        </div>
-
-        {/* SEO narrative */}
-        {narrative && (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {highlightNarrative(narrative)}
-          </p>
-        )}
-      </Card>
+      <ValuationHero
+        fairValue={calc.fairValue}
+        currentPrice={currentPrice}
+        upside={calc.upsidePercent}
+        customLabel={isCustom ? <span className="text-amber-400 normal-case ml-1">(custom)</span> : undefined}
+        narrative={narrative ? highlightNarrative(narrative) : undefined}
+      />
 
       {/* ===== Card 2: Present Value Calculation ===== */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-5">
+      <div className="val-card">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h3 className="font-semibold text-lg">Present Value Calculation</h3>
+            <h3 className="val-card-title">Present Value Calculation</h3>
             {isCustom && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400">
                 Modified
@@ -487,11 +454,11 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       {/* ===== Card 3: Sensitivity Analysis ===== */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-lg mb-4">Sensitivity Analysis</h3>
+      <div className="val-card">
+        <h3 className="val-card-title">Sensitivity Analysis</h3>
         <SensitivityHeatmap
           waccValues={discountRateValues}
           secondAxisValues={growthValues}
@@ -500,7 +467,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
           xLabel={isExitMultiple ? "Exit Multiple" : "Terminal Growth Rate"}
           isPercent={!isExitMultiple}
         />
-      </Card>
+      </div>
 
     </div>
   );
