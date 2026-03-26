@@ -19,11 +19,10 @@
 - **Note**: DB financials/estimates are correctly FX-converted. Stored valuations are stale and will auto-fix on next cron run or `?refresh=true`.
 - Examples: TSM dcf_3stage=$10,063 (expect ~$312), NVO peg=$520 (expect ~$75)
 
-### Bug #3: Trading Multiples Extreme Overvaluations (HIGH)
-- [ ] ~16 tickers with P/S or P/B fair value >10x price
-- **Root cause (hypothesis)**: Peer-based fallback applying wrong sector's P/S to low-margin high-revenue companies. Or historical self-comparison data insufficient (<100 points) causing fallback.
-- Examples: F ps=$368 vs $11.57, GM ps=$1,475 vs $75, KR ps=$1,127 vs $72
-- Needs: trace peer selection for Ford P/S, check if historical path is used or peer fallback
+### Bug #3: Trading Multiples Extreme Overvaluations (HIGH) ✅
+- [x] ~16 tickers with P/S or P/B fair value >10x price
+- **Root cause**: Both crons didn't pass `historicalMultiples` → ALL tickers fell to peer-based. Tiny peer groups (2 for "Auto-Manufacturers") dominated by TSLA's P/S ~15.
+- **Fix**: Added `getPriceHistory()` + `computeHistoricalMultiples()` to both crons. DB-only.
 
 ### Bug #4: Growth Stock Systematic Undervaluation (MEDIUM)
 - [ ] Our median FV is 0.07x–0.48x of analyst consensus for mega-cap tech
