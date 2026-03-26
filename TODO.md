@@ -9,7 +9,7 @@
 ## Refactoring Backlog (do when touching the file)
 
 ### File Splits (>300 lines)
-- [ ] `dcf-cards.tsx` (507 lines) → 拆分为 `dcf-value-card.tsx`（stat row + narrative）、`dcf-projection-table.tsx`（交互参数 + 投影表）、`dcf-sensitivity.tsx`（热力图包装）；`ParamInput` 和 `highlightNarrative` 提取为共享工具
+- [x] `dcf-cards.tsx` — evaluated: 474 lines, single responsibility, tightly coupled state; split would add complexity without benefit
 - [x] `types/index.ts` → split into `types/company.ts`, `types/valuation.ts`, `types/financial.ts`
 - [x] `fmp.ts` → split into `fmp-core.ts`, `fmp-financials.ts`, `fmp-prices.ts`, `fmp-estimates.ts`, `fmp-multiples.ts`
 - [ ] `trading-multiples.ts` (417 lines) → consider splitting P/E and EV/EBITDA if adding new models (deferred: shared helpers make split counterproductive)
