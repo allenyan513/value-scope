@@ -36,16 +36,16 @@ export default async function AnalystEstimatesPage({ params }: Props) {
 
   return (
     <div className="space-y-8">
-      <h2 className="val-h1">
+      <h2 className="text-xl font-bold">
         {company.name} ({upperTicker}) Analyst Estimates
       </h2>
 
       <Suspense
         fallback={
           <div className="space-y-6">
-            <div className="h-48 animate-pulse bg-muted" />
-            <div className="h-64 animate-pulse bg-muted" />
-            <div className="h-64 animate-pulse bg-muted" />
+            <div className="h-48 animate-pulse bg-muted rounded-lg" />
+            <div className="h-64 animate-pulse bg-muted rounded-lg" />
+            <div className="h-64 animate-pulse bg-muted rounded-lg" />
           </div>
         }
       >

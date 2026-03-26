@@ -15,7 +15,7 @@ export default async function DCFLayout({ params, children }: Props) {
   return (
     <>
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="val-h1 !mb-0">
+        <h2 className="text-xl font-bold">
           {companyName} ({upperTicker}) DCF Valuation
         </h2>
         <DCFModelNav ticker={upperTicker} />

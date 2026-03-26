@@ -15,7 +15,7 @@ export default async function RelativeLayout({ params, children }: Props) {
   return (
     <>
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="val-h1 !mb-0">
+        <h2 className="text-xl font-bold">
           {companyName} ({upperTicker}) Trading Multiples
         </h2>
         <TradingMultiplesNav ticker={upperTicker} />

@@ -95,7 +95,7 @@ export default function WatchlistPage() {
             return (
               <div
                 key={item.ticker}
-                className="flex items-center justify-between border-b p-4 hover:bg-muted/20 transition-colors"
+                className="flex items-center justify-between rounded-lg border p-4 hover:shadow-sm transition-shadow"
               >
                 <Link
                   href={`/${item.ticker}`}

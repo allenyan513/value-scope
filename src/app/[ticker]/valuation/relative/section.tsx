@@ -11,7 +11,7 @@ function UpsideBadge({ upside }: { upside: number }) {
   const isPositive = upside >= 0;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold ${
+      className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-sm font-semibold ${
         isPositive
           ? "bg-green-950 text-green-400"
           : "bg-red-950 text-red-400"
@@ -28,12 +28,12 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
   const upside = data.selectedUpside;
 
   return (
-    <section className="val-section">
+    <div className="rounded-lg border bg-card p-6">
       {/* Key stats row */}
       {data.selectedFairPrice > 0 && (
-        <div className="val-stat-grid">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Fair Value
             </div>
             <div className="text-2xl font-bold font-mono">
@@ -41,7 +41,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
             </div>
           </div>
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Market Price
             </div>
             <div className="text-2xl font-bold font-mono">
@@ -49,7 +49,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
             </div>
           </div>
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Upside / Downside
             </div>
             <div className={`text-2xl font-bold font-mono ${upside >= 0 ? "text-green-400" : "text-red-400"}`}>
@@ -57,7 +57,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
             </div>
           </div>
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Method
             </div>
             <div className="text-lg font-medium mt-1">
@@ -116,8 +116,8 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
 
       {/* Peer Comparison Table */}
       <div className="mb-6">
-        <h4 className="val-h2">
-          Peer Comparison
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Relative Valuation — Benchmarking {data.type === "pe" ? "P/E" : "EV/EBITDA"} against peers
         </h4>
         <p className="text-xs text-muted-foreground mb-3">(USD in millions except Fair Price)</p>
         <div className="overflow-x-auto">
@@ -181,7 +181,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
 
       {/* Calculation Breakdown */}
       <div className="mb-2">
-        <h4 className="val-h2">
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           Calculation
         </h4>
         <div className={`grid gap-6 ${hasForward ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -213,7 +213,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
           )}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

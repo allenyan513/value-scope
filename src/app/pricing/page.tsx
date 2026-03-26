@@ -79,10 +79,10 @@ export default function PricingPage() {
         {plans.map((plan) => (
           <div
             key={plan.name}
-            className={`border p-8 flex flex-col transition-colors ${
+            className={`rounded-xl border bg-card p-8 flex flex-col transition-all ${
               plan.highlighted
-                ? "border-brand relative"
-                : "hover:bg-muted/20"
+                ? "border-brand shadow-lg shadow-brand/10 relative ring-1 ring-brand/20"
+                : "hover:shadow-md hover:border-brand/20"
             }`}
           >
             {plan.badge && (

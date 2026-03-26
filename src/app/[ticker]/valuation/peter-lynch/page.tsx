@@ -3,6 +3,7 @@ import { getCompany } from "@/lib/db/queries";
 import { getCoreTickerData } from "../../data";
 import { formatCurrency, getUpsideColor, formatLargeNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { VERDICT_THRESHOLD } from "@/lib/constants";
 
@@ -69,15 +70,15 @@ export default async function PeterLynchPage({ params }: Props) {
 
   return (
     <>
-      <h2 className="val-h1">
+      <h2 className="text-xl font-bold mb-6">
         {company.name} ({upperTicker}) Peter Lynch Fair Value
       </h2>
 
-      <section className="val-section space-y-8">
+      <Card className="p-6 space-y-8">
         {/* Key stats */}
-        <div className="val-stat-grid">
+        <div className="grid grid-cols-3 gap-6">
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Fair Value
             </div>
             <div className="text-2xl font-bold font-mono">
@@ -85,7 +86,7 @@ export default async function PeterLynchPage({ params }: Props) {
             </div>
           </div>
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Stock Price
             </div>
             <div className="text-2xl font-bold font-mono">
@@ -93,7 +94,7 @@ export default async function PeterLynchPage({ params }: Props) {
             </div>
           </div>
           <div>
-            <div className="val-label">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
               Upside / Downside
             </div>
             <div className={cn("text-2xl font-bold font-mono", getUpsideColor(upside))}>
@@ -113,7 +114,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
         {/* Formula display */}
         <div>
-          <h3 className="val-h3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
             Fair Value Calculation
           </h3>
           <div className="rounded-md border bg-muted/30 p-5 font-mono text-sm space-y-1">
@@ -136,7 +137,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
         {/* Calculation details table */}
         <div>
-          <h3 className="val-h3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Calculation Details
           </h3>
           <div className="max-w-lg">
@@ -158,7 +159,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
         {/* Methodology */}
         <div>
-          <h3 className="val-h3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Methodology
           </h3>
           <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
@@ -179,7 +180,7 @@ export default async function PeterLynchPage({ params }: Props) {
         {/* Earnings History */}
         {earningsHistory && earningsHistory.length > 0 && (
           <div>
-            <h3 className="val-h3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Historical Earnings
             </h3>
             <div className="overflow-x-auto">
@@ -221,7 +222,7 @@ export default async function PeterLynchPage({ params }: Props) {
             </div>
           </div>
         )}
-      </section>
+      </Card>
     </>
   );
 }

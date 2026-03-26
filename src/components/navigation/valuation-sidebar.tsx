@@ -33,7 +33,7 @@ export function ValuationSidebar({ ticker }: Props) {
             key={item.href}
             href={fullHref}
             className={cn(
-              "flex items-center justify-between gap-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors",
+              "flex items-center justify-between gap-2 px-3 py-3 text-sm font-medium rounded-lg whitespace-nowrap transition-colors",
               isActive
                 ? "bg-primary/10 text-primary border-l-2 md:border-l-3 border-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"

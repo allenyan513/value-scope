@@ -24,7 +24,7 @@ export default function MethodologyPage() {
           All DCF models discount future cash flows using the Weighted Average
           Cost of Capital (WACC). Our calculation:
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Cost of Equity</strong> = Risk-Free Rate + Beta &times;
             Equity Risk Premium (5.5%)
@@ -57,7 +57,7 @@ export default function MethodologyPage() {
           Projects free cash flow for 5 or 10 years, then calculates a terminal
           value using the Gordon Growth Model.
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Revenue Growth</strong>: Analyst consensus estimates (when
             available), fading to 3% long-term GDP growth
@@ -93,7 +93,7 @@ export default function MethodologyPage() {
           Same FCF projection as above, but uses an EV/EBITDA exit multiple for
           the terminal value instead of perpetuity growth.
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Terminal Value</strong> = EBITDA<sub>n</sub> &times; Exit
             Multiple
@@ -116,7 +116,7 @@ export default function MethodologyPage() {
           A relative valuation comparing the company to industry peers using
           Price-to-Earnings ratios.
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Fair Value</strong> = Blended Industry Median P/E &times;
             Company TTM EPS
@@ -142,7 +142,7 @@ export default function MethodologyPage() {
           Enterprise value-based relative valuation, less affected by capital
           structure differences than P/E.
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Fair Value</strong> = (Industry Median EV/EBITDA &times;
             Company EBITDA - Net Debt) &divide; Shares Outstanding
@@ -163,7 +163,7 @@ export default function MethodologyPage() {
           A PEG-based model inspired by Peter Lynch&apos;s investing philosophy:
           a fairly priced stock has a P/E equal to its growth rate.
         </p>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Fair Value</strong> = Earnings Growth Rate &times; TTM EPS
           </div>
@@ -185,7 +185,7 @@ export default function MethodologyPage() {
       {/* Data Sources */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Data Sources</h2>
-        <div className="border-l-2 border-border pl-6 space-y-3 text-sm">
+        <div className="rounded-lg border p-6 space-y-3 text-sm">
           <div>
             <strong>Financial Statements</strong>: 5&ndash;7 years of annual
             data from SEC filings via Financial Modeling Prep

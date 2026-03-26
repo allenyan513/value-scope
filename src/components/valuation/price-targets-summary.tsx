@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-// Card removed — flat layout
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { PriceTargetConsensus, DailyPrice } from "@/types";
 import { formatCurrency } from "@/lib/format";
 
@@ -103,14 +103,16 @@ export function PriceTargetsSummary({
   const yMax = Math.ceil(Math.max(...allPrices) * 1.1);
 
   return (
-    <section className="val-section">
-      <h3 className="val-h2">
-        {ticker} Price Targets Summary
-      </h3>
-      <div className="space-y-6">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">
+          {ticker} Price Targets Summary
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {/* Verdict Banner */}
         <div
-          className={`px-4 py-3 text-sm font-medium border-l-2 ${
+          className={`rounded-lg px-4 py-3 text-sm font-medium ${
             isPositive
               ? "bg-emerald-900/20 text-emerald-400 border border-emerald-800/30"
               : "bg-red-900/20 text-red-400 border border-red-800/30"
@@ -134,7 +136,7 @@ export function PriceTargetsSummary({
         </p>
 
         {/* 3-Column Target Cards */}
-        <div className="val-stat-grid">
+        <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Lowest Target", value: low, pct: lowPct },
             { label: "Average Target", value: avg, pct: avgPct },
@@ -142,9 +144,9 @@ export function PriceTargetsSummary({
           ].map((item) => (
             <div
               key={item.label}
-              className="text-center space-y-1"
+              className="rounded-lg border p-4 text-center space-y-1"
             >
-              <div className="val-label">
+              <div className="text-xs text-muted-foreground uppercase tracking-wider">
                 {item.label}
               </div>
               <div className="text-lg font-bold font-mono">
@@ -270,7 +272,7 @@ export function PriceTargetsSummary({
             </ResponsiveContainer>
           </div>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

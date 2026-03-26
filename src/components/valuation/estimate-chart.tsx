@@ -10,7 +10,7 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
-// Card removed — flat layout
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import type { FinancialStatement, AnalystEstimate, EarningsSurprise } from "@/types";
 import { formatLargeNumber, formatCurrency } from "@/lib/format";
 import { EstimateKPIRow } from "./estimate-kpi-row";
@@ -133,11 +133,13 @@ export function EstimateChart({
     .filter((v): v is number => v !== null);
 
   return (
-    <section className="val-section">
-      <h3 className="val-h2">
-        {ticker} {title} Estimates
-      </h3>
-      <div className="space-y-6">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">
+          {ticker} {title} Estimates
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <EstimateKPIRow
           pastCAGR={pastCAGR}
           estCAGR={estCAGR}
@@ -218,7 +220,7 @@ export function EstimateChart({
         </ResponsiveContainer>
 
         <EstimateBeatMissTable actualPoints={actualPoints} />
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
