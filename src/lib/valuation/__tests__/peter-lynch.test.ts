@@ -1,9 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { calculatePeterLynch } from "../peter-lynch";
-import { appleFinancials, unprofitableFinancials, makeFinancial } from "./fixtures";
+import { calculatePeterLynch, type PeterLynchDetails } from "../peter-lynch";
+import { appleFinancials, testEstimates, unprofitableFinancials, makeFinancial } from "./fixtures";
+
+function getDetails(result: { details: Record<string, unknown> }): PeterLynchDetails {
+  return result.details as unknown as PeterLynchDetails;
+}
 
 describe("calculatePeterLynch", () => {
-  it("should compute fair value = growth rate × 100 × EPS", () => {
+  // ---- Core formula ----
+
+  it("should compute fair value = fair_pe × eps_used", () => {
     const result = calculatePeterLynch({
       historicals: appleFinancials,
       currentPrice: 200,
@@ -12,35 +18,160 @@ describe("calculatePeterLynch", () => {
     expect(result.model_type).toBe("peter_lynch");
     expect(result.fair_value).toBeGreaterThan(0);
 
-    const assumptions = result.assumptions as Record<string, unknown>;
-    const growthRate = (assumptions.earnings_growth_rate as number) / 100;
-    const eps = assumptions.ttm_eps as number;
-    expect(result.fair_value).toBeCloseTo(growthRate * 100 * eps, 0);
+    const d = getDetails(result);
+    expect(result.fair_value).toBeCloseTo(d.fair_pe * d.eps_used, 0);
   });
 
-  it("should clamp growth rate between 5% and 25%", () => {
+  it("should use forward growth when estimates are available", () => {
+    const result = calculatePeterLynch({
+      historicals: appleFinancials,
+      currentPrice: 200,
+      estimates: testEstimates,
+    });
+
+    const d = getDetails(result);
+    expect(d.growth_source).toBe("forward");
+    expect(d.forward_growth).not.toBeNull();
+    expect(d.ntm_eps).not.toBeNull();
+    // NTM EPS should be used
+    expect(d.eps_used).toBe(d.ntm_eps);
+  });
+
+  it("should fall back to historical growth without estimates", () => {
     const result = calculatePeterLynch({
       historicals: appleFinancials,
       currentPrice: 200,
     });
 
-    const assumptions = result.assumptions as Record<string, unknown>;
-    const growthRate = assumptions.earnings_growth_rate as number;
-    expect(growthRate).toBeGreaterThanOrEqual(5);
-    expect(growthRate).toBeLessThanOrEqual(25);
+    const d = getDetails(result);
+    expect(d.growth_source).toBe("historical");
+    expect(d.ntm_eps).toBeNull();
+    // TTM EPS should be used
+    expect(d.eps_used).toBe(d.ttm_eps);
   });
 
-  it("should set low from 5% floor and high from 25% ceiling", () => {
+  it("should use EPS CAGR (not net income CAGR) for historical growth", () => {
+    // Company with growing EPS but flat net income (buyback effect)
+    const buybackCompany = [
+      makeFinancial(2021, { net_income: 50e9, eps: 3.0, eps_diluted: 3.0, shares_outstanding: 16.7e9 }),
+      makeFinancial(2022, { net_income: 50e9, eps: 3.3, eps_diluted: 3.3, shares_outstanding: 15.2e9 }),
+      makeFinancial(2023, { net_income: 50e9, eps: 3.6, eps_diluted: 3.6, shares_outstanding: 13.9e9 }),
+      makeFinancial(2024, { net_income: 50e9, eps: 4.0, eps_diluted: 4.0, shares_outstanding: 12.5e9 }),
+    ];
+
+    const result = calculatePeterLynch({
+      historicals: buybackCompany,
+      currentPrice: 100,
+    });
+
+    const d = getDetails(result);
+    // EPS grew from 3.0 to 4.0 over 3 years → ~10% CAGR
+    // Net income was flat → old model would give 0% CAGR
+    expect(d.raw_growth_rate).toBeGreaterThan(0.09);
+    expect(d.raw_growth_rate).toBeLessThan(0.12);
+  });
+
+  // ---- Growth clamping ----
+
+  it("should clamp growth rate between 8% and 25%", () => {
     const result = calculatePeterLynch({
       historicals: appleFinancials,
       currentPrice: 200,
     });
 
-    const eps = (result.assumptions as Record<string, unknown>).ttm_eps as number;
-    // Single-point model — low and high equal fair value
-    expect(result.low_estimate).toBeCloseTo(result.fair_value, 0);
-    expect(result.high_estimate).toBeCloseTo(result.fair_value, 0);
+    const d = getDetails(result);
+    expect(d.growth_rate).toBeGreaterThanOrEqual(0.08);
+    expect(d.growth_rate).toBeLessThanOrEqual(0.25);
   });
+
+  it("should clamp very high growth to 25% ceiling", () => {
+    const highGrowth = [
+      makeFinancial(2023, { net_income: 1e9, eps: 1.0, eps_diluted: 1.0 }),
+      makeFinancial(2024, { net_income: 10e9, eps: 5.0, eps_diluted: 5.0 }),
+    ];
+
+    const result = calculatePeterLynch({
+      historicals: highGrowth,
+      currentPrice: 100,
+    });
+
+    const d = getDetails(result);
+    expect(d.growth_rate).toBe(0.25);
+    expect(d.growth_clamped).toBe(true);
+  });
+
+  it("should use 8% floor for low/negative growth", () => {
+    const flatGrowth = [
+      makeFinancial(2023, { net_income: 50e9, eps: 5.0, eps_diluted: 5.0 }),
+      makeFinancial(2024, { net_income: 50e9, eps: 5.0, eps_diluted: 5.0 }),
+    ];
+
+    const result = calculatePeterLynch({
+      historicals: flatGrowth,
+      currentPrice: 100,
+    });
+
+    const d = getDetails(result);
+    expect(d.growth_rate).toBe(0.08); // 8% floor
+    expect(d.growth_clamped).toBe(true);
+  });
+
+  // ---- Dividend yield ----
+
+  it("should include dividend yield in adjusted growth", () => {
+    const withDividends = [
+      makeFinancial(2023, {
+        net_income: 50e9, eps: 5.0, eps_diluted: 5.0,
+        dividends_paid: -10e9, shares_outstanding: 10e9,
+      }),
+      makeFinancial(2024, {
+        net_income: 55e9, eps: 5.5, eps_diluted: 5.5,
+        dividends_paid: -11e9, shares_outstanding: 10e9,
+      }),
+    ];
+
+    const result = calculatePeterLynch({
+      historicals: withDividends,
+      currentPrice: 100,
+      marketCap: 1000e9, // $100 price × 10B shares
+    });
+
+    const d = getDetails(result);
+    // Dividend yield = 11B / 1000B = 1.1%
+    expect(d.dividend_yield).toBeCloseTo(0.011, 2);
+    expect(d.adjusted_growth).toBeGreaterThan(d.raw_growth_rate);
+  });
+
+  // ---- Range estimates ----
+
+  it("should produce different low and high estimates", () => {
+    const result = calculatePeterLynch({
+      historicals: appleFinancials,
+      currentPrice: 200,
+    });
+
+    expect(result.low_estimate).toBeLessThan(result.fair_value);
+    expect(result.high_estimate).toBeGreaterThan(result.fair_value);
+  });
+
+  // ---- PEG ratio ----
+
+  it("should compute PEG ratio", () => {
+    const result = calculatePeterLynch({
+      historicals: appleFinancials,
+      currentPrice: 200,
+    });
+
+    const d = getDetails(result);
+    expect(d.peg_ratio).not.toBeNull();
+    expect(d.current_pe).not.toBeNull();
+    // PEG = current P/E ÷ (adjusted growth × 100)
+    if (d.peg_ratio && d.current_pe) {
+      expect(d.peg_ratio).toBeCloseTo(d.current_pe / (d.adjusted_growth * 100), 1);
+    }
+  });
+
+  // ---- Edge cases ----
 
   it("should return N/A for negative EPS", () => {
     const result = calculatePeterLynch({
@@ -59,43 +190,20 @@ describe("calculatePeterLynch", () => {
     });
 
     expect(result.fair_value).toBe(0);
-    expect((result.assumptions as Record<string, unknown>).note).toContain("Insufficient");
   });
 
-  it("should include earnings history in details", () => {
+  it("should return N/A for empty historicals", () => {
     const result = calculatePeterLynch({
-      historicals: appleFinancials,
+      historicals: [],
       currentPrice: 200,
     });
 
-    const details = result.details as Record<string, unknown>;
-    const history = details.earnings_history as Array<{
-      year: number;
-      net_income: number;
-      eps: number;
-      yoy_growth: number | null;
-    }>;
-
-    expect(history.length).toBe(appleFinancials.length);
-    expect(history[0].yoy_growth).toBeNull(); // First year has no YoY
-    expect(history[1].yoy_growth).not.toBeNull();
+    expect(result.fair_value).toBe(0);
   });
 
-  it("should compute upside correctly", () => {
-    const result = calculatePeterLynch({
-      historicals: appleFinancials,
-      currentPrice: 200,
-    });
-
-    const expectedUpside =
-      ((result.fair_value - 200) / 200) * 100;
-    expect(result.upside_percent).toBeCloseTo(expectedUpside, 1);
-  });
-
-  it("should use average YoY growth when start net income is negative", () => {
-    // Year 1 negative, years 2-4 positive — triggers fallback path
+  it("should use average YoY growth when start EPS is negative", () => {
     const mixedFinancials = [
-      makeFinancial(2021, { net_income: -10e9, eps: 2.0, eps_diluted: 2.0 }),
+      makeFinancial(2021, { net_income: -10e9, eps: -1.0, eps_diluted: -1.0 }),
       makeFinancial(2022, { net_income: 20e9, eps: 3.0, eps_diluted: 3.0 }),
       makeFinancial(2023, { net_income: 25e9, eps: 4.0, eps_diluted: 4.0 }),
       makeFinancial(2024, { net_income: 30e9, eps: 5.0, eps_diluted: 5.0 }),
@@ -107,13 +215,11 @@ describe("calculatePeterLynch", () => {
     });
 
     expect(result.fair_value).toBeGreaterThan(0);
-    // Should use average YoY of positive-to-positive pairs only
-    const details = result.details as Record<string, unknown>;
-    expect(details.growth_clamped).toBeDefined();
+    const d = getDetails(result);
+    expect(d.growth_source).toBe("historical");
   });
 
   it("should handle all-negative net income with positive EPS gracefully", () => {
-    // All net income negative but EPS positive (edge case)
     const edgeCase = [
       makeFinancial(2023, { net_income: -5e9, eps: 1.5, eps_diluted: 1.5 }),
       makeFinancial(2024, { net_income: -3e9, eps: 2.0, eps_diluted: 2.0 }),
@@ -124,26 +230,10 @@ describe("calculatePeterLynch", () => {
       currentPrice: 50,
     });
 
-    // Growth rate falls back to 0, clamped to 5% floor
     expect(result.fair_value).toBeGreaterThan(0);
-    const details = result.details as Record<string, unknown>;
-    expect(details.earnings_growth_rate).toBe(0.05); // clamped to 5% floor
-  });
-
-  it("should handle very high growth by clamping to 25%", () => {
-    const highGrowth = [
-      makeFinancial(2023, { net_income: 1e9, eps: 1.0, eps_diluted: 1.0 }),
-      makeFinancial(2024, { net_income: 10e9, eps: 5.0, eps_diluted: 5.0 }),
-    ];
-
-    const result = calculatePeterLynch({
-      historicals: highGrowth,
-      currentPrice: 100,
-    });
-
-    const details = result.details as Record<string, unknown>;
-    expect(details.earnings_growth_rate).toBe(0.25); // clamped to 25% ceiling
-    expect(details.growth_clamped).toBe(true);
+    const d = getDetails(result);
+    // EPS grew from 1.5 to 2.0 = 33% — capped at 25%
+    expect(d.growth_rate).toBeLessThanOrEqual(0.25);
   });
 
   it("should use only 2 years when only 2 available", () => {
@@ -158,16 +248,48 @@ describe("calculatePeterLynch", () => {
     });
 
     expect(result.fair_value).toBeGreaterThan(0);
-    const details = result.details as Record<string, unknown>;
-    expect(details.years_used).toBe(1); // 2 data points = 1 year of growth
+    const d = getDetails(result);
+    expect(d.years_used).toBe(1);
   });
 
-  it("should return empty array for historicals", () => {
+  it("should include earnings history with EPS-based YoY growth", () => {
     const result = calculatePeterLynch({
-      historicals: [],
+      historicals: appleFinancials,
       currentPrice: 200,
     });
 
-    expect(result.fair_value).toBe(0);
+    const d = getDetails(result);
+    expect(d.earnings_history.length).toBe(appleFinancials.length);
+    expect(d.earnings_history[0].yoy_growth).toBeNull(); // First year
+    expect(d.earnings_history[1].yoy_growth).not.toBeNull();
+  });
+
+  it("should compute upside correctly", () => {
+    const result = calculatePeterLynch({
+      historicals: appleFinancials,
+      currentPrice: 200,
+    });
+
+    const expectedUpside = ((result.fair_value - 200) / 200) * 100;
+    expect(result.upside_percent).toBeCloseTo(expectedUpside, 1);
+  });
+
+  // ---- Forward estimates filtering ----
+
+  it("should skip estimates with fewer than 3 analysts", () => {
+    const weakEstimates = [
+      { ticker: "TEST", period: "2026", eps_estimate: 7.0, revenue_estimate: 420e9,
+        revenue_low: 400e9, revenue_high: 440e9, eps_low: 6.5, eps_high: 7.5,
+        number_of_analysts: 2 }, // Too few
+    ];
+
+    const result = calculatePeterLynch({
+      historicals: appleFinancials,
+      currentPrice: 200,
+      estimates: weakEstimates,
+    });
+
+    const d = getDetails(result);
+    expect(d.growth_source).toBe("historical"); // Falls back
   });
 });

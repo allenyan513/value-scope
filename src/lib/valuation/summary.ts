@@ -140,11 +140,13 @@ export function computeFullValuation(
   models.push(calculatePEMultiples(tradingInputs));
   models.push(calculateEVEBITDAMultiples(tradingInputs));
 
-  // Peter Lynch
+  // Peter Lynch (PEG-based with forward estimates + dividend yield)
   models.push(
     calculatePeterLynch({
       historicals: sortedHistoricals,
       currentPrice,
+      estimates,
+      marketCap: company.market_cap || currentPrice * company.shares_outstanding,
     })
   );
 
