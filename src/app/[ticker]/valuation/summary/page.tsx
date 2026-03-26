@@ -5,6 +5,7 @@ import { TickerPending } from "@/components/provisioning/ticker-pending";
 import { getCoreTickerData } from "../../data";
 import { ValuationChartSection } from "./valuation-chart-section";
 import { SummaryWithStrategy } from "./summary-with-strategy";
+import { WallStreetSection } from "./wall-street-section";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -96,6 +97,21 @@ export default async function SummaryPage({ params }: Props) {
         riskFreeRate={summary.wacc.risk_free_rate}
         currentPrice={summary.current_price}
       />
+
+      {/* ValuScope vs Wall Street */}
+      <Suspense
+        fallback={<div className="mt-8 h-48 animate-pulse bg-muted rounded-lg" />}
+      >
+        <div className="mt-8">
+          <WallStreetSection
+            ticker={upperTicker}
+            companyName={company.name}
+            currentPrice={summary.current_price}
+            consensusFairValue={summary.consensus_fair_value}
+            consensusUpside={summary.consensus_upside}
+          />
+        </div>
+      </Suspense>
 
       {/* Price vs Intrinsic Value Chart */}
       <div className="mt-8 val-card">

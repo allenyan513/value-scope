@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getCoreTickerData } from "../../data";
-import { PriceTargetsSection } from "./price-targets-section";
+import { AnalystEstimatesContent } from "./analyst-estimates-content";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -44,12 +44,14 @@ export default async function AnalystEstimatesPage({ params }: Props) {
         fallback={
           <div className="space-y-6">
             <div className="h-48 animate-pulse bg-muted rounded-lg" />
+            <div className="h-48 animate-pulse bg-muted rounded-lg" />
+            <div className="h-64 animate-pulse bg-muted rounded-lg" />
             <div className="h-64 animate-pulse bg-muted rounded-lg" />
             <div className="h-64 animate-pulse bg-muted rounded-lg" />
           </div>
         }
       >
-        <PriceTargetsSection ticker={upperTicker} />
+        <AnalystEstimatesContent ticker={upperTicker} />
       </Suspense>
     </div>
   );

@@ -91,3 +91,86 @@ export async function getEarningsSurprises(
     return [];
   }
 }
+
+// --- Analyst Stock Recommendations (Buy/Hold/Sell) ---
+interface FMPAnalystRecommendation {
+  symbol: string;
+  date: string;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+  consensus: string;
+}
+
+export async function getAnalystRecommendations(
+  ticker: string
+): Promise<FMPAnalystRecommendation | null> {
+  try {
+    const data = await fmpFetch<FMPAnalystRecommendation[]>(
+      "/analyst-stock-recommendations",
+      { symbol: ticker }
+    );
+    return data?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// --- Upgrades / Downgrades ---
+export interface FMPUpgradeDowngrade {
+  symbol: string;
+  publishedDate: string;
+  gradingCompany: string;
+  previousGrade: string;
+  newGrade: string;
+  action: string;
+}
+
+export async function getUpgradesDowngrades(
+  ticker: string,
+  limit = 10
+): Promise<FMPUpgradeDowngrade[]> {
+  try {
+    const data = await fmpFetch<FMPUpgradeDowngrade[]>(
+      "/upgrades-downgrades",
+      { symbol: ticker, limit: String(limit) }
+    );
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// --- Earnings Calendar (next earnings date) ---
+interface FMPEarningsCalendarEntry {
+  date: string;
+  symbol: string;
+  eps: number | null;
+  epsEstimated: number | null;
+  revenue: number | null;
+  revenueEstimated: number | null;
+}
+
+export async function getEarningsCalendar(
+  ticker: string
+): Promise<FMPEarningsCalendarEntry | null> {
+  try {
+    const data = await fmpFetch<FMPEarningsCalendarEntry[]>(
+      "/earnings-calendar",
+      { symbol: ticker }
+    );
+    if (!data || data.length === 0) return null;
+    // API may return all companies — filter to requested ticker
+    const tickerUpper = ticker.toUpperCase();
+    const filtered = data.filter((e) => e.symbol?.toUpperCase() === tickerUpper);
+    if (filtered.length === 0) return null;
+    // Find the next upcoming earnings (date >= today)
+    const today = new Date().toISOString().split("T")[0];
+    const upcoming = filtered.find((e) => e.date >= today);
+    return upcoming ?? filtered[0] ?? null;
+  } catch {
+    return null;
+  }
+}
