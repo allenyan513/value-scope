@@ -35,8 +35,8 @@ export default async function AnalystEstimatesPage({ params }: Props) {
   }
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-xl font-bold">
+    <div className="val-page">
+      <h2 className="val-h2">
         {company.name} ({upperTicker}) Analyst Estimates
       </h2>
 

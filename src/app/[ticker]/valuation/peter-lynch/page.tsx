@@ -1,9 +1,9 @@
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getCoreTickerData } from "../../data";
-import { formatCurrency, getUpsideColor, formatLargeNumber } from "@/lib/format";
+import { formatCurrency, formatLargeNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
+import { ValuationHero } from "@/components/valuation/valuation-hero";
 import { Badge } from "@/components/ui/badge";
 import { VERDICT_THRESHOLD } from "@/lib/constants";
 
@@ -69,52 +69,30 @@ export default async function PeterLynchPage({ params }: Props) {
       : "fairly valued";
 
   return (
-    <>
-      <h2 className="text-xl font-bold mb-6">
+    <div className="val-page">
+      <h2 className="val-h2">
         {company.name} ({upperTicker}) Peter Lynch Fair Value
       </h2>
 
-      <Card className="p-6 space-y-8">
-        {/* Key stats */}
-        <div className="grid grid-cols-3 gap-6">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Fair Value
-            </div>
-            <div className="text-2xl font-bold font-mono">
-              {formatCurrency(model.fair_value)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Stock Price
-            </div>
-            <div className="text-2xl font-bold font-mono">
-              {formatCurrency(currentPrice)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-              Upside / Downside
-            </div>
-            <div className={cn("text-2xl font-bold font-mono", getUpsideColor(upside))}>
-              {upside > 0 ? "+" : ""}{upside.toFixed(1)}%
-            </div>
-          </div>
-        </div>
+      <ValuationHero
+        fairValue={model.fair_value}
+        currentPrice={currentPrice}
+        upside={upside}
+        narrative={
+          <>
+            Using the Peter Lynch Fair Value formula, {company.name} ({upperTicker}) has an estimated
+            fair value of {formatCurrency(model.fair_value)}. With a {yearsUsed}-year earnings growth
+            rate of {(growthRate * 100).toFixed(1)}% and trailing EPS of ${ttmEPS.toFixed(2)},
+            the Peter Lynch model suggests the stock is {verdict} by{" "}
+            {Math.abs(upside).toFixed(1)}% relative to its current market price of {formatCurrency(currentPrice)}.
+          </>
+        }
+      />
 
-        {/* SEO paragraph */}
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Using the Peter Lynch Fair Value formula, {company.name} ({upperTicker}) has an estimated
-          fair value of {formatCurrency(model.fair_value)}. With a {yearsUsed}-year earnings growth
-          rate of {(growthRate * 100).toFixed(1)}% and trailing EPS of ${ttmEPS.toFixed(2)},
-          the Peter Lynch model suggests the stock is {verdict} by{" "}
-          {Math.abs(upside).toFixed(1)}% relative to its current market price of {formatCurrency(currentPrice)}.
-        </p>
-
+      <div className="val-card">
         {/* Formula display */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+          <h3 className="val-h3">
             Fair Value Calculation
           </h3>
           <div className="rounded-md border bg-muted/30 p-5 font-mono text-sm space-y-1">
@@ -137,7 +115,7 @@ export default async function PeterLynchPage({ params }: Props) {
 
         {/* Calculation details table */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Calculation Details
           </h3>
           <div className="max-w-lg">
@@ -159,10 +137,10 @@ export default async function PeterLynchPage({ params }: Props) {
 
         {/* Methodology */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Methodology
           </h3>
-          <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
+          <div className="val-prose space-y-2">
             <p>
               The Peter Lynch Fair Value estimates a stock&apos;s intrinsic value using the formula:
               <strong className="text-foreground"> Fair Value = Earnings Growth Rate × TTM EPS</strong>.
@@ -180,7 +158,7 @@ export default async function PeterLynchPage({ params }: Props) {
         {/* Earnings History */}
         {earningsHistory && earningsHistory.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="val-h3">
               Historical Earnings
             </h3>
             <div className="overflow-x-auto">
@@ -222,8 +200,8 @@ export default async function PeterLynchPage({ params }: Props) {
             </div>
           </div>
         )}
-      </Card>
-    </>
+      </div>
+    </div>
   );
 }
 

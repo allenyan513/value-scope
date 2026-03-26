@@ -13,14 +13,14 @@ export default async function DCFLayout({ params, children }: Props) {
   const companyName = company?.name ?? upperTicker;
 
   return (
-    <>
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-xl font-bold">
+    <div className="val-page">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="val-h2">
           {companyName} ({upperTicker}) DCF Valuation
         </h2>
         <DCFModelNav ticker={upperTicker} />
       </div>
       {children}
-    </>
+    </div>
   );
 }
