@@ -49,5 +49,18 @@ All `/valuation` sub-pages use semantic CSS classes defined in `globals.css @lay
 - Verdict is auto-derived from upside (≥0 = Undervalued/green, <0 = Overvalued/red)
 - **Never** duplicate the stat-row pattern inline — use `<ValuationHero>` instead
 
+## MethodologyCard Component
+`src/components/valuation/methodology-card.tsx` — shared "Methodology" section for all valuation model pages.
+- Takes `paragraphs: string[]` — renders each as a `<p>` inside `val-card` + `val-card-title` + `val-prose`
+- Server component (no "use client")
+- Used by: DCF (3 variants), P/E Multiples, EV/EBITDA Multiples, PEG, WACC
+- **Never** inline methodology text in a page — use this component
+
+## PEGGauge Component
+`src/components/valuation/peg-gauge.tsx` — PEG ratio visualization for the PEG Fair Value page.
+- Color-coded gauge bar (green/yellow/red zones) with pointer
+- Formula breakdown, rule of thumb, growth classification (Slow Grower / Stalwart / Fast Grower)
+- Client component ("use client")
+
 ## Known Duplication (avoid adding more)
 `MODEL_NAMES` record is duplicated in summary-card.tsx, model-card.tsx, model-card-compact.tsx. When modifying model names, update all three (or extract to shared constant).

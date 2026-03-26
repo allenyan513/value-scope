@@ -50,6 +50,7 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - **API Auth** (`src/lib/api/auth.ts`): Use `getAuthenticatedUser(request)` in API routes that need auth. Never inline Supabase client creation with auth headers.
 - **DCF Helpers** (`src/lib/valuation/dcf-helpers.ts`): Shared `cagr()`, `avg()`, `clamp()`, `projectRevenue()` — used by all DCF models. Do not redefine these.
 - **ValuationHero** (`src/components/valuation/valuation-hero.tsx`): Unified stat-row (Fair Value / Market Price / Upside / Verdict) + narrative paragraph. Used by Summary, DCF, PEG, and Relative pages. Never duplicate this pattern inline — use the component.
+- **MethodologyCard** (`src/components/valuation/methodology-card.tsx`): Shared "Methodology" section. Takes `paragraphs: string[]`. Used by all valuation model pages. Never inline methodology text — use this component.
 
 ## Testing
 - Run `npm test` before and after making logic changes — ensure no regressions before committing

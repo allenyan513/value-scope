@@ -14,7 +14,7 @@ paths:
 4. **DCF EV/EBITDA Exit 10Y** — TV = Year 10 EBITDA × 5Y avg EV/EBITDA − net debt. Cross-validation only.
 5. **P/E Multiples** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
 6. **EV/EBITDA Multiples** — Historical 5Y avg EV/EBITDA × EBITDA → equity per share (same fallback)
-7. **PEG Fair Value** — (EPS Growth + Div Yield) × 100 × NTM EPS, growth clamped 8%–25%
+7. **PEG Fair Value** (`src/lib/valuation/peg.ts`) — Fair Value = (EPS Growth + Div Yield) × 100 × NTM EPS. Growth: forward analyst EPS CAGR (≥3 analysts), fallback historical EPS CAGR. Clamped 8%–25%. NTM EPS from estimates, fallback TTM. Single-point model (low=high=fair). Computes PEG ratio for display.
 
 ## DCF Pipeline
 - **Revenue**: analyst estimates (5Y) → fade to historical CAGR → fade to 3% GDP growth
