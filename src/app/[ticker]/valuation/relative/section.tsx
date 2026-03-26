@@ -13,8 +13,8 @@ function UpsideBadge({ upside }: { upside: number }) {
     <span
       className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-sm font-semibold ${
         isPositive
-          ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400"
-          : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
+          ? "bg-green-950 text-green-400"
+          : "bg-red-950 text-red-400"
       }`}
     >
       {isPositive ? "+" : ""}{upside.toFixed(1)}% Upside
@@ -25,26 +25,47 @@ function UpsideBadge({ upside }: { upside: number }) {
 export function RelativeValuationSection({ data }: { data: RelativeValuationData }) {
   const hasTrailing = data.trailingMultiple !== null;
   const hasForward = data.forwardMultiple !== null;
+  const upside = data.selectedUpside;
 
   return (
     <div className="rounded-lg border bg-card p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold">{data.label}</h3>
-        {data.selectedFairPrice > 0 && (
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Stock Price</div>
-              <div className="text-sm font-semibold">{formatCurrency(data.currentPrice)}</div>
+      {/* Key stats row */}
+      {data.selectedFairPrice > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Fair Value
             </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Fair Price</div>
-              <div className="text-sm font-semibold text-primary">{formatCurrency(data.selectedFairPrice)}</div>
+            <div className="text-2xl font-bold font-mono">
+              {formatCurrency(data.selectedFairPrice)}
             </div>
-            <UpsideBadge upside={data.selectedUpside} />
           </div>
-        )}
-      </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Market Price
+            </div>
+            <div className="text-2xl font-bold font-mono">
+              {formatCurrency(data.currentPrice)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Upside / Downside
+            </div>
+            <div className={`text-2xl font-bold font-mono ${upside >= 0 ? "text-green-400" : "text-red-400"}`}>
+              {upside >= 0 ? "+" : ""}{upside.toFixed(1)}%
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Method
+            </div>
+            <div className="text-lg font-medium mt-1">
+              {data.label}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Table */}
       <div className="mb-6 overflow-x-auto">
@@ -85,7 +106,7 @@ export function RelativeValuationSection({ data }: { data: RelativeValuationData
                 {hasTrailing && data.trailingUpside !== null ? `${data.trailingUpside.toFixed(1)}%` : "—"}
                 {hasForward && data.forwardUpside !== null ? ` – ${data.forwardUpside.toFixed(1)}%` : ""}
               </td>
-              <td className={`py-2 text-center font-semibold ${data.selectedUpside >= 0 ? "text-green-600" : "text-red-600"}`}>
+              <td className={`py-2 text-center font-semibold ${data.selectedUpside >= 0 ? "text-green-400" : "text-red-400"}`}>
                 {data.selectedUpside.toFixed(1)}%
               </td>
             </tr>

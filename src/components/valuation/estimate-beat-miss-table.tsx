@@ -42,7 +42,7 @@ export function EstimateBeatMissTable({ actualPoints }: EstimateBeatMissTablePro
                 <td
                   key={p.year}
                   className={`p-2 text-center font-mono font-semibold ${
-                    isBeat ? "text-emerald-600" : "text-red-600"
+                    isBeat ? "text-emerald-400" : "text-red-400"
                   }`}
                 >
                   {isBeat ? "Beat" : "Miss"}{" "}

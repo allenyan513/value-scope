@@ -19,11 +19,11 @@ export function SensitivityHeatmap({
 }: Props) {
   function getCellColor(price: number): string {
     const ratio = price / currentPrice;
-    if (ratio > 1.3) return "bg-green-100 text-green-900";
-    if (ratio > 1.1) return "bg-green-50 text-green-800";
-    if (ratio > 0.9) return "bg-gray-50 text-gray-800";
-    if (ratio > 0.7) return "bg-red-50 text-red-800";
-    return "bg-red-100 text-red-900";
+    if (ratio > 1.3) return "bg-green-900/40 text-green-300";
+    if (ratio > 1.1) return "bg-green-900/20 text-green-400";
+    if (ratio > 0.9) return "bg-muted text-muted-foreground";
+    if (ratio > 0.7) return "bg-red-900/20 text-red-400";
+    return "bg-red-900/40 text-red-300";
   }
 
   function formatValue(v: number, percent: boolean): string {

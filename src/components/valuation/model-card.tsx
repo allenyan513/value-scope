@@ -190,7 +190,7 @@ export function ModelCard({ model, currentPrice }: Props) {
                           </td>
                           <td className={`p-2 text-right font-mono ${
                             row.yoy_growth !== null
-                              ? row.yoy_growth > 0 ? "text-green-600" : "text-red-600"
+                              ? row.yoy_growth > 0 ? "text-green-400" : "text-red-400"
                               : ""
                           }`}>
                             {row.yoy_growth !== null

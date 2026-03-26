@@ -91,7 +91,7 @@ export function EstimateKPIRow({
             </div>
             <div
               className={`text-lg font-bold font-mono ${
-                avgMiss >= 0 ? "text-emerald-600" : "text-red-600"
+                avgMiss >= 0 ? "text-emerald-400" : "text-red-400"
               }`}
             >
               {avgMiss >= 0 ? "+" : ""}

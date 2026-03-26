@@ -181,7 +181,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "High Growth",
     description: "Fast-growing company with strong revenue momentum. DCF captures future potential while Peter Lynch provides growth-adjusted anchor.",
     weights: {
-      dcf_growth_exit_5y: 0.40,
+      dcf_3stage: 0.20,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.10,
       ev_ebitda_multiples: 0.15,
       peter_lynch: 0.35,
@@ -191,7 +193,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Profitable Growth",
     description: "Company with both strong growth and healthy profitability. DCF provides the most reliable estimate, complemented by multiples.",
     weights: {
-      dcf_growth_exit_5y: 0.40,
+      dcf_3stage: 0.20,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.20,
       ev_ebitda_multiples: 0.15,
       peter_lynch: 0.25,
@@ -201,7 +205,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Mature & Stable",
     description: "Well-established company with predictable cash flows. DCF and trading multiples are most reliable.",
     weights: {
-      dcf_growth_exit_5y: 0.35,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.25,
       ev_ebitda_multiples: 0.15,
       peter_lynch: 0.25,
@@ -211,7 +217,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Dividend Payer",
     description: "Company returning significant cash to shareholders via dividends. Cash flow stability and payout sustainability are key.",
     weights: {
-      dcf_growth_exit_5y: 0.35,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.25,
       ev_ebitda_multiples: 0.15,
       peter_lynch: 0.25,
@@ -221,7 +229,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Cyclical",
     description: "Earnings fluctuate significantly with economic cycles. EV/EBITDA and DCF are preferred over point-in-time P/E.",
     weights: {
-      dcf_growth_exit_5y: 0.35,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.10,
       ev_ebitda_multiples: 0.20,
       peter_lynch: 0.35,
@@ -231,7 +241,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Turnaround",
     description: "Currently unprofitable but showing improving trends. DCF and EV/EBITDA are prioritized.",
     weights: {
-      dcf_growth_exit_5y: 0.40,
+      dcf_3stage: 0.20,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.00,
       ev_ebitda_multiples: 0.25,
       peter_lynch: 0.35,
@@ -241,7 +253,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Asset-Heavy",
     description: "Capital-intensive business with significant tangible assets. DCF and EV/EBITDA are key metrics.",
     weights: {
-      dcf_growth_exit_5y: 0.35,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.15,
       ev_ebitda_multiples: 0.20,
       peter_lynch: 0.30,
@@ -251,7 +265,9 @@ const ARCHETYPE_CONFIGS: Record<CompanyArchetype, {
     label: "Loss-Making",
     description: "Company is currently unprofitable. EV/EBITDA provides an alternative anchor when earnings-based models are not applicable.",
     weights: {
-      dcf_growth_exit_5y: 0.35,
+      dcf_3stage: 0.15,
+      dcf_pe_exit_10y: 0.10,
+      dcf_ebitda_exit_fcfe_10y: 0.10,
       pe_multiples: 0.00,
       ev_ebitda_multiples: 0.25,
       peter_lynch: 0.40,
@@ -349,29 +365,22 @@ function buildModelApplicability(
 ): ModelApplicability[] {
   const applicability: ModelApplicability[] = [];
 
-  // DCF (FCFE approach)
-  if (archetype === "loss_making" || archetype === "turnaround") {
+  // DCF models (3 variants: perpetual growth, P/E exit, EV/EBITDA exit)
+  const dcfConfidence: "high" | "medium" | "low" =
+    archetype === "loss_making" || archetype === "turnaround" ? "low"
+    : archetype === "high_growth" ? "medium"
+    : "high";
+  const dcfReason =
+    dcfConfidence === "low" ? "DCF projects future cash flows; use with caution for unprofitable companies"
+    : dcfConfidence === "medium" ? "DCF captures intrinsic value based on projected free cash flows to equity"
+    : "Predictable cash flows make DCF the most reliable intrinsic valuation";
+
+  for (const dcfType of ["dcf_3stage", "dcf_pe_exit_10y", "dcf_ebitda_exit_fcfe_10y"]) {
     applicability.push({
-      model_type: "dcf_growth_exit_5y",
+      model_type: dcfType,
       applicable: true,
-      reason: "DCF projects future cash flows; use with caution for unprofitable companies",
-      confidence: "low",
-      role: "primary",
-    });
-  } else if (archetype === "high_growth") {
-    applicability.push({
-      model_type: "dcf_growth_exit_5y",
-      applicable: true,
-      reason: "DCF captures intrinsic value based on projected free cash flows to equity",
-      confidence: "medium",
-      role: "primary",
-    });
-  } else {
-    applicability.push({
-      model_type: "dcf_growth_exit_5y",
-      applicable: true,
-      reason: "Predictable cash flows make DCF the most reliable intrinsic valuation",
-      confidence: "high",
+      reason: dcfReason,
+      confidence: dcfConfidence,
       role: "primary",
     });
   }

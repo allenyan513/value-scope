@@ -229,51 +229,46 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ===== Card 1: DCF Value — narrative + metrics ===== */}
+      {/* ===== Card 1: DCF Value — stats + narrative ===== */}
       <Card className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <h3 className="font-semibold text-lg">DCF Value</h3>
-          {isCustom && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-              Custom Scenario
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Left: Narrative */}
-          {narrative && (
-            <div className="lg:col-span-3">
-              <p className="text-[15px] leading-7 text-foreground/80">
-                {highlightNarrative(narrative)}
-              </p>
+        {/* Stat row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Fair Value {isCustom && <span className="text-amber-400 normal-case">(custom)</span>}
             </div>
-          )}
-          {/* Right: Metrics */}
-          <div className={narrative ? "lg:col-span-2" : "lg:col-span-5"}>
-            <div className="grid grid-cols-2 gap-y-5 gap-x-6">
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Current Price</div>
-                <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Fair Value</div>
-                <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Upside</div>
-                <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
-                  {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Range</div>
-                <div className="text-lg font-medium font-mono text-muted-foreground">
-                  ${model.low_estimate.toFixed(2)} – ${model.high_estimate.toFixed(2)}
-                </div>
-              </div>
+            <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
+          </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Market Price
+            </div>
+            <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
+          </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Upside / Downside
+            </div>
+            <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
+              {calc.upsidePercent > 0 ? "+" : ""}{calc.upsidePercent.toFixed(1)}%
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              Range
+            </div>
+            <div className="text-lg font-medium font-mono text-muted-foreground mt-1">
+              ${model.low_estimate.toFixed(2)} – ${model.high_estimate.toFixed(2)}
             </div>
           </div>
         </div>
+
+        {/* SEO narrative */}
+        {narrative && (
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {highlightNarrative(narrative)}
+          </p>
+        )}
       </Card>
 
       {/* ===== Card 2: Present Value Calculation ===== */}
@@ -282,7 +277,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
           <div className="flex items-center gap-3">
             <h3 className="font-semibold text-lg">Present Value Calculation</h3>
             {isCustom && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400">
                 Modified
               </span>
             )}
@@ -353,7 +348,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
 
         {/* Warning for ke <= g */}
         {calc.keLeG && (
-          <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
+          <div className="mb-4 p-3 rounded-lg bg-amber-950/30 border border-amber-800 text-sm text-amber-300">
             Discount rate must be greater than terminal growth for a meaningful terminal value. Using fallback multiplier.
           </div>
         )}
@@ -370,13 +365,13 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
                   <th className="p-1.5"></th>
                   <th
                     colSpan={5}
-                    className="text-center p-1.5 text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-r border-border/60"
+                    className="text-center p-1.5 text-[11px] font-semibold bg-blue-950/30 text-blue-400 border-r border-border/60"
                   >
                     Stage 1 — Analyst Estimates
                   </th>
                   <th
                     colSpan={5}
-                    className="text-center p-1.5 text-[11px] font-semibold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border-r border-border/60"
+                    className="text-center p-1.5 text-[11px] font-semibold bg-violet-950/30 text-violet-400 border-r border-border/60"
                   >
                     Stage 2 — Transition
                   </th>
@@ -392,7 +387,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
                     key={p.year}
                     className={`text-right p-2.5 font-semibold text-sm ${
                       isThreeStage && p.stage === 2
-                        ? "bg-violet-50/50 dark:bg-violet-950/20"
+                        ? "bg-violet-950/20"
                         : ""
                     }`}
                   >
@@ -412,51 +407,51 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Revenue</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.revenue)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.revenue)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{formatMillions(calc.termRevenue)}</td>
               </tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Net Margin</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{(p.net_margin * 100).toFixed(1)}%</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{(p.net_margin * 100).toFixed(1)}%</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{(calc.rows[calc.rows.length - 1].net_margin * 100).toFixed(1)}%</td>
               </tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
-                <td className="p-2.5 font-medium text-blue-700 dark:text-blue-400">Net Income</td>
+                <td className="p-2.5 font-medium text-blue-400">Net Income</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.net_income)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-semibold text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.net_income)}</td>
                 ))}
-                <td className="p-2.5 text-right font-mono font-semibold text-blue-700 dark:text-blue-400">{formatMillions(calc.termNetIncome)}</td>
+                <td className="p-2.5 text-right font-mono font-semibold text-blue-400">{formatMillions(calc.termNetIncome)}</td>
               </tr>
               <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium">Net CapEx</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.net_capex)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.net_capex)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono">{formatMillions(calc.termCapex)}</td>
               </tr>
               <tr className="border-b border-t-2 border-t-foreground/20 hover:bg-muted/20 transition-colors">
-                <td className="p-2.5 font-bold text-blue-700 dark:text-blue-400">FCFE</td>
+                <td className="p-2.5 font-bold text-blue-400">FCFE</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.fcfe)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold text-blue-400 ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.fcfe)}</td>
                 ))}
-                <td className="p-2.5 text-right font-mono font-bold text-blue-700 dark:text-blue-400">{formatMillions(calc.termFCFE)}</td>
+                <td className="p-2.5 text-right font-mono font-bold text-blue-400">{formatMillions(calc.termFCFE)}</td>
               </tr>
               <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-medium text-muted-foreground">Discount Rate</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono text-muted-foreground ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{discountRate.toFixed(2)}%</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono text-muted-foreground ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{discountRate.toFixed(2)}%</td>
                 ))}
                 <td className="p-2.5 text-right font-mono text-muted-foreground">{discountRate.toFixed(2)}%</td>
               </tr>
               <tr className="border-b bg-primary/5">
                 <td className="p-2.5 font-bold">Present Value</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold ${isThreeStage && p.stage === 2 ? "bg-violet-50/30 dark:bg-violet-950/10" : ""}`}>{formatMillions(p.pv_fcfe)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono font-bold ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.pv_fcfe)}</td>
                 ))}
                 <td className="p-2.5 text-right font-mono font-bold">{formatMillions(calc.pvTerminal)}</td>
               </tr>
