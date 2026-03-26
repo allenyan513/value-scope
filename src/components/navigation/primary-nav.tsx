@@ -5,17 +5,22 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { label: "Summary", href: "" },
-  { label: "DCF Valuation", href: "/dcf-valuation" },
-  { label: "Relative Valuation", href: "/relative-valuation" },
-  { label: "Analyst Estimates", href: "/analyst-estimates" },
+  { label: "Valuation", href: "/valuation" },
+  { label: "Financials", href: "/financials" },
+  { label: "Forecast", href: "/forecast" },
+  { label: "Compare", href: "/compare" },
+  { label: "Historical Price", href: "/historical-price" },
+  { label: "Solvency", href: "/solvency" },
+  { label: "Dividends", href: "/dividends" },
+  { label: "Transactions", href: "/transactions" },
+  { label: "People", href: "/people" },
 ];
 
 interface Props {
   ticker: string;
 }
 
-export function SubPageNav({ ticker }: Props) {
+export function PrimaryNav({ ticker }: Props) {
   const pathname = usePathname();
   const basePath = `/${ticker}`;
 
@@ -24,10 +29,7 @@ export function SubPageNav({ ticker }: Props) {
       <div className="flex gap-0 -mb-px overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const fullHref = `${basePath}${item.href}`;
-          const isActive =
-            item.href === ""
-              ? pathname === basePath || pathname === `${basePath}/summary`
-              : pathname === fullHref || pathname.startsWith(fullHref + "/");
+          const isActive = pathname.startsWith(fullHref);
 
           return (
             <Link

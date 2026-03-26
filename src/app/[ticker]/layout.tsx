@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { AddToWatchlistButton } from "@/components/watchlist/add-to-watchlist-button";
-import { SubPageNav } from "@/components/valuation/sub-page-nav";
+import { PrimaryNav } from "@/components/navigation/primary-nav";
 import { getCoreTickerData } from "./data";
 import { formatLargeNumber } from "@/lib/format";
 
@@ -53,8 +53,8 @@ export default async function TickerLayout({ params, children }: Props) {
         </div>
       </div>
 
-      {/* Sub-page Navigation */}
-      <SubPageNav ticker={upperTicker} />
+      {/* Primary Category Navigation */}
+      <PrimaryNav ticker={upperTicker} />
 
       {/* Page Content */}
       {children}

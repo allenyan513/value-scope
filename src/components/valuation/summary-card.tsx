@@ -1,14 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationSummary } from "@/types";
 
 const MODEL_NAMES: Record<string, string> = {
-  dcf_growth_exit_5y: "DCF (Growth Exit 5Y)",
-  dcf_growth_exit_10y: "DCF (Growth Exit 10Y)",
-  dcf_ebitda_exit_5y: "DCF (EBITDA Exit 5Y)",
-  dcf_ebitda_exit_10y: "DCF (EBITDA Exit 10Y)",
   dcf_3stage: "DCF (Perpetual Growth)",
   dcf_pe_exit_10y: "DCF (P/E Exit 10Y)",
   dcf_ebitda_exit_fcfe_10y: "DCF (EV/EBITDA Exit 10Y)",
@@ -17,11 +14,23 @@ const MODEL_NAMES: Record<string, string> = {
   peter_lynch: "Peter Lynch Fair Value",
 };
 
+const MODEL_LINKS: Record<string, string> = {
+  dcf_3stage: "/valuation/dcf/perpetual-growth",
+  dcf_pe_exit_10y: "/valuation/dcf/pe-exit",
+  dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
+  pe_multiples: "/valuation/relative/pe-multiples",
+  ev_ebitda_multiples: "/valuation/relative/ev-ebitda-multiples",
+  peter_lynch: "/valuation/peter-lynch",
+};
+
 const VERDICT_CONFIG = {
   undervalued: { badge: "default" as const, label: "Undervalued", color: "text-success" },
   fairly_valued: { badge: "secondary" as const, label: "Fairly Valued", color: "text-muted-foreground" },
   overvalued: { badge: "destructive" as const, label: "Overvalued", color: "text-danger" },
 };
+
+// Only show models that have a known name and link
+const ACTIVE_MODEL_TYPES = new Set(Object.keys(MODEL_NAMES));
 
 interface Props {
   summary: ValuationSummary;
@@ -29,9 +38,8 @@ interface Props {
 
 export function SummaryCard({ summary }: Props) {
   const verdict = VERDICT_CONFIG[summary.verdict];
-  const applicableModels = summary.models.filter((m) => m.fair_value > 0);
-  const primaryModel = summary.models.find(
-    (m) => m.model_type === "dcf_growth_exit_5y"
+  const applicableModels = summary.models.filter(
+    (m) => m.fair_value > 0 && ACTIVE_MODEL_TYPES.has(m.model_type)
   );
 
   return (
@@ -48,15 +56,13 @@ export function SummaryCard({ summary }: Props) {
             </h3>
             <div className="flex items-baseline gap-3 mb-2">
               <span className="text-3xl font-bold">
-                ${summary.primary_fair_value.toFixed(2)}
+                ${summary.consensus_fair_value.toFixed(2)}
               </span>
               <span className="text-sm text-muted-foreground">USD</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Based on the Discounted Cash Flows (Growth Exit 5Y) model.
-              {primaryModel && (
-                <> The range is ${primaryModel.low_estimate.toFixed(2)} – ${primaryModel.high_estimate.toFixed(2)} USD.</>
-              )}
+              Based on {applicableModels.length} valuation models.
+              The range is ${summary.consensus_low.toFixed(2)} – ${summary.consensus_high.toFixed(2)} USD.
             </p>
           </div>
 
@@ -68,8 +74,8 @@ export function SummaryCard({ summary }: Props) {
             <div className="flex items-center gap-3 mb-2">
               <Badge variant={verdict.badge}>{verdict.label}</Badge>
               <span className={`text-xl font-bold ${verdict.color}`}>
-                {summary.primary_upside > 0 ? "+" : ""}
-                {summary.primary_upside.toFixed(1)}%
+                {summary.consensus_upside > 0 ? "+" : ""}
+                {summary.consensus_upside.toFixed(1)}%
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -91,31 +97,42 @@ export function SummaryCard({ summary }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {applicableModels.map((m) => (
-                  <tr key={m.model_type} className="border-b border-muted/30">
-                    <td className="py-2.5 pr-4 font-medium whitespace-nowrap">
-                      {MODEL_NAMES[m.model_type] ?? m.model_type}
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono text-muted-foreground whitespace-nowrap">
-                      {m.low_estimate.toFixed(2)} - {m.high_estimate.toFixed(2)}
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono font-medium">
-                      {m.fair_value.toFixed(2)}
-                    </td>
-                    <td
-                      className={`py-2.5 pl-4 text-right font-mono font-semibold whitespace-nowrap ${
-                        m.upside_percent > 0
-                          ? "text-success"
-                          : m.upside_percent < 0
-                            ? "text-danger"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {m.upside_percent > 0 ? "+" : ""}
-                      {m.upside_percent.toFixed(1)}%
-                    </td>
-                  </tr>
-                ))}
+                {applicableModels.map((m) => {
+                  const link = MODEL_LINKS[m.model_type];
+                  const href = link ? `/${summary.ticker}${link}` : null;
+
+                  return (
+                    <tr key={m.model_type} className="border-b border-muted/30 hover:bg-muted/20 transition-colors">
+                      <td className="py-2.5 pr-4 font-medium whitespace-nowrap">
+                        {href ? (
+                          <Link href={href} className="text-primary hover:underline">
+                            {MODEL_NAMES[m.model_type] ?? m.model_type}
+                          </Link>
+                        ) : (
+                          MODEL_NAMES[m.model_type] ?? m.model_type
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground whitespace-nowrap">
+                        {m.low_estimate.toFixed(2)} - {m.high_estimate.toFixed(2)}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-medium">
+                        {m.fair_value.toFixed(2)}
+                      </td>
+                      <td
+                        className={`py-2.5 pl-4 text-right font-mono font-semibold whitespace-nowrap ${
+                          m.upside_percent > 0
+                            ? "text-success"
+                            : m.upside_percent < 0
+                              ? "text-danger"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {m.upside_percent > 0 ? "+" : ""}
+                        {m.upside_percent.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

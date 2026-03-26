@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
-import { getCoreTickerData } from "../data";
+import { getCoreTickerData } from "../../data";
 import { PriceTargetsSection } from "./price-targets-section";
 
 interface Props {

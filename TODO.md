@@ -2,9 +2,6 @@
 
 ## Features
 - [ ] Stripe Price IDs configuration, domain setup
-- [ ] Summary card redesign
-- [ ] Relative Valuation: populate Forward P/E + Forward EV/EBITDA columns from analyst estimates
-- [ ] Terminal value improvement: normalize terminal FCFE, two-stage terminal, exit multiple cross-check
 
 ## Refactoring Backlog (do when touching the file)
 
