@@ -24,14 +24,20 @@
 - **Root cause**: Both crons didn't pass `historicalMultiples` → ALL tickers fell to peer-based. Tiny peer groups (2 for "Auto-Manufacturers") dominated by TSLA's P/S ~15.
 - **Fix**: Added `getPriceHistory()` + `computeHistoricalMultiples()` to both crons. DB-only.
 
-### Bug #4: Growth Stock Systematic Undervaluation (MEDIUM)
+### Bug #4: Growth Stock Systematic Undervaluation (MEDIUM) — Known Limitation
 - [ ] Our median FV is 0.07x–0.48x of analyst consensus for mega-cap tech
-- Likely model calibration, not code bug. Growth clamping (MAX_GROWTH_RATE=30%), conservative terminal values.
+- **Root cause analysis**: NOT a code bug — this is the models working as designed. Three factors:
+  1. **PEG ceiling**: `GROWTH_CEILING = 25%` → max fair P/E = 25x. TSLA trades at P/E 100x. Model literally can't produce that.
+  2. **DCF Stage 2 fade**: Growth fades linearly from Y5 to terminal (2.5-4%) over 5 years. For NVDA growing 100%+, this is extremely aggressive compression.
+  3. **High growth capex**: TSLA's factory-building capex consumes most net income, leaving tiny FCFE.
+- **Not fixing now** — these are intentional conservative model choices. Possible future calibration:
+  - Archetype-aware PEG ceiling (35% for high_growth vs 25% for mature)
+  - Slower Stage 2 fade for high-growth archetype (10 years instead of 5)
+  - Growth-cap adjustment based on analyst estimate coverage length
 - Examples: TSLA 0.07x, PLTR 0.11x, NVDA 0.32x, AAPL 0.44x vs analyst targets
 
-### Bug #5: Orphaned Model Types in DB (LOW)
-- [ ] 17 stale rows from deprecated models (dcf_growth_exit_5y, forward_pe, ev_ebit, etc.)
-- Fix: DELETE FROM valuations WHERE model_type NOT IN (9 current models)
+### Bug #5: Orphaned Model Types in DB (LOW) ✅
+- [x] 17 stale rows deleted (dcf_growth_exit_5y ×14, ev_ebit ×1, forward_pe ×1, forward_ev_ebitda ×1)
 
 ### Bug #6: ASML Missing All Valuations (LOW)
 - [ ] EUR-reporting ADR, $512B market cap, no valuations/financials/estimates in DB
