@@ -7,7 +7,11 @@
 /** Upside % threshold: above = undervalued, below negative = overvalued */
 export const VERDICT_THRESHOLD = 15;
 
-// --- Consensus Weighting ---
+// --- Consensus Strategy ---
+/** Default consensus strategy: "dcf_primary" | "median" (3-pillar) | "weighted" (archetype-based) */
+export const DEFAULT_CONSENSUS_STRATEGY = "dcf_primary" as const;
+
+// --- Consensus Weighting (used by "weighted" strategy) ---
 /** Outlier penalty: deviation from median beyond this triggers half-weight */
 export const OUTLIER_HALF_THRESHOLD = 0.50;
 /** Outlier penalty: deviation from median beyond this triggers quarter-weight */
