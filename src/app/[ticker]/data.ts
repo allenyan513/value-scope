@@ -50,6 +50,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
         estimates: [],
         historicals: [],
         historicalMultiples: [],
+        peers: [],
         pending: true,
       };
     }
@@ -59,6 +60,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
       estimates,
       historicals,
       historicalMultiples: [],
+      peers: [],
     };
   }
 
@@ -78,6 +80,11 @@ export const getCoreTickerData = cache(async (ticker: string) => {
           trailing_pe: metrics[0].priceToEarningsRatio ?? null,
           forward_pe: null,
           ev_ebitda: null,
+          price_to_book: metrics[0].priceToBookRatio ?? null,
+          price_to_sales: metrics[0].priceToSalesRatio ?? null,
+          revenue_growth: null,
+          net_margin: null,
+          roe: null,
         } as PeerComparison;
       }
     } catch {
@@ -99,7 +106,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     historicalMultiples,
   });
 
-  return { company, summary, estimates, historicals, historicalMultiples };
+  return { company, summary, estimates, historicals, historicalMultiples, peers };
 });
 
 /**

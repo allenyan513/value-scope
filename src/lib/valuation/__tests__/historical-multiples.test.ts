@@ -43,6 +43,32 @@ describe("computeHistoricalMultiples", () => {
     }
   });
 
+  it("should compute P/B, P/S, and P/FCF multiples", () => {
+    const result = computeHistoricalMultiples(appleFinancials, mockPrices);
+    const point = result[0];
+
+    // P/B: price / (total_equity / shares) — total_equity = revenue * 1.5, shares = 15e9
+    expect(point.pb).not.toBeNull();
+    if (point.pb !== null) {
+      expect(point.pb).toBeGreaterThan(0);
+      expect(point.pb).toBeLessThan(50);
+    }
+
+    // P/S: price / (revenue / shares)
+    expect(point.ps).not.toBeNull();
+    if (point.ps !== null) {
+      expect(point.ps).toBeGreaterThan(0);
+      expect(point.ps).toBeLessThan(100);
+    }
+
+    // P/FCF: price / (free_cash_flow / shares)
+    expect(point.p_fcf).not.toBeNull();
+    if (point.p_fcf !== null) {
+      expect(point.p_fcf).toBeGreaterThan(0);
+      expect(point.p_fcf).toBeLessThan(200);
+    }
+  });
+
   it("should skip prices where no applicable financial exists", () => {
     // Prices from 2018 — no financials available that old
     const oldPrices = [
@@ -67,6 +93,33 @@ describe("computeMultiplesStats", () => {
     expect(stats.pe!.percentile).toBeGreaterThanOrEqual(0);
     expect(stats.pe!.percentile).toBeLessThanOrEqual(100);
     expect(stats.pe!.dataPoints).toBe(500);
+  });
+
+  it("should compute stats for P/B, P/S, and P/FCF", () => {
+    const data = generateHistoricalMultiples(500, 25, 20, 10, 7, 30);
+    const stats = computeMultiplesStats(data);
+
+    expect(stats.pb).not.toBeNull();
+    expect(stats.pb!.avg5y).toBeGreaterThan(5);
+    expect(stats.pb!.avg5y).toBeLessThan(15);
+    expect(stats.pb!.dataPoints).toBe(500);
+
+    expect(stats.ps).not.toBeNull();
+    expect(stats.ps!.avg5y).toBeGreaterThan(4);
+    expect(stats.ps!.avg5y).toBeLessThan(12);
+
+    expect(stats.p_fcf).not.toBeNull();
+    expect(stats.p_fcf!.avg5y).toBeGreaterThan(20);
+    expect(stats.p_fcf!.avg5y).toBeLessThan(40);
+  });
+
+  it("should return null for new multiples when not provided", () => {
+    const data = generateHistoricalMultiples(500, 25); // no pb/ps/p_fcf bases
+    const stats = computeMultiplesStats(data);
+
+    expect(stats.pb).toBeNull();
+    expect(stats.ps).toBeNull();
+    expect(stats.p_fcf).toBeNull();
   });
 
   it("should return null when fewer than 10 data points", () => {

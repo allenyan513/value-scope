@@ -1,4 +1,3 @@
-import { TradingMultiplesNav } from "./nav";
 import { getCompany } from "@/lib/db/queries";
 
 interface Props {
@@ -14,12 +13,9 @@ export default async function RelativeLayout({ params, children }: Props) {
 
   return (
     <div className="val-page">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="val-h2">
-          {companyName} ({upperTicker}) Trading Multiples
-        </h2>
-        <TradingMultiplesNav ticker={upperTicker} />
-      </div>
+      <h2 className="val-h2">
+        {companyName} ({upperTicker}) Trading Multiples
+      </h2>
       {children}
     </div>
   );

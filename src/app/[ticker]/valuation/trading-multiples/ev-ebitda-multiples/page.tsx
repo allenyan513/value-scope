@@ -4,7 +4,7 @@ interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export default async function RelativeIndex({ params }: Props) {
+export default async function EVEBITDAMultiplesRedirect({ params }: Props) {
   const { ticker } = await params;
-  redirect(`/${ticker}/valuation/relative/pe-multiples`);
+  redirect(`/${ticker}/valuation/trading-multiples`);
 }

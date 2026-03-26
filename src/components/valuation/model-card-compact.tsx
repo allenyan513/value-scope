@@ -24,8 +24,8 @@ const MODEL_LINKS: Record<string, string> = {
   dcf_3stage: "/valuation/dcf",
   dcf_pe_exit_10y: "/valuation/dcf",
   dcf_ebitda_exit_fcfe_10y: "/valuation/dcf",
-  pe_multiples: "/valuation/relative",
-  ev_ebitda_multiples: "/valuation/relative",
+  pe_multiples: "/valuation/trading-multiples",
+  ev_ebitda_multiples: "/valuation/trading-multiples",
   peg: "/valuation/peg",
 };
 
