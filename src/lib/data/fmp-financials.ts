@@ -141,7 +141,8 @@ interface FMPCashFlow {
   capitalExpenditure: number;
   freeCashFlow: number;
   depreciationAndAmortization: number;
-  dividendsPaid: number;
+  /** FMP stable API uses commonDividendsPaid (not dividendsPaid) */
+  commonDividendsPaid: number;
 }
 
 export async function getCashFlowStatements(
