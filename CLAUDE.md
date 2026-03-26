@@ -16,7 +16,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 7 aut
 npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
-npm test             # Run unit tests (Vitest, 363 tests)
+npm test             # Run unit tests (Vitest, 125 tests)
 npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
