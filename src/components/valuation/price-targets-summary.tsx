@@ -17,7 +17,7 @@ function pctChange(from: number, to: number): { text: string; color: string } {
   if (from <= 0) return { text: "—", color: "text-muted-foreground" };
   const pct = ((to - from) / from) * 100;
   const sign = pct >= 0 ? "+" : "";
-  const color = pct >= 0 ? "text-emerald-600" : "text-red-600";
+  const color = pct >= 0 ? "text-emerald-400" : "text-red-400";
   return { text: `${sign}${pct.toFixed(0)}%`, color };
 }
 
@@ -114,8 +114,8 @@ export function PriceTargetsSummary({
         <div
           className={`rounded-lg px-4 py-3 text-sm font-medium ${
             isPositive
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-emerald-900/20 text-emerald-400 border border-emerald-800/30"
+              : "bg-red-900/20 text-red-400 border border-red-800/30"
           }`}
         >
           {isPositive ? "▲" : "▼"} Wall Street analysts forecast {ticker} to{" "}
@@ -172,7 +172,7 @@ export function PriceTargetsSummary({
                 Consensus Target
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-5 h-3 bg-emerald-100 inline-block rounded-sm" />
+                <span className="w-5 h-3 bg-emerald-900/40 inline-block rounded-sm" />
                 Target Range
               </span>
             </div>
@@ -183,9 +183,9 @@ export function PriceTargetsSummary({
               >
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
+                  tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
                   tickLine={false}
-                  axisLine={{ stroke: "hsl(0, 0%, 88%)" }}
+                  axisLine={{ stroke: "oklch(1 0 0 / 12%)" }}
                   tickFormatter={(d: string) => {
                     const date = new Date(d + "T00:00:00");
                     return date.toLocaleDateString("en-US", {
@@ -197,7 +197,7 @@ export function PriceTargetsSummary({
                 />
                 <YAxis
                   domain={[yMin, yMax]}
-                  tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
+                  tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) => `$${v}`}
@@ -206,11 +206,12 @@ export function PriceTargetsSummary({
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "white",
-                    border: "1px solid hsl(0, 0%, 88%)",
-                    borderRadius: "6px",
+                    background: "oklch(0.22 0.015 260)",
+                    border: "1px solid oklch(1 0 0 / 12%)",
+                    borderRadius: "4px",
                     fontSize: "12px",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                    color: "oklch(0.95 0.005 260)",
                   }}
                   formatter={(value, name) => {
                     if (value == null) return [null, null];
@@ -236,7 +237,7 @@ export function PriceTargetsSummary({
                   type="monotone"
                   dataKey="targetHigh"
                   stroke="none"
-                  fill="hsl(152, 60%, 90%)"
+                  fill="oklch(0.35 0.10 155)"
                   fillOpacity={0.8}
                   connectNulls={false}
                 />
@@ -244,7 +245,7 @@ export function PriceTargetsSummary({
                   type="monotone"
                   dataKey="targetLow"
                   stroke="none"
-                  fill="white"
+                  fill="oklch(0.18 0.015 260)"
                   fillOpacity={1}
                   connectNulls={false}
                 />
@@ -252,7 +253,7 @@ export function PriceTargetsSummary({
                 <Line
                   type="monotone"
                   dataKey="targetLine"
-                  stroke="hsl(152, 60%, 45%)"
+                  stroke="oklch(0.65 0.17 155)"
                   strokeWidth={2}
                   strokeDasharray="6 4"
                   dot={false}
@@ -262,7 +263,7 @@ export function PriceTargetsSummary({
                 <Line
                   type="monotone"
                   dataKey="price"
-                  stroke="hsl(220, 20%, 30%)"
+                  stroke="oklch(0.50 0.04 260)"
                   strokeWidth={2}
                   dot={false}
                   connectNulls={false}

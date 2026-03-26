@@ -37,8 +37,9 @@ describe("calculatePeterLynch", () => {
     });
 
     const eps = (result.assumptions as Record<string, unknown>).ttm_eps as number;
-    expect(result.low_estimate).toBeCloseTo(5 * eps, 0);
-    expect(result.high_estimate).toBeCloseTo(25 * eps, 0);
+    // Single-point model — low and high equal fair value
+    expect(result.low_estimate).toBeCloseTo(result.fair_value, 0);
+    expect(result.high_estimate).toBeCloseTo(result.fair_value, 0);
   });
 
   it("should return N/A for negative EPS", () => {

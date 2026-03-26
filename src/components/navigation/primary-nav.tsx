@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { label: "Valuation", href: "/valuation" },
-  { label: "Financials", href: "/financials" },
-  { label: "Forecast", href: "/forecast" },
-  { label: "Compare", href: "/compare" },
-  { label: "Historical Price", href: "/historical-price" },
-  { label: "Solvency", href: "/solvency" },
-  { label: "Dividends", href: "/dividends" },
-  { label: "Transactions", href: "/transactions" },
-  { label: "People", href: "/people" },
+  { label: "Valuation", segment: "valuation" },
+  { label: "Financials", segment: "financials" },
+  { label: "Forecast", segment: "forecast" },
+  { label: "Compare", segment: "compare" },
+  { label: "Historical Price", segment: "historical-price" },
+  { label: "Solvency", segment: "solvency" },
+  { label: "Dividends", segment: "dividends" },
+  { label: "Transactions", segment: "transactions" },
+  { label: "People", segment: "people" },
 ];
 
 interface Props {
@@ -21,20 +21,19 @@ interface Props {
 }
 
 export function PrimaryNav({ ticker }: Props) {
-  const pathname = usePathname();
+  const segment = useSelectedLayoutSegment();
   const basePath = `/${ticker}`;
 
   return (
     <nav className="border-b mb-8">
       <div className="flex gap-0 -mb-px overflow-x-auto">
         {NAV_ITEMS.map((item) => {
-          const fullHref = `${basePath}${item.href}`;
-          const isActive = pathname.startsWith(fullHref);
+          const isActive = segment === item.segment;
 
           return (
             <Link
-              key={item.href}
-              href={fullHref}
+              key={item.segment}
+              href={`${basePath}/${item.segment}`}
               className={cn(
                 "px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
                 isActive

@@ -15,7 +15,7 @@ import type {
 } from "@/types";
 import { VERDICT_THRESHOLD } from "@/lib/constants";
 import { calculateWACC, buildWACCInputs } from "./wacc";
-import { calculateDCF, type DCFFCFEInputs } from "./dcf";
+import type { DCFFCFEInputs } from "./dcf";
 import {
   calculateDCF3Stage,
   calculateDCF3StagePEExit,
@@ -94,25 +94,17 @@ export function computeFullValuation(
     terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
   };
 
-  // 3. Run all models (4 active: DCF FCFE, P/E, EV/EBITDA, Peter Lynch)
+  // 3. Run all 6 models — all participate in weighted consensus
   const models: ValuationResult[] = [];
 
-  // DCF (FCFE approach, 5Y) — primary model used in consensus
-  try {
-    models.push(calculateDCF(dcfInputs, 5));
-  } catch {
-    /* skip if insufficient data */
-  }
-
-  // Three-Stage DCF (10Y: Y1–5 analyst, Y6–10 transition, Y11+ terminal)
-  // Display only — not included in weighted consensus
+  // DCF: Perpetual Growth (10Y: Y1–5 analyst, Y6–10 transition, terminal via Gordon Growth)
   try {
     models.push(calculateDCF3Stage(dcfInputs));
   } catch {
     /* skip if insufficient data */
   }
 
-  // Three-Stage DCF with exit multiple terminal values (cross-validation only)
+  // DCF: Exit multiple terminal values (P/E and EV/EBITDA)
   // Compute historical multiples stats for exit P/E and EV/EBITDA
   const multiplesStats = inputs.historicalMultiples
     ? computeMultiplesStats(inputs.historicalMultiples)
@@ -166,9 +158,9 @@ export function computeFullValuation(
     ? ((consensus - currentPrice) / currentPrice) * 100
     : 0;
 
-  // 5. Determine primary valuation (DCF Growth Exit 5Y as fallback)
+  // 5. Determine primary valuation (DCF Perpetual Growth as fallback)
   const primaryModel = models.find(
-    (m) => m.model_type === "dcf_growth_exit_5y"
+    (m) => m.model_type === "dcf_3stage"
   );
   const primaryFairValue = primaryModel?.fair_value ?? 0;
   const primaryUpside = primaryModel?.upside_percent ?? 0;

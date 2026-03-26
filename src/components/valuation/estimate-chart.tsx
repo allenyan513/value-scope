@@ -170,12 +170,12 @@ export function EstimateChart({
           >
             <XAxis
               dataKey="year"
-              tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
               tickLine={false}
-              axisLine={{ stroke: "hsl(0, 0%, 88%)" }}
+              axisLine={{ stroke: "oklch(1 0 0 / 12%)" }}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "hsl(0, 0%, 55%)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.68 0.02 260)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => {
@@ -190,14 +190,15 @@ export function EstimateChart({
               width={55}
               orientation="right"
             />
-            <ReferenceLine y={0} stroke="hsl(0, 0%, 88%)" />
+            <ReferenceLine y={0} stroke="oklch(1 0 0 / 12%)" />
             <Tooltip
               contentStyle={{
-                background: "white",
-                border: "1px solid hsl(0, 0%, 88%)",
-                borderRadius: "6px",
+                background: "oklch(0.22 0.015 260)",
+                border: "1px solid oklch(1 0 0 / 12%)",
+                borderRadius: "4px",
                 fontSize: "12px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                color: "oklch(0.95 0.005 260)",
               }}
               formatter={(value) => [fmt(Number(value)), title]}
               labelFormatter={(label) => `FY ${label}`}
@@ -208,8 +209,8 @@ export function EstimateChart({
                   key={index}
                   fill={
                     entry.isEstimate
-                      ? "hsl(199, 80%, 65%)"
-                      : "hsl(220, 20%, 30%)"
+                      ? "oklch(0.70 0.14 220)"
+                      : "oklch(0.50 0.04 260)"
                   }
                   fillOpacity={entry.isEstimate ? 0.7 : 1}
                 />

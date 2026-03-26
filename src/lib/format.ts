@@ -38,8 +38,8 @@ export function formatMillions(n: number): string {
 
 /** Return CSS color class based on upside percentage */
 export function getUpsideColor(upside: number): string {
-  if (upside > VERDICT_THRESHOLD) return "text-green-600 dark:text-green-400";
-  if (upside < -VERDICT_THRESHOLD) return "text-red-600 dark:text-red-400";
+  if (upside > VERDICT_THRESHOLD) return "text-green-400";
+  if (upside < -VERDICT_THRESHOLD) return "text-red-400";
   return "text-foreground";
 }
 

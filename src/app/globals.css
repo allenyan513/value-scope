@@ -1,15 +1,12 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-geist-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -58,92 +55,26 @@
 }
 
 :root {
-  /* Brand: Deep indigo — trust, finance, professionalism */
-  --brand: oklch(0.45 0.18 260);
-  --brand-foreground: oklch(0.985 0 0);
-
-  /* Primary: Brand color */
-  --primary: oklch(0.45 0.18 260);
-  --primary-foreground: oklch(0.985 0 0);
-
-  /* Background: Very subtle cool tint */
-  --background: oklch(0.98 0.003 260);
-  --foreground: oklch(0.16 0.02 260);
-
-  /* Cards: Pure white for contrast against tinted background */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.02 260);
-
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.02 260);
-
-  /* Secondary */
-  --secondary: oklch(0.95 0.01 260);
-  --secondary-foreground: oklch(0.28 0.06 260);
-
-  /* Muted */
-  --muted: oklch(0.955 0.008 260);
-  --muted-foreground: oklch(0.48 0.02 260);
-
-  /* Accent */
-  --accent: oklch(0.94 0.015 260);
-  --accent-foreground: oklch(0.28 0.10 260);
-
-  /* Destructive */
-  --destructive: oklch(0.577 0.245 27.325);
-
-  /* Borders */
-  --border: oklch(0.91 0.008 260);
-  --input: oklch(0.91 0.008 260);
-  --ring: oklch(0.50 0.14 260);
-
-  /* Semantic */
-  --success: oklch(0.52 0.17 155);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.15 75);
-  --warning-foreground: oklch(0.25 0.05 75);
-  --danger: oklch(0.55 0.22 25);
-  --danger-foreground: oklch(0.985 0 0);
-
-  /* Charts: Blue-based palette */
-  --chart-1: oklch(0.50 0.20 260);
-  --chart-2: oklch(0.58 0.15 220);
-  --chart-3: oklch(0.65 0.12 180);
-  --chart-4: oklch(0.48 0.12 300);
-  --chart-5: oklch(0.68 0.10 140);
-
-  --radius: 0.625rem;
-
-  --sidebar: oklch(0.975 0.005 260);
-  --sidebar-foreground: oklch(0.16 0.02 260);
-  --sidebar-primary: oklch(0.45 0.18 260);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.94 0.015 260);
-  --sidebar-accent-foreground: oklch(0.28 0.10 260);
-  --sidebar-border: oklch(0.91 0.008 260);
-  --sidebar-ring: oklch(0.50 0.14 260);
-}
-
-.dark {
+  /* Dark-only theme */
   --brand: oklch(0.70 0.16 260);
   --brand-foreground: oklch(0.13 0.02 260);
 
   --background: oklch(0.13 0.015 260);
-  --foreground: oklch(0.93 0.005 260);
+  --foreground: oklch(0.95 0.005 260);
   --card: oklch(0.18 0.015 260);
-  --card-foreground: oklch(0.93 0.005 260);
+  --card-foreground: oklch(0.95 0.005 260);
   --popover: oklch(0.18 0.015 260);
-  --popover-foreground: oklch(0.93 0.005 260);
+  --popover-foreground: oklch(0.95 0.005 260);
   --primary: oklch(0.70 0.16 260);
   --primary-foreground: oklch(0.13 0.015 260);
   --secondary: oklch(0.22 0.015 260);
-  --secondary-foreground: oklch(0.93 0.005 260);
+  --secondary-foreground: oklch(0.95 0.005 260);
   --muted: oklch(0.22 0.015 260);
-  --muted-foreground: oklch(0.60 0.02 260);
+  --muted-foreground: oklch(0.68 0.02 260);
   --accent: oklch(0.22 0.02 260);
-  --accent-foreground: oklch(0.93 0.005 260);
+  --accent-foreground: oklch(0.95 0.005 260);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.60 0.14 260);
 
@@ -160,13 +91,15 @@
   --chart-4: oklch(0.60 0.10 300);
   --chart-5: oklch(0.80 0.06 140);
 
+  --radius: 0.25rem;
+
   --sidebar: oklch(0.16 0.015 260);
-  --sidebar-foreground: oklch(0.93 0.005 260);
+  --sidebar-foreground: oklch(0.95 0.005 260);
   --sidebar-primary: oklch(0.70 0.16 260);
   --sidebar-primary-foreground: oklch(0.13 0.015 260);
   --sidebar-accent: oklch(0.22 0.02 260);
-  --sidebar-accent-foreground: oklch(0.93 0.005 260);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-accent-foreground: oklch(0.95 0.005 260);
+  --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.60 0.14 260);
 }
 
@@ -176,8 +109,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-weight: 400;
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
   }
 }

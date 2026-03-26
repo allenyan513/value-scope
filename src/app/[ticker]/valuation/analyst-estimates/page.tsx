@@ -36,7 +36,9 @@ export default async function AnalystEstimatesPage({ params }: Props) {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-bold">Analyst Estimates</h2>
+      <h2 className="text-xl font-bold">
+        {company.name} ({upperTicker}) Analyst Estimates
+      </h2>
 
       <Suspense
         fallback={

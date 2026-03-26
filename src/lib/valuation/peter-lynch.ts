@@ -67,7 +67,8 @@ export function calculatePeterLynch(
 
   // Fair Value = Growth Rate (as whole number) × EPS
   // Peter Lynch convention: growth rate of 15% means multiply EPS by 15
-  const fairValue = clampedGrowthRate * 100 * latestEPS;
+  const fairPE = clampedGrowthRate * 100;
+  const fairValue = fairPE * latestEPS;
   const upside = ((fairValue - currentPrice) / currentPrice) * 100;
 
   // Build historical earnings table for display
@@ -85,8 +86,9 @@ export function calculatePeterLynch(
     model_type: "peter_lynch",
     fair_value: fairValue,
     upside_percent: upside,
-    low_estimate: 0.05 * 100 * latestEPS, // 5% growth floor
-    high_estimate: 0.25 * 100 * latestEPS, // 25% growth ceiling
+    // Single-point model — no range
+    low_estimate: fairValue,
+    high_estimate: fairValue,
     assumptions: {
       earnings_growth_rate: Math.round(clampedGrowthRate * 10000) / 100,
       raw_growth_rate: Math.round(growthRate * 10000) / 100,
@@ -95,6 +97,12 @@ export function calculatePeterLynch(
       growth_rate_clamped: growthRate !== clampedGrowthRate,
     },
     details: {
+      earnings_growth_rate: clampedGrowthRate,
+      raw_growth_rate: growthRate,
+      ttm_eps: latestEPS,
+      fair_pe: fairPE,
+      growth_clamped: growthRate !== clampedGrowthRate,
+      years_used: yearsAvailable,
       earnings_history: earningsHistory,
     } as Record<string, unknown>,
     computed_at: new Date().toISOString(),
