@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchCompanies } from "@/lib/db/queries";
 import { getCompanyProfile } from "@/lib/data/fmp";
+import { TICKER_REGEX } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q") || "";
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   // Fallback: try FMP profile lookup if query looks like a ticker (1-5 uppercase chars)
   const upperQuery = query.toUpperCase().trim();
-  if (/^[A-Z]{1,5}$/.test(upperQuery)) {
+  if (TICKER_REGEX.test(upperQuery)) {
     const dbTickers = new Set(dbResults.map((r) => r.ticker));
     if (!dbTickers.has(upperQuery)) {
       try {

@@ -30,7 +30,7 @@ Normalize immediately at route entry:
 ```ts
 const upperTicker = ticker.toUpperCase();
 ```
-Validate format: `/^[A-Z]{1,5}$/`
+Validate format: `TICKER_REGEX` from `@/lib/constants` — supports `BRK-B` style tickers
 
 ## Pending State
 Pages check `data.pending` flag → render `<TickerPending>` client component which triggers `/api/provision/[ticker]` POST. Client polls every 3s, calls `router.refresh()` on "ready".

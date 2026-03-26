@@ -55,6 +55,14 @@ export const MAX_PS_RATIO = 100;
 /** P/FCF ratio upper bound filter */
 export const MAX_PFCF_RATIO = 200;
 
+// --- Ticker Validation ---
+/** Matches standard tickers (AAPL) and hyphenated share classes (BRK-B, BF-B) */
+export const TICKER_REGEX = /^[A-Z]{1,5}(-[A-Z]{1,2})?$/;
+
+// --- Cron ---
+/** Number of stocks to refresh estimates for per cron run (rotates through all) */
+export const CRON_ESTIMATES_BATCH_SIZE = 100;
+
 // --- Content Limits ---
 /** Max characters for company description stored in DB */
 export const DESCRIPTION_MAX_LENGTH = 1000;

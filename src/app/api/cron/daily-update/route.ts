@@ -1,9 +1,9 @@
 // ============================================================
-// Daily Update Cron Job
-// Schedule: 6:30 PM ET daily (after market close)
-// - Fetches latest prices for all tracked companies
-// - Recomputes valuations
-// - Stores valuation history snapshots
+// DEPRECATED — replaced by 3 separate endpoints:
+//   /api/cron/update-prices
+//   /api/cron/refresh-estimates
+//   /api/cron/recompute-valuations
+// Kept for backward compat during migration. Will be removed.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";

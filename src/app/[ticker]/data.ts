@@ -15,7 +15,7 @@ import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgr
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
-import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
+import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX, TICKER_REGEX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
 import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDowngrade } from "@/types";
 
@@ -40,7 +40,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     ]);
 
   if (!company || historicals.length === 0) {
-    if (/^[A-Z]{1,5}$/.test(upperTicker)) {
+    if (TICKER_REGEX.test(upperTicker)) {
       await enqueueDataRequest(upperTicker).catch(() => {});
     }
     if (!company) {
