@@ -51,7 +51,7 @@ export default function HomePage() {
         {/* Subtle gradient background */}
         <div className="absolute inset-0 bg-gradient-to-b from-brand/[0.04] via-transparent to-transparent pointer-events-none" />
         <div className="container mx-auto px-4 text-center relative">
-          <div className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-1.5 text-sm text-muted-foreground mb-8 shadow-sm">
+          <div className="inline-flex items-center gap-2 border px-4 py-1.5 text-sm text-muted-foreground mb-8">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             Free for all S&P 500 stocks
           </div>
@@ -72,7 +72,7 @@ export default function HomePage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 border-y bg-card/50">
+      <section className="py-20 border-y">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-4">
             How ValuScope Works
@@ -99,7 +99,7 @@ export default function HomePage() {
               },
             ].map((item) => (
               <div key={item.step} className="text-center group">
-                <div className="w-12 h-12 rounded-xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4 font-bold text-lg group-hover:bg-brand group-hover:text-brand-foreground transition-colors">
+                <div className="w-12 h-12 bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4 font-bold text-lg group-hover:bg-brand group-hover:text-brand-foreground transition-colors">
                   {item.step}
                 </div>
                 <h3 className="font-semibold mb-2">{item.title}</h3>
@@ -125,9 +125,9 @@ export default function HomePage() {
             {features.map((item) => (
               <div
                 key={item.title}
-                className="rounded-xl border bg-card p-6 hover:shadow-md hover:border-brand/20 transition-all group"
+                className="border-b p-6 hover:bg-muted/20 transition-colors group"
               >
-                <div className="w-10 h-10 rounded-lg bg-brand/10 text-brand flex items-center justify-center mb-4 group-hover:bg-brand group-hover:text-brand-foreground transition-colors">
+                <div className="w-10 h-10 bg-brand/10 text-brand flex items-center justify-center mb-4 group-hover:bg-brand group-hover:text-brand-foreground transition-colors">
                   <item.icon className="w-5 h-5" />
                 </div>
                 <h3 className="font-semibold mb-2">{item.title}</h3>
@@ -139,7 +139,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 border-t bg-card/50">
+      <section className="py-20 border-t">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl font-bold mb-4">
             Start Valuing Stocks Today

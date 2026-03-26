@@ -41,9 +41,9 @@ export default async function WACCPage({ params }: Props) {
 
   return (
     <>
-      <h2 className="text-xl font-bold mb-6">WACC — Discount Rate Breakdown</h2>
+      <h2 className="val-h1">WACC — Discount Rate Breakdown</h2>
 
-      <div className="rounded-lg border bg-card p-6 space-y-8">
+      <section className="val-section space-y-8">
         {/* WACC Result */}
         <div className="text-center">
           <div className="text-sm text-muted-foreground">Weighted Average Cost of Capital</div>
@@ -51,13 +51,13 @@ export default async function WACCPage({ params }: Props) {
         </div>
 
         {/* Formula */}
-        <div className="rounded-lg bg-muted/50 p-4 text-sm text-center">
+        <div className="border p-4 text-sm text-center">
           WACC = E/(D+E) × Ke + D/(D+E) × Kd × (1 − t)
         </div>
 
         {/* Cost of Equity (CAPM) */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Cost of Equity (CAPM)
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -82,7 +82,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Cost of Debt */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Cost of Debt
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -99,7 +99,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Capital Structure */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             Capital Structure
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -137,7 +137,7 @@ export default async function WACCPage({ params }: Props) {
 
         {/* Final WACC Calculation */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <h3 className="val-h3">
             WACC Calculation
           </h3>
           <div className="space-y-1.5 text-sm max-w-lg">
@@ -153,7 +153,7 @@ export default async function WACCPage({ params }: Props) {
             <Row label="WACC" value={pct(w.wacc)} highlight primary />
           </div>
         </div>
-      </div>
+      </section>
     </>
   );
 }

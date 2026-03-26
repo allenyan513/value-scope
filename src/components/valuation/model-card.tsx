@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationResult } from "@/types";
 import { formatLargeNumber } from "@/lib/format";
@@ -26,9 +25,9 @@ export function ModelCard({ model, currentPrice }: Props) {
   void currentPrice;
 
   return (
-    <Card className="p-6">
+    <section className="val-section">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-lg">
+        <h3 className="val-h2 mt-0">
           {MODEL_NAMES[model.model_type] ?? model.model_type}
         </h3>
         {!isNA && (
@@ -44,20 +43,20 @@ export function ModelCard({ model, currentPrice }: Props) {
       ) : (
         <>
           {/* Fair value + range */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="val-stat-grid">
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Fair Value</div>
-              <div className="text-2xl font-bold">${model.fair_value.toFixed(2)}</div>
+              <div className="val-label">Fair Value</div>
+              <div className="text-2xl font-bold font-mono">${model.fair_value.toFixed(2)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Low Estimate</div>
-              <div className="text-lg font-medium text-muted-foreground">
+              <div className="val-label">Low Estimate</div>
+              <div className="text-lg font-medium font-mono text-muted-foreground">
                 ${model.low_estimate.toFixed(2)}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">High Estimate</div>
-              <div className="text-lg font-medium text-muted-foreground">
+              <div className="val-label">High Estimate</div>
+              <div className="text-lg font-medium font-mono text-muted-foreground">
                 ${model.high_estimate.toFixed(2)}
               </div>
             </div>
@@ -65,12 +64,12 @@ export function ModelCard({ model, currentPrice }: Props) {
 
           {/* Key assumptions */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium mb-2">Key Assumptions</h4>
+            <h4 className="val-h3">Key Assumptions</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
               {Object.entries(model.assumptions)
                 .filter(([k]) => !["note"].includes(k))
                 .map(([key, value]) => (
-                  <div key={key} className="flex justify-between gap-2 px-2 py-1 rounded bg-muted/50">
+                  <div key={key} className="flex justify-between gap-2 px-2 py-1 border-b border-border/40">
                     <span className="text-muted-foreground truncate">
                       {key.replace(/_/g, " ")}
                     </span>
@@ -94,7 +93,7 @@ export function ModelCard({ model, currentPrice }: Props) {
             Array.isArray((model.details as Record<string, unknown>).peers) &&
             ((model.details as Record<string, unknown>).peers as Array<Record<string, unknown>>).length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-2">Peer Comparison</h4>
+                <h4 className="val-h3">Peer Comparison</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
@@ -137,7 +136,7 @@ export function ModelCard({ model, currentPrice }: Props) {
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="font-medium bg-muted/50">
+                      <tr className="font-medium border-t">
                         <td colSpan={3} className="p-2">
                           Industry Median
                         </td>
@@ -159,7 +158,7 @@ export function ModelCard({ model, currentPrice }: Props) {
             "earnings_history" in model.details &&
             Array.isArray((model.details as Record<string, unknown>).earnings_history) && (
               <div>
-                <h4 className="text-sm font-medium mb-2">Earnings History</h4>
+                <h4 className="val-h3">Earnings History</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
@@ -206,6 +205,6 @@ export function ModelCard({ model, currentPrice }: Props) {
             )}
         </>
       )}
-    </Card>
+    </section>
   );
 }

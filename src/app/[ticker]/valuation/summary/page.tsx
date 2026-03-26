@@ -50,7 +50,7 @@ export default async function SummaryPage({ params }: Props) {
   if (!summary) {
     return (
       <div className="py-8 text-center">
-        <h2 className="text-xl font-bold mb-4">
+        <h2 className="val-h1">
           {company.name} ({upperTicker})
         </h2>
         <p className="text-muted-foreground">
@@ -88,8 +88,8 @@ export default async function SummaryPage({ params }: Props) {
       <SummaryCard summary={summary} />
 
       {/* Price vs Intrinsic Value Chart — streamed via Suspense */}
-      <div className="mt-8 rounded-lg border p-6">
-        <h2 className="text-lg font-semibold mb-4">
+      <div className="val-section">
+        <h2 className="val-h2">
           Valuation History
         </h2>
         <Suspense
@@ -104,7 +104,7 @@ export default async function SummaryPage({ params }: Props) {
       </div>
 
       {/* Disclaimer */}
-      <div className="text-xs text-muted-foreground border-t pt-6 mt-10">
+      <div className="text-xs text-muted-foreground mt-16 opacity-60">
         <p>
           <strong>Disclaimer:</strong> ValuScope provides estimated intrinsic
           values for informational purposes only. This is not financial advice.

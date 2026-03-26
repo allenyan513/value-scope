@@ -46,8 +46,8 @@ export function EstimateKPIRow({
       {/* KPI Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {pastCAGR !== null && (
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+          <div className="border-b p-3 text-center">
+            <div className="val-label">
               Past CAGR
             </div>
             <div className="text-lg font-bold font-mono">
@@ -59,8 +59,8 @@ export function EstimateKPIRow({
           </div>
         )}
         {estCAGR !== null && (
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+          <div className="border-b p-3 text-center">
+            <div className="val-label">
               Est. CAGR
             </div>
             <div className="text-lg font-bold font-mono">
@@ -72,8 +72,8 @@ export function EstimateKPIRow({
           </div>
         )}
         {stars !== null && (
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+          <div className="border-b p-3 text-center">
+            <div className="val-label">
               Accuracy
             </div>
             <div className="text-lg font-bold text-amber-500">
@@ -85,8 +85,8 @@ export function EstimateKPIRow({
           </div>
         )}
         {avgMiss !== null && (
-          <div className="rounded-lg border p-3 text-center">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">
+          <div className="border-b p-3 text-center">
+            <div className="val-label">
               Avg Surprise
             </div>
             <div

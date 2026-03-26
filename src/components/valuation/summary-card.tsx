@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationSummary } from "@/types";
 
@@ -50,16 +49,16 @@ export function SummaryCard({ summary }: Props) {
   const upsideText = `${upsideSign}${summary.consensus_upside.toFixed(1)}%`;
 
   return (
-    <Card className="p-6">
+    <section className="val-section">
       {/* SEO heading with company name */}
-      <h2 className="text-lg font-semibold mb-6">
+      <h2 className="val-h1">
         {summary.company_name} ({summary.ticker}) Valuation Summary
       </h2>
 
       {/* Key metrics — horizontal stat row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+      <div className="val-stat-grid">
         <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          <div className="val-label">
             Intrinsic Value
           </div>
           <div className="text-2xl font-bold font-mono">
@@ -67,7 +66,7 @@ export function SummaryCard({ summary }: Props) {
           </div>
         </div>
         <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          <div className="val-label">
             Market Price
           </div>
           <div className="text-2xl font-bold font-mono">
@@ -75,7 +74,7 @@ export function SummaryCard({ summary }: Props) {
           </div>
         </div>
         <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          <div className="val-label">
             Upside / Downside
           </div>
           <div className={`text-2xl font-bold font-mono ${verdict.color}`}>
@@ -83,7 +82,7 @@ export function SummaryCard({ summary }: Props) {
           </div>
         </div>
         <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+          <div className="val-label">
             Verdict
           </div>
           <div className="flex items-center gap-2 mt-1">
@@ -181,6 +180,6 @@ export function SummaryCard({ summary }: Props) {
           </tfoot>
         </table>
       </div>
-    </Card>
+    </section>
   );
 }

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationResult } from "@/types";
 
@@ -40,7 +39,7 @@ export function ModelCardCompact({ model, ticker }: Props) {
 
   return (
     <Link href={href}>
-      <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+      <div className="p-4 border-b hover:bg-muted/20 transition-colors cursor-pointer">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-medium text-sm">
             {MODEL_NAMES[model.model_type] ?? model.model_type}
@@ -67,7 +66,7 @@ export function ModelCardCompact({ model, ticker }: Props) {
             </span>
           </div>
         )}
-      </Card>
+      </div>
     </Link>
   );
 }

@@ -61,7 +61,7 @@
 
   --background: oklch(0.13 0.015 260);
   --foreground: oklch(0.95 0.005 260);
-  --card: oklch(0.18 0.015 260);
+  --card: oklch(0.13 0.015 260);
   --card-foreground: oklch(0.95 0.005 260);
   --popover: oklch(0.18 0.015 260);
   --popover-foreground: oklch(0.95 0.005 260);
@@ -91,7 +91,7 @@
   --chart-4: oklch(0.60 0.10 300);
   --chart-5: oklch(0.80 0.06 140);
 
-  --radius: 0.25rem;
+  --radius: 0rem;
 
   --sidebar: oklch(0.16 0.015 260);
   --sidebar-foreground: oklch(0.95 0.005 260);
@@ -116,5 +116,63 @@
   }
   h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
+  }
+}
+
+/* ===== Valuation page design system ===== */
+@layer components {
+  /* Page title: "Apple Inc. (AAPL) DCF Valuation" */
+  .val-h1 {
+    @apply text-xl font-bold mb-6;
+  }
+
+  /* Major section heading with brush-stroke highlight — replaces border-t dividers */
+  .val-h2 {
+    @apply text-lg font-semibold mt-10 mb-5;
+    position: relative;
+    display: inline-block;
+    padding-bottom: 2px;
+  }
+  .val-h2::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 40%;
+    width: calc(100% + 2rem);
+    background: linear-gradient(
+      90deg,
+      oklch(0.70 0.16 260 / 25%) 0%,
+      oklch(0.70 0.16 260 / 18%) 70%,
+      oklch(0.70 0.16 260 / 8%) 88%,
+      transparent 100%
+    );
+    z-index: -1;
+    pointer-events: none;
+    mask-image: linear-gradient(90deg, black 0%, black 65%, oklch(0 0 0 / 60%) 80%, oklch(0 0 0 / 20%) 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, black 0%, black 65%, oklch(0 0 0 / 60%) 80%, oklch(0 0 0 / 20%) 92%, transparent 100%);
+  }
+
+  /* Subsection: "Cost of Equity (CAPM)", "Calculation" */
+  .val-h3 {
+    @apply text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 mt-8;
+  }
+
+  /* Stat label: "FAIR VALUE", "MARKET PRICE" */
+  .val-label {
+    @apply text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1;
+  }
+
+  /* Unified section wrapper — consistent vertical rhythm */
+  .val-section {
+    @apply py-8;
+  }
+  .val-section:first-child {
+    @apply pt-0;
+  }
+
+  /* Stat grid: 2 cols mobile, 4 cols desktop */
+  .val-stat-grid {
+    @apply grid grid-cols-2 md:grid-cols-4 gap-6 mb-6;
   }
 }

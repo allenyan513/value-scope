@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Card } from "@/components/ui/card";
 import type { ValuationResult } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
 import { formatMillions, getUpsideColor } from "@/lib/format";
@@ -64,12 +63,12 @@ function ParamInput({
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
 
   return (
-    <div className="text-center p-4 rounded-xl border border-border/60 bg-muted/30">
+    <div className="text-center p-4 border border-border/40">
       <div className="text-sm text-muted-foreground mb-2">{label}</div>
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={() => onChange(clamp(value - step))}
-          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
+          className="w-8 h-8 border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
           aria-label={`Decrease ${label}`}
         >
           −
@@ -79,7 +78,7 @@ function ParamInput({
         </span>
         <button
           onClick={() => onChange(clamp(value + step))}
-          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
+          className="w-8 h-8 border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
           aria-label={`Increase ${label}`}
         >
           +
@@ -229,24 +228,24 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ===== Card 1: DCF Value — stats + narrative ===== */}
-      <Card className="p-6">
+      {/* ===== Section 1: DCF Value — stats + narrative ===== */}
+      <section className="val-section">
         {/* Stat row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+        <div className="val-stat-grid">
           <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="val-label">
               Fair Value {isCustom && <span className="text-amber-400 normal-case">(custom)</span>}
             </div>
             <div className="text-2xl font-bold font-mono">${calc.fairValue.toFixed(2)}</div>
           </div>
           <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="val-label">
               Market Price
             </div>
             <div className="text-2xl font-bold font-mono">${currentPrice.toFixed(2)}</div>
           </div>
           <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="val-label">
               Upside / Downside
             </div>
             <div className={`text-2xl font-bold font-mono ${getUpsideColor(calc.upsidePercent)}`}>
@@ -254,7 +253,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="val-label">
               Range
             </div>
             <div className="text-lg font-medium font-mono text-muted-foreground mt-1">
@@ -269,15 +268,15 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
             {highlightNarrative(narrative)}
           </p>
         )}
-      </Card>
+      </section>
 
-      {/* ===== Card 2: Present Value Calculation ===== */}
-      <Card className="p-6">
+      {/* ===== Section 2: Present Value Calculation ===== */}
+      <section className="val-section">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <h3 className="font-semibold text-lg">Present Value Calculation</h3>
+            <h3 className="val-h2">Present Value Calculation</h3>
             {isCustom && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400">
+              <span className="text-xs font-medium px-2 py-0.5 bg-amber-900/40 text-amber-400">
                 Modified
               </span>
             )}
@@ -285,7 +284,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
           {isCustom && (
             <button
               onClick={resetDefaults}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+              className="text-xs font-medium px-3 py-1.5 border border-border hover:bg-muted transition-colors"
             >
               Reset to Default
             </button>
@@ -335,7 +334,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
               suffix=" Yrs"
             />
           ) : (
-            <div className="text-center p-4 rounded-xl border border-border/60 bg-muted/30">
+            <div className="text-center p-4 border border-border/40">
               <div className="text-sm text-muted-foreground mb-2">Forecast Period</div>
               <div className="text-xl font-bold font-mono">10 Yrs</div>
               <div className="text-[11px] text-muted-foreground mt-1.5">Stage 1 (5Y) + Stage 2 (5Y)</div>
@@ -348,7 +347,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
 
         {/* Warning for ke <= g */}
         {calc.keLeG && (
-          <div className="mb-4 p-3 rounded-lg bg-amber-950/30 border border-amber-800 text-sm text-amber-300">
+          <div className="mb-4 p-3 bg-amber-950/30 border border-amber-800 text-sm text-amber-300">
             Discount rate must be greater than terminal growth for a meaningful terminal value. Using fallback multiplier.
           </div>
         )}
@@ -487,11 +486,11 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
             </tbody>
           </table>
         </div>
-      </Card>
+      </section>
 
-      {/* ===== Card 3: Sensitivity Analysis ===== */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-lg mb-4">Sensitivity Analysis</h3>
+      {/* ===== Section 3: Sensitivity Analysis ===== */}
+      <section className="val-section">
+        <h3 className="val-h2">Sensitivity Analysis</h3>
         <SensitivityHeatmap
           waccValues={discountRateValues}
           secondAxisValues={growthValues}
@@ -500,7 +499,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
           xLabel={isExitMultiple ? "Exit Multiple" : "Terminal Growth Rate"}
           isPercent={!isExitMultiple}
         />
-      </Card>
+      </section>
 
     </div>
   );
