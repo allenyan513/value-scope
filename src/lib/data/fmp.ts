@@ -7,3 +7,4 @@ export { getAnalystEstimates, getPriceTargetConsensus, getEarningsSurprises, get
 export type { FMPUpgradeDowngrade } from "./fmp-estimates";
 export { getKeyMetrics, getEVMetrics } from "./fmp-multiples";
 export type { FMPEVMetrics } from "./fmp-multiples";
+export { getFXRateToUSD } from "./fmp-fx";

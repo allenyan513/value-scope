@@ -42,6 +42,7 @@ interface FMPProfile {
   exchange: string;
   description: string;
   image: string;
+  currency: string; // reporting currency (e.g., "USD", "DKK", "EUR")
 }
 
 export async function getCompanyProfile(ticker: string): Promise<FMPProfile | null> {
@@ -61,6 +62,7 @@ interface FMPIncomeStatement {
   period: string; // "FY" or "Q1"–"Q4"
   fiscalYear: string;
   calendarYear: string;
+  reportedCurrency: string; // e.g., "USD", "DKK", "EUR"
   revenue: number;
   costOfRevenue: number;
   grossProfit: number;

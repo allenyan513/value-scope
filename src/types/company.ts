@@ -12,6 +12,8 @@ export interface Company {
   description: string;
   logo_url: string | null;
   updated_at: string;
+  reporting_currency?: string; // e.g., "DKK", "EUR" — defaults to "USD"
+  fx_rate_to_usd?: number; // conversion rate used at ingestion — defaults to 1.0
 }
 
 // --- Company Classification ---

@@ -32,8 +32,8 @@ const upperTicker = ticker.toUpperCase();
 ```
 Validate format: `TICKER_REGEX` from `@/lib/constants` — supports `BRK-B` style tickers
 
-## Pending State
-Pages check `data.pending` flag → render `<TickerPending>` client component which triggers `/api/provision/[ticker]` POST. Client polls every 3s, calls `router.refresh()` on "ready".
+## Unknown Ticker State
+If `getCompany()` returns null, pages render a static "not currently covered" message. No on-demand provisioning — all data is pre-seeded via batch seed scripts.
 
 ## API Route Patterns
 - Protected routes: use `getAuthenticatedUser(request)` from `@/lib/api/auth`

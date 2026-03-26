@@ -16,6 +16,8 @@ CREATE TABLE companies (
   exchange TEXT,
   description TEXT,
   logo_url TEXT,
+  reporting_currency TEXT DEFAULT 'USD',  -- e.g., "DKK", "EUR" for ADRs
+  fx_rate_to_usd REAL DEFAULT 1.0,       -- conversion rate used at ingestion
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

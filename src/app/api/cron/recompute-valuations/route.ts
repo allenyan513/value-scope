@@ -15,11 +15,8 @@ import {
   computePeerMetricsFromDB,
   upsertValuation,
   upsertValuationHistory,
-  getPendingDataRequests,
-  updateDataRequestStatus,
 } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
-import { CRON_COMPANY_DELAY_MS } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
 import type { Company } from "@/types";
 
@@ -97,33 +94,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process pending data requests (new tickers users have requested)
-    let provisioned = 0;
-    let provisionErrors = 0;
-    try {
-      const { seedSingleCompany } = await import("@/lib/data/seed");
-      const pendingTickers = await getPendingDataRequests(10);
-      for (const pendingTicker of pendingTickers) {
-        await updateDataRequestStatus(pendingTicker, "processing");
-        const result = await seedSingleCompany(pendingTicker);
-        if (result.success) {
-          await updateDataRequestStatus(pendingTicker, "completed");
-          revalidatePath(`/${pendingTicker}`, "layout");
-          provisioned++;
-        } else {
-          await updateDataRequestStatus(pendingTicker, "failed", result.error);
-          provisionErrors++;
-        }
-        if (pendingTickers.indexOf(pendingTicker) < pendingTickers.length - 1) {
-          await new Promise((r) => setTimeout(r, CRON_COMPANY_DELAY_MS));
-        }
-      }
-    } catch (error) {
-      console.error("[recompute-valuations] Data request processing error:", error);
-    }
-
     console.log(
-      `[recompute-valuations] Done: ${success} success, ${errors} errors, ${provisioned} provisioned`
+      `[recompute-valuations] Done: ${success} success, ${errors} errors`
     );
 
     return NextResponse.json({
@@ -131,8 +103,6 @@ export async function GET(request: NextRequest) {
       date: today,
       valuations_computed: success,
       valuation_errors: errors,
-      new_tickers_provisioned: provisioned,
-      new_tickers_failed: provisionErrors,
     });
   } catch (error) {
     console.error("[recompute-valuations] Error:", error);

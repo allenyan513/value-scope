@@ -9,9 +9,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db/supabase";
-import { getAnalystEstimates, getPriceTargetConsensus } from "@/lib/data/fmp";
+import { getAnalystEstimates, getPriceTargetConsensus, getFXRateToUSD } from "@/lib/data/fmp";
 import { upsertEstimates, upsertPriceTargets } from "@/lib/db/queries";
 import { CRON_ESTIMATES_BATCH_SIZE, FMP_API_DELAY_MS } from "@/lib/constants";
+import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 
 export const maxDuration = 300;
 
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
   const db = createServerClient();
 
   try {
-    // 1. Get all tickers sorted alphabetically
+    // 1. Get all tickers sorted alphabetically (include currency for ADR conversion)
     const { data: companies } = await db
       .from("companies")
-      .select("ticker")
+      .select("ticker, reporting_currency")
       .order("ticker");
 
     if (!companies || companies.length === 0) {
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
     }
 
     const allTickers = companies.map((c) => c.ticker);
+    const currencyMap = new Map(
+      companies.map((c) => [c.ticker, c.reporting_currency || "USD"])
+    );
 
     // 2. Select batch to process
     let tickersToProcess: string[];
@@ -66,21 +70,28 @@ export async function GET(request: NextRequest) {
 
     for (const ticker of tickersToProcess) {
       try {
-        // Refresh analyst estimates
+        // Refresh analyst estimates (convert non-USD to USD)
         const fmpEstimates = await getAnalystEstimates(ticker, "annual", 5);
         if (fmpEstimates.length > 0) {
+          const currency = currencyMap.get(ticker) || "USD";
+          const fxRate = currency !== "USD" ? await getFXRateToUSD(currency) : 1.0;
           await upsertEstimates(
-            fmpEstimates.map((e) => ({
-              ticker,
-              period: e.date.split("-")[0],
-              revenue_estimate: e.revenueAvg,
-              eps_estimate: e.epsAvg,
-              revenue_low: e.revenueLow,
-              revenue_high: e.revenueHigh,
-              eps_low: e.epsLow,
-              eps_high: e.epsHigh,
-              number_of_analysts: e.numAnalystsRevenue,
-            }))
+            fmpEstimates.map((e) =>
+              convertEstimateToUSD(
+                {
+                  ticker,
+                  period: e.date.split("-")[0],
+                  revenue_estimate: e.revenueAvg,
+                  eps_estimate: e.epsAvg,
+                  revenue_low: e.revenueLow,
+                  revenue_high: e.revenueHigh,
+                  eps_low: e.epsLow,
+                  eps_high: e.epsHigh,
+                  number_of_analysts: e.numAnalystsRevenue,
+                },
+                fxRate
+              )
+            )
           );
           estimatesRefreshed++;
         }

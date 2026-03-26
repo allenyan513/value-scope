@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
-import { TickerPending } from "@/components/provisioning/ticker-pending";
 import { getCoreTickerData } from "../../data";
 import { ValuationChartSection } from "./valuation-chart-section";
 import { SummaryWithStrategy } from "./summary-with-strategy";
@@ -41,8 +40,15 @@ export default async function SummaryPage({ params }: Props) {
   const upperTicker = ticker.toUpperCase();
   const data = await getCoreTickerData(upperTicker);
 
-  if (data.pending || !data.company) {
-    return <TickerPending ticker={upperTicker} />;
+  if (!data.company) {
+    return (
+      <div className="py-16 text-center">
+        <h2 className="text-xl font-bold mb-3">{upperTicker}</h2>
+        <p className="text-muted-foreground">
+          This ticker is not currently covered. We cover S&amp;P 500 stocks.
+        </p>
+      </div>
+    );
   }
 
   const { company } = data;

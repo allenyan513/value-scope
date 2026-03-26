@@ -8,14 +8,13 @@ import {
   getPriceTargets,
   getPriceHistory,
   getValuationHistory,
-  enqueueDataRequest,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
-import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX, TICKER_REGEX } from "@/lib/constants";
+import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
 import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDowngrade } from "@/types";
 
@@ -39,21 +38,18 @@ export const getCoreTickerData = cache(async (ticker: string) => {
       getIndustryPeers(upperTicker, 15),
     ]);
 
-  if (!company || historicals.length === 0) {
-    if (TICKER_REGEX.test(upperTicker)) {
-      await enqueueDataRequest(upperTicker).catch(() => {});
-    }
-    if (!company) {
-      return {
-        company: null,
-        summary: null,
-        estimates: [],
-        historicals: [],
-        historicalMultiples: [],
-        peers: [],
-        pending: true,
-      };
-    }
+  if (!company) {
+    return {
+      company: null,
+      summary: null,
+      estimates: [],
+      historicals: [],
+      historicalMultiples: [],
+      peers: [],
+    };
+  }
+
+  if (historicals.length === 0) {
     return {
       company,
       summary: null,
