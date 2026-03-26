@@ -12,11 +12,13 @@ import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import {
   getFinancials,
   getEstimates,
+  getPriceHistory,
   computePeerMetricsFromDB,
   upsertValuation,
   upsertValuationHistory,
 } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
+import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { toDateString } from "@/lib/format";
 import type { Company } from "@/types";
 
@@ -51,16 +53,19 @@ export async function GET(request: NextRequest) {
     for (const company of companies as Company[]) {
       try {
         // All data from DB — no FMP calls
-        const [historicals, estimates, peers] = await Promise.all([
+        const [historicals, estimates, peers, prices] = await Promise.all([
           getFinancials(company.ticker, "annual", 5),
           getEstimates(company.ticker),
           computePeerMetricsFromDB(company.ticker, 10),
+          getPriceHistory(company.ticker, 365 * 5),
         ]);
 
         if (historicals.length === 0) continue;
 
         const currentPrice = company.price || 0;
         if (currentPrice <= 0) continue;
+
+        const historicalMultiples = computeHistoricalMultiples(historicals, prices);
 
         const summary = computeFullValuation({
           company,
@@ -69,6 +74,7 @@ export async function GET(request: NextRequest) {
           peers,
           currentPrice,
           riskFreeRate,
+          historicalMultiples,
         });
 
         // Save each model result
