@@ -24,3 +24,12 @@ paths:
 ## Analyst Estimates
 - Daily cron fetches from FMP `getAnalystEstimates()` → `analyst_estimates` table
 - Real-time fallback: if empty when computing valuation, fetches on demand and persists
+
+## Starter Plan Endpoint Limitations
+These endpoints exist in the stable API but return **empty arrays** on the Starter plan:
+- `/analyst-stock-recommendations` — buy/hold/sell ratings (empty `[]`)
+- `/upgrades-downgrades` — analyst rating changes (empty `[]`)
+- `/earnings-calendar?symbol=X` — returns ALL companies, not filtered by symbol on Starter
+- `/sector-pe-ratio` — not available on stable API
+
+Code handles all of these with `.catch(() => null)` fallbacks. Components check for null/empty and skip rendering. No user-visible errors.

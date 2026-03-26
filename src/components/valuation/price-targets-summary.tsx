@@ -54,7 +54,7 @@ export function PriceTargetsSummary({
   const sampledHistory = recentHistory.filter((_, i) => i % step === 0 || i === recentHistory.length - 1);
   const historicalData = sampledHistory.map((p) => ({
     date: p.date,
-    price: p.close,
+    price: p.close as number | null,
     targetLow: null as number | null,
     targetHigh: null as number | null,
     targetLine: null as number | null,
@@ -80,7 +80,7 @@ export function PriceTargetsSummary({
     const t = m / 12; // interpolation factor 0→1
     projectionPoints.push({
       date: d.toISOString().split("T")[0],
-      price: null,
+      price: null as number | null,
       targetLow: currentPrice + (low - currentPrice) * t,
       targetHigh: currentPrice + (high - currentPrice) * t,
       targetLine: currentPrice + (avg - currentPrice) * t,

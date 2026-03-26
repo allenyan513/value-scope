@@ -62,6 +62,35 @@ All `/valuation` sub-pages use semantic CSS classes defined in `globals.css @lay
 - Formula breakdown, rule of thumb, growth classification (Slow Grower / Stalwart / Fast Grower)
 - Client component ("use client")
 
+## AnalystConsensusHero Component
+`src/components/valuation/analyst-consensus-hero.tsx` — Hero section for the Analyst Estimates page.
+- Shows verdict banner, avg price target + upside%, analyst count, next earnings date
+- Gracefully hides fields when FMP data unavailable (no "N/A" clutter)
+- Server component (no "use client")
+
+## RatingDistribution Component
+`src/components/valuation/rating-distribution.tsx` — Analyst buy/hold/sell distribution.
+- Horizontal stacked bar (Strong Buy / Buy / Hold / Sell / Strong Sell)
+- Recent upgrades/downgrades list (last 90 days)
+- Client component ("use client")
+
+## PriceTargetGauge Component
+`src/components/valuation/price-target-gauge.tsx` — Horizontal gauge showing current price within target range.
+- Pure CSS/div (no Recharts), shows Low → Median → High zones with current price marker
+- Client component ("use client")
+
+## QuarterlyEarningsTable Component
+`src/components/valuation/quarterly-earnings-table.tsx` — Quarterly earnings surprise history.
+- Table: Quarter, Date, Est EPS, Actual EPS, Surprise %, Beat/Miss badge
+- Summary: "Beat X of last Y quarters"
+- Server component (no "use client")
+
+## WallStreetComparison Component
+`src/components/valuation/wall-street-comparison.tsx` — "ValuScope vs Wall Street" side-by-side comparison.
+- Used on the Summary page between the model table and the Valuation History chart
+- Shows ValuScope fair value vs analyst consensus target with agreement/divergence narrative
+- Server component (no "use client")
+
 ## SummaryCard Component
 `src/components/valuation/summary-card.tsx` — Main summary page table with tree-style pillar grouping.
 - Accepts `strategySwitcher` slot (ReactNode) rendered next to the heading
