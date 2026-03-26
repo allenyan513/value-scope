@@ -1,6 +1,8 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const DCF_MODELS = [
   { slug: "perpetual-growth", label: "Perpetual Growth (10Y)" },
@@ -14,24 +16,29 @@ interface Props {
 
 export function DCFModelNav({ ticker }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const basePath = `/${ticker}/valuation/dcf`;
 
-  const currentSlug = DCF_MODELS.find(
-    (m) => pathname === `${basePath}/${m.slug}`
-  )?.slug ?? DCF_MODELS[0].slug;
-
   return (
-    <select
-      value={currentSlug}
-      onChange={(e) => router.push(`${basePath}/${e.target.value}`)}
-      className="rounded-lg border bg-card px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-    >
-      {DCF_MODELS.map((m) => (
-        <option key={m.slug} value={m.slug}>
-          {m.label}
-        </option>
-      ))}
-    </select>
+    <nav className="flex gap-1 rounded-lg border bg-card p-1">
+      {DCF_MODELS.map((m) => {
+        const href = `${basePath}/${m.slug}`;
+        const isActive = pathname === href;
+        return (
+          <Link
+            key={m.slug}
+            href={href}
+            prefetch={true}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            {m.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
