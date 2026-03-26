@@ -8,21 +8,6 @@ function formatNumber(n: number, decimals = 1): string {
   return formatLargeNumber(n, { prefix: "", decimals, includeK: true });
 }
 
-function UpsideBadge({ upside }: { upside: number }) {
-  const isPositive = upside >= 0;
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-sm font-semibold ${
-        isPositive
-          ? "bg-green-950 text-green-400"
-          : "bg-red-950 text-red-400"
-      }`}
-    >
-      {isPositive ? "+" : ""}{upside.toFixed(1)}% Upside
-    </span>
-  );
-}
-
 export function RelativeValuationSection({ data }: { data: RelativeValuationData }) {
   const hasTrailing = data.trailingMultiple !== null;
   const hasForward = data.forwardMultiple !== null;
