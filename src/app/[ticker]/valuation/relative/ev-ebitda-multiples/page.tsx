@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getRelativeValuationData } from "../data";
 import { RelativeValuationSection } from "../section";
+import { MethodologyCard } from "@/components/valuation/methodology-card";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -33,5 +34,13 @@ export default async function EVEBITDAMultiplesPage({ params }: Props) {
     );
   }
 
-  return <RelativeValuationSection data={evData} />;
+  return (
+    <>
+      <RelativeValuationSection data={evData} />
+      <MethodologyCard paragraphs={[
+        "The EV/EBITDA Multiples model estimates fair value using the Enterprise Value to EBITDA ratio. When sufficient historical data is available (100+ daily data points), the company's own 5-year average EV/EBITDA is used. Otherwise, the median of industry peers serves as a fallback.",
+        "Enterprise Value = EV/EBITDA × EBITDA. Equity value is then derived by subtracting net debt from enterprise value and dividing by shares outstanding. EV/EBITDA is capital-structure neutral, making it particularly useful for comparing companies across different leverage profiles and for capital-intensive industries.",
+      ]} />
+    </>
+  );
 }

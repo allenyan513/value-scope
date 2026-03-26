@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getCoreTickerData } from "../../data";
 import { formatLargeNumber } from "@/lib/format";
+import { MethodologyCard } from "@/components/valuation/methodology-card";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -154,6 +155,12 @@ export default async function WACCPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      <MethodologyCard paragraphs={[
+        "WACC (Weighted Average Cost of Capital) represents the minimum return a company must earn on its existing assets to satisfy its creditors and equity investors. It is used as the discount rate in all DCF models on this platform.",
+        "Cost of equity is estimated using the Capital Asset Pricing Model (CAPM): Risk-Free Rate + Beta × Equity Risk Premium + Size Premium. The risk-free rate is the current 10-year US Treasury yield. Cost of debt is approximated from the company's interest expense relative to total debt, adjusted for the tax shield.",
+        "The final WACC blends equity and debt costs using market-cap-based weights. A higher WACC reduces the present value of future cash flows, leading to lower DCF fair values.",
+      ]} />
     </div>
   );
 }

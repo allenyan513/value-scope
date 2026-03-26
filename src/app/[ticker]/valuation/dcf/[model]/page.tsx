@@ -2,28 +2,41 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/db/queries";
 import { DCFCards } from "@/components/valuation/dcf-cards";
+import { MethodologyCard } from "@/components/valuation/methodology-card";
 import { getCoreTickerData } from "../../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
 import type { ValuationModelType } from "@/types";
 
-const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string }> = {
+const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string; methodology: string[] }> = {
   "perpetual-growth": {
     modelType: "dcf_3stage",
     label: "Perpetual Growth (10Y)",
     metaTitle: "DCF Perpetual Growth Valuation",
     metaDesc: "Discounted Cash Flow valuation using Gordon Growth perpetual terminal value. 10-year projection with analyst estimates (Y1–5) and transition phase (Y6–10).",
+    methodology: [
+      "This is a 3-stage Free Cash Flow to Equity (FCFE) model. Stage 1 (Years 1–5) uses analyst consensus revenue and margin estimates. Stage 2 (Years 6–10) transitions growth from the analyst trajectory toward a long-term sustainable rate. The terminal value is calculated using the Gordon Growth Model, assuming cash flows grow at a perpetual rate tied to nominal GDP growth.",
+      "Fair value equals the present value of projected FCFE plus terminal value, adjusted for cash and debt, divided by shares outstanding. The discount rate is the cost of equity derived from CAPM. The sensitivity matrix shows how fair value changes under different discount rate and terminal growth assumptions.",
+    ],
   },
   "pe-exit": {
     modelType: "dcf_pe_exit_10y",
     label: "P/E Exit (10Y)",
     metaTitle: "DCF P/E Exit Multiple Valuation",
     metaDesc: "Discounted Cash Flow valuation using P/E exit multiple for terminal value. 10-year projection with historical P/E ratio applied at exit.",
+    methodology: [
+      "This model projects Free Cash Flow to Equity over 10 years using the same 3-stage approach (analyst estimates → transition → steady state), but replaces the Gordon Growth terminal value with a P/E exit multiple. The terminal value is calculated as Year 10 net income multiplied by the company's historical 5-year average P/E ratio.",
+      "Using an exit multiple anchors the terminal value to how the market has historically priced the company's earnings, rather than assuming perpetual growth. This approach tends to produce more conservative results when the stock's historical P/E is below its current trading multiple.",
+    ],
   },
   "ev-ebitda-exit": {
     modelType: "dcf_ebitda_exit_fcfe_10y",
     label: "EV/EBITDA Exit (10Y)",
     metaTitle: "DCF EV/EBITDA Exit Multiple Valuation",
     metaDesc: "Discounted Cash Flow valuation using EV/EBITDA exit multiple for terminal value. 10-year projection with enterprise value conversion.",
+    methodology: [
+      "This model uses the same 10-year FCFE projection as the other DCF variants, but calculates terminal value using an EV/EBITDA exit multiple. Year 10 EBITDA is multiplied by the company's historical 5-year average EV/EBITDA ratio to arrive at an enterprise value, which is then converted to equity value by subtracting net debt.",
+      "EV/EBITDA is capital-structure neutral, making it useful for comparing companies with different leverage levels. This approach works best for capital-intensive businesses where EBITDA is a better proxy for operating performance than net income.",
+    ],
   },
 };
 
@@ -108,6 +121,7 @@ export default async function DCFModelPage({ params }: Props) {
         currentPrice={summary.current_price}
         narrative={narrative}
       />
+      <MethodologyCard paragraphs={config.methodology} />
     </>
   );
 }

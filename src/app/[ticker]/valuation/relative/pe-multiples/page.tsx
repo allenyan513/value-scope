@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getRelativeValuationData } from "../data";
 import { RelativeValuationSection } from "../section";
+import { MethodologyCard } from "@/components/valuation/methodology-card";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -33,5 +34,13 @@ export default async function PEMultiplesPage({ params }: Props) {
     );
   }
 
-  return <RelativeValuationSection data={peData} />;
+  return (
+    <>
+      <RelativeValuationSection data={peData} />
+      <MethodologyCard paragraphs={[
+        "The P/E Multiples model estimates fair value by applying a historical average P/E ratio to the company's trailing earnings per share. When at least 100 daily data points are available, the model uses the company's own 5-year average P/E. Otherwise, it falls back to the median P/E of industry peers.",
+        "Fair Value = Historical Avg P/E × Trailing EPS. The range is derived from the 25th and 75th percentile of historical P/E values. This approach assumes the market's long-term valuation of a company's earnings is a reasonable anchor, while providing context on where the current multiple sits relative to its own history.",
+      ]} />
+    </>
+  );
 }

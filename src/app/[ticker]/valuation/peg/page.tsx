@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ValuationHero } from "@/components/valuation/valuation-hero";
 import { PEGGauge } from "@/components/valuation/peg-gauge";
 import { Badge } from "@/components/ui/badge";
+import { MethodologyCard } from "@/components/valuation/methodology-card";
 import type { PEGDetails } from "@/lib/valuation/peg";
 
 interface Props {
@@ -243,23 +244,10 @@ export default async function PEGFairValuePage({ params }: Props) {
         </div>
       </div>
 
-      {/* Methodology */}
-      <div className="val-card">
-        <h3 className="val-card-title">Methodology</h3>
-        <div className="val-prose space-y-2">
-          <p>
-            The PEG Fair Value uses the PEG (Price/Earnings-to-Growth) framework.
-            A stock is fairly valued when its P/E ratio equals its earnings growth rate (PEG = 1.0).
-            This model adds dividend yield to the growth rate per Lynch&apos;s original PEGY formula.
-          </p>
-          <p>
-            Growth rate priority: analyst consensus forward EPS CAGR (when ≥ 3 analysts cover the stock),
-            falling back to historical EPS CAGR. Using EPS rather than net income avoids distortion from
-            share buybacks. The growth rate is clamped between 8% and 25% — below 8% would undervalue
-            stable earners, while above 25% would overvalue unsustainable spikes.
-          </p>
-        </div>
-      </div>
+      <MethodologyCard paragraphs={[
+        "The PEG Fair Value uses the Price/Earnings-to-Growth framework. A stock is fairly valued when its P/E ratio equals its earnings growth rate (PEG = 1.0). This model adds dividend yield to the growth rate per the original PEGY formula.",
+        "Growth rate priority: analyst consensus forward EPS CAGR (when \u2265 3 analysts cover the stock), falling back to historical EPS CAGR. Using EPS rather than net income avoids distortion from share buybacks. The growth rate is clamped between 8% and 25% \u2014 below 8% would undervalue stable earners, while above 25% would overvalue unsustainable spikes.",
+      ]} />
     </div>
   );
 }
