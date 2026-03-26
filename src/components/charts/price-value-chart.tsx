@@ -28,16 +28,6 @@ export function PriceValueChart({ data }: Props) {
     );
   }
 
-  const lastPoint = data[data.length - 1];
-  const currentPrice = lastPoint.close_price;
-  const intrinsicValue = lastPoint.intrinsic_value;
-  const upside =
-    intrinsicValue > 0
-      ? ((intrinsicValue - currentPrice) / currentPrice) * 100
-      : 0;
-  const isOvervalued = upside < -5;
-  const isUndervalued = upside > 5;
-
   const chartData = data.map((d) => ({
     date: d.date,
     displayDate: new Date(d.date + "T00:00:00").toLocaleDateString("en-US", {
@@ -50,33 +40,15 @@ export function PriceValueChart({ data }: Props) {
 
   return (
     <div>
-      {/* Right-side labels */}
+      {/* Legend */}
       <div className="flex flex-wrap items-center gap-6 mb-4">
         <div className="flex items-center gap-2">
           <span className="w-6 h-0.5 bg-red-400 inline-block" />
           <span className="text-sm text-muted-foreground">Price</span>
-          <span className="text-sm font-mono font-semibold">
-            {currentPrice.toFixed(2)}
-          </span>
-        </div>
-        <div
-          className={`text-sm font-semibold px-2 py-0.5 rounded ${
-            isOvervalued
-              ? "bg-red-900/30 text-red-400"
-              : isUndervalued
-                ? "bg-green-900/30 text-green-400"
-                : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {Math.abs(upside).toFixed(0)}%{" "}
-          {isOvervalued ? "OVERVALUED" : isUndervalued ? "UNDERVALUED" : "FAIR"}
         </div>
         <div className="flex items-center gap-2">
           <span className="w-6 h-0 border-t-2 border-dashed border-slate-400 inline-block" />
           <span className="text-sm text-muted-foreground">Intrinsic Value</span>
-          <span className="text-sm font-mono font-semibold">
-            {intrinsicValue.toFixed(2)}
-          </span>
         </div>
       </div>
 

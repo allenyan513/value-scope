@@ -7,6 +7,12 @@
 /** Upside % threshold: above = undervalued, below negative = overvalued */
 export const VERDICT_THRESHOLD = 15;
 
+// --- Consensus Weighting ---
+/** Outlier penalty: deviation from median beyond this triggers half-weight */
+export const OUTLIER_HALF_THRESHOLD = 0.50;
+/** Outlier penalty: deviation from median beyond this triggers quarter-weight */
+export const OUTLIER_QUARTER_THRESHOLD = 1.00;
+
 // --- ISR & Caching ---
 // Note: ISR `revalidate` in page exports must be a literal number (Next.js build-time constraint).
 // Use `ISR_REVALIDATE_SECONDS` only in runtime code (e.g., fetch options), not in page segment config.

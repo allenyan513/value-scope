@@ -4,5 +4,5 @@ export { calculateDCF3Stage, calculateDCF3StagePEExit, calculateDCF3StageEBITDAE
 export { calculatePEMultiples, calculateEVEBITDAMultiples } from "./trading-multiples";
 export { calculatePEG } from "./peg";
 export { computeFullValuation } from "./summary";
-export { classifyCompany, computeWeightedConsensus } from "./company-classifier";
+export { classifyCompany, computeWeightedConsensus, PRIMARY_MODEL_MAP } from "./company-classifier";
 export { computeHistoricalMultiples, computeMultiplesStats } from "./historical-multiples";
