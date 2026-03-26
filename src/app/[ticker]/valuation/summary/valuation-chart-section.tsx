@@ -1,5 +1,5 @@
 import { PriceValueChart } from "@/components/charts/price-value-chart";
-import { getChartHistory } from "./data";
+import { getChartHistory } from "../../data";
 
 interface Props {
   ticker: string;

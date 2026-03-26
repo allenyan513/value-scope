@@ -17,16 +17,16 @@ const MODEL_NAMES: Record<string, string> = {
 };
 
 const MODEL_LINKS: Record<string, string> = {
-  dcf_growth_exit_5y: "/dcf-valuation",
-  dcf_growth_exit_10y: "/dcf-valuation",
-  dcf_ebitda_exit_5y: "/dcf-valuation",
-  dcf_ebitda_exit_10y: "/dcf-valuation",
-  dcf_3stage: "/dcf-valuation",
-  dcf_pe_exit_10y: "/dcf-valuation",
-  dcf_ebitda_exit_fcfe_10y: "/dcf-valuation",
-  pe_multiples: "/relative-valuation",
-  ev_ebitda_multiples: "/relative-valuation",
-  peter_lynch: "/relative-valuation",
+  dcf_growth_exit_5y: "/valuation/dcf",
+  dcf_growth_exit_10y: "/valuation/dcf",
+  dcf_ebitda_exit_5y: "/valuation/dcf",
+  dcf_ebitda_exit_10y: "/valuation/dcf",
+  dcf_3stage: "/valuation/dcf",
+  dcf_pe_exit_10y: "/valuation/dcf",
+  dcf_ebitda_exit_fcfe_10y: "/valuation/dcf",
+  pe_multiples: "/valuation/relative",
+  ev_ebitda_multiples: "/valuation/relative",
+  peter_lynch: "/valuation/peter-lynch",
 };
 
 interface Props {

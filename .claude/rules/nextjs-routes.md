@@ -38,4 +38,4 @@ Pages check `data.pending` flag → render `<TickerPending>` client component wh
 ## Metadata & SEO
 - Generate metadata dynamically from company data in `generateMetadata()`
 - JSON-LD via `<script type="application/ld+json">` with `dangerouslySetInnerHTML`
-- Index pages (e.g., `/dcf-valuation/page.tsx`) redirect to default sub-page via `redirect()`
+- Index pages (e.g., `/valuation/dcf/page.tsx`, `/valuation/relative/page.tsx`) redirect to default sub-page via `redirect()`

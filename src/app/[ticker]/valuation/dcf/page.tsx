@@ -4,7 +4,7 @@ interface Props {
   params: Promise<{ ticker: string }>;
 }
 
-export default async function TickerIndex({ params }: Props) {
+export default async function DCFIndex({ params }: Props) {
   const { ticker } = await params;
-  redirect(`/${ticker}/valuation/summary`);
+  redirect(`/${ticker}/valuation/dcf/perpetual-growth`);
 }

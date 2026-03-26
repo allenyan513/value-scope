@@ -1,6 +1,6 @@
 import { PriceTargetsSummary } from "@/components/valuation/price-targets-summary";
 import { EstimateChart } from "@/components/valuation/estimate-chart";
-import { getAnalystData, getCoreTickerData } from "../data";
+import { getAnalystData, getCoreTickerData } from "../../data";
 
 interface Props {
   ticker: string;

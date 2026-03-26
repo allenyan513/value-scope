@@ -1,6 +1,6 @@
 "use client";
 
-import type { RelativeValuationData } from "./page";
+import type { RelativeValuationData } from "./data";
 import { formatLargeNumber, formatCurrency } from "@/lib/format";
 
 function formatNumber(n: number, decimals = 1): string {

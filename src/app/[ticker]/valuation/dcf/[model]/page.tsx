@@ -2,9 +2,10 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/db/queries";
 import { DCFCards } from "@/components/valuation/dcf-cards";
-import { getCoreTickerData } from "../../data";
+import { getCoreTickerData } from "../../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
 import type { ValuationModelType } from "@/types";
+
 const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string }> = {
   "perpetual-growth": {
     modelType: "dcf_3stage",
@@ -79,7 +80,6 @@ export default async function DCFModelPage({ params }: Props) {
     summary.current_price
   );
 
-  // JSON-LD structured data
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FinancialProduct",
@@ -106,7 +106,6 @@ export default async function DCFModelPage({ params }: Props) {
       <DCFCards
         model={dcfModel}
         currentPrice={summary.current_price}
-        wacc={summary.wacc}
         narrative={narrative}
       />
     </>
