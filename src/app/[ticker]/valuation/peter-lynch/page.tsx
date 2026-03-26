@@ -93,7 +93,7 @@ export default async function PeterLynchPage({ params }: Props) {
       <div className="val-card">
         <h3 className="val-card-title">Fair Value Calculation</h3>
 
-        <div className="max-w-lg">
+        <div className="max-w-xl">
           <table className="w-full text-sm">
             <tbody>
               <Row

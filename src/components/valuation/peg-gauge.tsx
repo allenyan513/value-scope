@@ -56,8 +56,9 @@ export function PEGGauge({ peg, currentPE, adjustedGrowth, dividendYield, rawGro
 
   const zone = getZone(peg);
   const position = pegToPercent(peg);
-  const growthPct = (adjustedGrowth * 100).toFixed(1);
+  const epsGrowthPct = (rawGrowth * 100).toFixed(1);
   const divPct = (dividendYield * 100).toFixed(1);
+  const totalPct = (adjustedGrowth * 100).toFixed(1);
 
   return (
     <div className="space-y-4">
@@ -99,10 +100,10 @@ export function PEGGauge({ peg, currentPE, adjustedGrowth, dividendYield, rawGro
 
       {/* Formula breakdown */}
       <div className="text-sm text-muted-foreground font-mono">
-        <span>PEG = P/E ÷ (Growth + Yield) = </span>
+        <span>PEG = P/E ÷ {dividendYield > 0 ? "(Growth + Yield)" : "Growth"} = </span>
         <span className="text-foreground">{currentPE.toFixed(1)}</span>
         <span> ÷ </span>
-        <span className="text-foreground">({growthPct}%{dividendYield > 0 ? ` + ${divPct}%` : ""})</span>
+        <span className="text-foreground">{dividendYield > 0 ? `(${epsGrowthPct}% + ${divPct}%)` : `${totalPct}%`}</span>
         <span> = </span>
         <span className={cn("font-bold", zone.color)}>{peg.toFixed(2)}</span>
       </div>
