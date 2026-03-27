@@ -82,3 +82,36 @@
 
 ### P2 — Frontend Optimization (Nice-to-have)
 - [ ] Dynamic import for Recharts components — `price-value-chart.tsx`, `estimate-chart.tsx`, `price-targets-summary.tsx`; use `next/dynamic` to defer ~80KB from initial bundle
+
+---
+
+## Refactoring: File Split Audit (branch: `refactor/file-split-audit`)
+
+Goal: break up 4 large files (2500+ combined lines) that mix concerns.
+Pure structural changes — no logic changes, no behaviour changes. Tests must stay green.
+
+### Phase 1 — `statistics.ts`: eliminate `median()` duplication ✅
+- [x] Create `src/lib/valuation/statistics.ts` — export `median`, `percentiles`, `computePercentile`, `round2`
+- [x] `trading-multiples.ts` — remove 4 local stat functions, import from statistics.ts
+- [x] `company-classifier.ts` — replace `computeMedian` with imported `median`
+- [x] `summary.ts` — replace local `median` with import
+- [x] `queries-company.ts` — replace inline `median` with import
+
+### Phase 2 — Split `dcf-fcff.ts` (589 lines) — two models + 4 large builders ✅
+- [x] Create `dcf-fcff-builders.ts` — `computeExpenseRatios`, `buildDASchedule`, `computeWorkingCapitalDays`, `buildWorkingCapital`
+- [x] Create `dcf-fcff-growth.ts` — `calculateFCFFInternal`, `buildFCFFSensitivityMatrix`, `calculateDCFFCFF`, `calculateDCFFCFF10Y`
+- [x] Create `dcf-fcff-ebitda-exit.ts` — `DCFFCFFEBITDAExitInputs`, `buildEBITDAExitSensitivityMatrix`, `calculateDCFFCFFEBITDAExit`
+- [x] Make `dcf-fcff.ts` a re-export barrel (backward compat)
+
+### Phase 3 — Split `company-classifier.ts` (620 lines) — config + metrics + logic ✅
+- [x] Create `company-archetype-config.ts` — `CompanyArchetype`, `ARCHETYPE_CONFIGS`, `PRIMARY_MODEL_MAP`, `TERMINAL_GROWTH_RATES`, `getTerminalGrowthRate`
+- [x] Create `company-metrics.ts` — `ClassificationMetrics`, `computeClassificationMetrics`
+- [x] Trim `company-classifier.ts` to classification + consensus logic, add re-exports
+
+### Phase 4 — Split `trading-multiples.ts` (572 lines) — strategies buried in same file ✅
+- [x] Create `trading-multiples-strategies.ts` — `naResult`, `historicalValuation`, `peerBasedValuation`, `evBasedHistoricalValuation`, `evBasedPeerValuation` + arg interfaces
+- [x] Trim `trading-multiples.ts` to 5 public `calculate*` functions + `TradingMultiplesInputs`
+
+### Verification ✅
+- [x] `npm test` — 261/261 green
+- [x] `npx tsc --noEmit` — no type errors

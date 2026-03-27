@@ -38,6 +38,7 @@ import {
 } from "./trading-multiples";
 import { calculatePEG } from "./peg";
 import { classifyCompany, computeWeightedConsensus, getTerminalGrowthRate } from "./company-classifier";
+import { median } from "./statistics";
 
 export interface FullValuationInputs {
   company: Company;
@@ -70,14 +71,6 @@ const TRADING_MULTIPLES_MODEL_TYPES = new Set([
   "ps_multiples",
   "p_fcf_multiples",
 ]);
-
-// --- Median helper ---
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
 
 /**
  * Build three-tier pillars from model results and compute median consensus.
