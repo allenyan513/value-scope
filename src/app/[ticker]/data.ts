@@ -8,6 +8,7 @@ import {
   getPriceTargets,
   getPriceHistory,
   getValuationHistory,
+  getPeerEVEBITDAMedianFromDB,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
@@ -46,6 +47,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
       historicals: [],
       historicalMultiples: [],
       peers: [],
+      peerEVEBITDAMedian: undefined,
     };
   }
 
@@ -57,6 +59,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
       historicals,
       historicalMultiples: [],
       peers: [],
+      peerEVEBITDAMedian: undefined,
     };
   }
 
@@ -89,7 +92,10 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     return null;
   });
 
-  const peerResults = await Promise.all(peerMetricsPromises);
+  const [peerResults, peerEVEBITDAMedian] = await Promise.all([
+    Promise.all(peerMetricsPromises),
+    getPeerEVEBITDAMedianFromDB(upperTicker).catch(() => null),
+  ]);
   const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
   const summary = computeFullValuation({
@@ -100,9 +106,10 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     currentPrice,
     riskFreeRate,
     historicalMultiples,
+    peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
   });
 
-  return { company, summary, estimates, historicals, historicalMultiples, peers };
+  return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined };
 });
 
 /**

@@ -12,7 +12,7 @@ import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates, getFXRateToUSD } from "@/lib/data/fmp";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, getPriceHistory, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, getPriceHistory, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getKeyMetrics } from "@/lib/data/fmp";
@@ -149,7 +149,10 @@ export async function GET(request: NextRequest) {
           } catch { /* skip */ }
         }
 
-        const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+        const [historicalMultiples, peerEVEBITDAMedian] = await Promise.all([
+          Promise.resolve(computeHistoricalMultiples(historicals, prices)),
+          getPeerEVEBITDAMedianFromDB(ticker).catch(() => null),
+        ]);
 
         const summary = computeFullValuation({
           company,
@@ -159,6 +162,7 @@ export async function GET(request: NextRequest) {
           currentPrice,
           riskFreeRate,
           historicalMultiples,
+          peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
         });
 
         // Save each model result

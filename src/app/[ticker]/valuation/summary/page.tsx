@@ -102,6 +102,7 @@ export default async function SummaryPage({ params }: Props) {
         historicalMultiples={data.historicalMultiples}
         riskFreeRate={summary.wacc.risk_free_rate}
         currentPrice={summary.current_price}
+        peerEVEBITDAMedian={data.peerEVEBITDAMedian}
       />
 
       {/* ValuScope vs Wall Street */}

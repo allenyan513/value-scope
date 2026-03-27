@@ -11,6 +11,7 @@ export type ValuationModelType =
   | "dcf_ebitda_exit_fcfe_10y"
   | "dcf_fcff_growth_5y"
   | "dcf_fcff_growth_10y"
+  | "dcf_fcff_ebitda_exit_5y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
   | "pb_multiples"
@@ -199,6 +200,15 @@ export interface PeerComparison {
   revenue_growth: number | null;
   net_margin: number | null;
   roe: number | null;
+}
+
+// --- EBITDA Exit DCF Specific ---
+export interface PeerEBITDARow {
+  ticker: string;
+  name: string;
+  market_cap: number;
+  trailing_ev_ebitda: number | null;
+  forward_ev_ebitda: number | null;
 }
 
 export interface TradingMultiplesResult extends ValuationResult {

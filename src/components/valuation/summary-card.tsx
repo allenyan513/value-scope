@@ -8,6 +8,7 @@ import type { ValuationSummary, ValuationResult } from "@/types";
 const MODEL_ORDER = [
   "dcf_fcff_growth_5y",
   "dcf_fcff_growth_10y",
+  "dcf_fcff_ebitda_exit_5y",
   "dcf_pe_exit_10y",
   "dcf_ebitda_exit_fcfe_10y",
   "pe_multiples",
@@ -21,6 +22,7 @@ const MODEL_ORDER = [
 const MODEL_NAMES: Record<string, string> = {
   dcf_fcff_growth_5y: "Growth Exit 5Y",
   dcf_fcff_growth_10y: "Growth Exit 10Y",
+  dcf_fcff_ebitda_exit_5y: "EBITDA Exit 5Y",
   dcf_pe_exit_10y: "P/E Exit 10Y",
   dcf_ebitda_exit_fcfe_10y: "EV/EBITDA Exit 10Y",
   pe_multiples: "P/E",
@@ -36,6 +38,7 @@ const MODEL_LINKS: Record<string, string> = {
   dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
   dcf_fcff_growth_5y: "/valuation/dcf/fcff-growth-5y",
   dcf_fcff_growth_10y: "/valuation/dcf/fcff-growth-10y",
+  dcf_fcff_ebitda_exit_5y: "/valuation/dcf/fcff-ebitda-exit-5y",
   pe_multiples: "/valuation/trading-multiples",
   ev_ebitda_multiples: "/valuation/trading-multiples",
   pb_multiples: "/valuation/trading-multiples",
