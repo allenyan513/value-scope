@@ -125,6 +125,12 @@ export function calculatePEG(inputs: PEGInputs): ValuationResult {
   // Use NTM EPS if forward estimates available, otherwise TTM
   const ntmEPS = forwardResult.ntmEPS;
   const epsUsed = ntmEPS ?? ttmEPS;
+
+  // Guard: EPS too small relative to price (e.g., WBD NTM EPS=$0.02 vs price=$27)
+  if (currentPrice > 0 && epsUsed < currentPrice * 0.001) {
+    return naResult(`N/A — EPS ($${epsUsed.toFixed(2)}) too small relative to price for PEG`);
+  }
+
   const epsLabel = ntmEPS
     ? `NTM EPS (FY${forwardResult.ntmPeriod})`
     : `TTM EPS (FY${latest.fiscal_year})`;

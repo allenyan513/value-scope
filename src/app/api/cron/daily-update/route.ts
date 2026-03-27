@@ -12,8 +12,9 @@ import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates, getFXRateToUSD } from "@/lib/data/fmp";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getIndustryPeers, getPriceHistory, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
+import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getKeyMetrics } from "@/lib/data/fmp";
 import type { PeerComparison } from "@/types";
 import { toDateString } from "@/lib/format";
@@ -81,10 +82,11 @@ export async function GET(request: NextRequest) {
 
     for (const ticker of tickers) {
       try {
-        const [companyData, historicals, initialEstimates] = await Promise.all([
+        const [companyData, historicals, initialEstimates, prices] = await Promise.all([
           db.from("companies").select("*").eq("ticker", ticker).single(),
           getFinancials(ticker, "annual", 5),
           getEstimates(ticker),
+          getPriceHistory(ticker, 365 * 5),
         ]);
         let estimates = initialEstimates;
 
@@ -147,6 +149,8 @@ export async function GET(request: NextRequest) {
           } catch { /* skip */ }
         }
 
+        const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+
         const summary = computeFullValuation({
           company,
           historicals,
@@ -154,6 +158,7 @@ export async function GET(request: NextRequest) {
           peers,
           currentPrice,
           riskFreeRate,
+          historicalMultiples,
         });
 
         // Save each model result

@@ -1,6 +1,51 @@
 # ValuScope TODO
 
-## Bugs
+## Data Quality Audit (2026-03-26)
+
+> Scope: 503 S&P 500 tickers × 9 models. 502/503 have valuations. 73 model-level extreme outliers.
+
+### Bug #1: DCF 3-Stage Double Debt Subtraction (CRITICAL) ✅
+- [x] **22 tickers** with near-zero DCF fair values
+- **Root cause**: `dcf-3stage.ts:452` — `calculateDCF3StageEBITDAExit()` subtracts net debt twice:
+  1. Line 445: `terminalEquity = terminalEV - netDebt` (EV→Equity, correct)
+  2. Line 452: `equityValue = pvFCFETotal + pvTerminalValue + cashAndEquivalents - totalDebt` (double-counts!)
+- Effect: `equityValue = pvFCFE + terminalEV + 2×cash - 2×debt` → negative → clamped to 0
+- Examples: TSN ($0.10 vs $63), DIS ($0.52 vs $95), MCHP ($0.80 vs $65), CVNA ($4 vs $301)
+- **Fix**: Line 452 → `equityValue = pvFCFETotal + pvTerminalValue` (debt already in terminal equity)
+
+### Bug #2: ADR Currency Mismatch in DCF/PEG (CRITICAL) ✅
+- [x] TSM (TWD) and NVO (DKK) DCF/PEG fair values appear in local currency
+- **Root cause found**: On-demand estimate fallback in `/api/valuation/[ticker]/route.ts` was NOT applying FX conversion (unlike daily-update and refresh-estimates crons). Fixed.
+- **Note**: DB financials/estimates are correctly FX-converted. Stored valuations are stale and will auto-fix on next cron run or `?refresh=true`.
+- Examples: TSM dcf_3stage=$10,063 (expect ~$312), NVO peg=$520 (expect ~$75)
+
+### Bug #3: Trading Multiples Extreme Overvaluations (HIGH) ✅
+- [x] ~16 tickers with P/S or P/B fair value >10x price
+- **Root cause**: Both crons didn't pass `historicalMultiples` → ALL tickers fell to peer-based. Tiny peer groups (2 for "Auto-Manufacturers") dominated by TSLA's P/S ~15.
+- **Fix**: Added `getPriceHistory()` + `computeHistoricalMultiples()` to both crons. DB-only.
+
+### Bug #4: Growth Stock Systematic Undervaluation (MEDIUM) — Known Limitation
+- [ ] Our median FV is 0.07x–0.48x of analyst consensus for mega-cap tech
+- **Root cause analysis**: NOT a code bug — this is the models working as designed. Three factors:
+  1. **PEG ceiling**: `GROWTH_CEILING = 25%` → max fair P/E = 25x. TSLA trades at P/E 100x. Model literally can't produce that.
+  2. **DCF Stage 2 fade**: Growth fades linearly from Y5 to terminal (2.5-4%) over 5 years. For NVDA growing 100%+, this is extremely aggressive compression.
+  3. **High growth capex**: TSLA's factory-building capex consumes most net income, leaving tiny FCFE.
+- **Not fixing now** — these are intentional conservative model choices. Possible future calibration:
+  - Archetype-aware PEG ceiling (35% for high_growth vs 25% for mature)
+  - Slower Stage 2 fade for high-growth archetype (10 years instead of 5)
+  - Growth-cap adjustment based on analyst estimate coverage length
+- Examples: TSLA 0.07x, PLTR 0.11x, NVDA 0.32x, AAPL 0.44x vs analyst targets
+
+### Bug #5: Orphaned Model Types in DB (LOW) ✅
+- [x] 17 stale rows deleted (dcf_growth_exit_5y ×14, ev_ebit ×1, forward_pe ×1, forward_ev_ebitda ×1)
+
+### Bug #6: ASML Missing All Valuations (LOW)
+- [ ] EUR-reporting ADR, $512B market cap, no valuations/financials/estimates in DB
+- Likely ingestion pipeline failure
+
+---
+
+## Previous Bugs
 - [x] PEG Fair Value 重新设计 — 改用 forward EPS CAGR + dividend yield + NTM EPS，growth floor 8%，AAPL $37→$108
 
 ## Features

@@ -69,6 +69,10 @@ export function calculatePEMultiples(
   if (!eps || eps <= 0) {
     return naResult("pe_multiples", "N/A — Negative or zero EPS");
   }
+  // Guard: EPS too small to produce meaningful P/E valuation (e.g., CSGP EPS=$0.02)
+  if (currentPrice > 0 && eps < currentPrice * 0.001) {
+    return naResult("pe_multiples", `N/A — EPS ($${eps.toFixed(2)}) too small relative to price`);
+  }
 
   // Try historical self-comparison first
   const histValues = (historicalMultiples ?? [])
@@ -433,6 +437,11 @@ export function calculatePBMultiples(
 
   const bookValuePerShare = bookValue / shares;
 
+  // Guard: Book value/share too small (e.g., CL $0.07 — goodwill-heavy, P/B meaningless)
+  if (currentPrice > 0 && bookValuePerShare < currentPrice * 0.005) {
+    return naResult("pb_multiples", `N/A — Book value/share ($${bookValuePerShare.toFixed(2)}) too small relative to price`);
+  }
+
   const histValues = (historicalMultiples ?? [])
     .map((d) => d.pb)
     .filter((v): v is number => v !== null && v > 0 && v < MAX_PB_RATIO);
@@ -526,6 +535,11 @@ export function calculatePFCFMultiples(
   }
 
   const fcfPerShare = fcf / shares;
+
+  // Guard: FCF/share too small (e.g., ED $0.10 — utility with heavy capex, P/FCF meaningless)
+  if (currentPrice > 0 && fcfPerShare < currentPrice * 0.001) {
+    return naResult("p_fcf_multiples", `N/A — FCF/share ($${fcfPerShare.toFixed(2)}) too small relative to price`);
+  }
 
   const histValues = (historicalMultiples ?? [])
     .map((d) => d.p_fcf)

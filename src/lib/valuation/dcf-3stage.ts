@@ -307,7 +307,8 @@ function buildExitMultipleSensitivityMatrix(
       const equityTV = isEV ? rawTV - (debt - cash) : rawTV;
       const pvTV = equityTV / Math.pow(1 + ke, n);
       const totalPV = pvFCFESum + pvTV;
-      const equityValue = totalPV + cash - debt;
+      // For EV/EBITDA: debt already subtracted in equityTV, don't double-count
+      const equityValue = isEV ? totalPV : totalPV + cash - debt;
       row.push(Math.max(0, equityValue / sharesOutstanding));
     }
     prices.push(row);
@@ -447,9 +448,9 @@ export function calculateDCF3StageEBITDAExit(inputs: DCFExitMultipleInputs): Val
   const pvTerminalValue = terminalValue / Math.pow(1 + ke, 10);
   const pvFCFETotal = projections.reduce((sum, p) => sum + p.pv_fcfe, 0);
 
-  // Note: cash/debt already accounted for in terminal equity conversion,
-  // but FCFE projections are equity-level, so we add back cash - debt for consistency
-  const equityValue = pvFCFETotal + pvTerminalValue + cashAndEquivalents - totalDebt;
+  // cash/debt already accounted for in terminal equity conversion (line above),
+  // so do NOT add +cash-debt again here — that would double-count net debt.
+  const equityValue = pvFCFETotal + pvTerminalValue;
   const fairValue = Math.max(0, equityValue / sharesOutstanding);
 
   const sensitivity = buildExitMultipleSensitivityMatrix(
