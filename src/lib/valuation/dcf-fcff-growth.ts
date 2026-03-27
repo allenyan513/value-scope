@@ -281,6 +281,9 @@ export function calculateFCFFInternal(inputs: DCFFCFFInputs, numYears: number): 
       expense_ratios: ratios,
       base_year: baseYear,
       sensitivity_matrix: sensitivity,
+      wacc_raw: wacc,
+      terminal_growth_raw: g,
+      projection_years: numYears,
     },
     computed_at: new Date().toISOString(),
   };

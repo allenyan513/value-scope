@@ -70,7 +70,13 @@ export function DCFFCFFEBITDAExitCards({ model, currentPrice, narrative, peers }
     net_income: number; nwc: number;
   };
 
-  const defaultWACC = assumptions.wacc as number;
+  // Raw precision values for accurate recalculation; fall back to rounded assumptions
+  const waccRaw = details.wacc_raw as number | undefined;
+  const projectionYears = (details.projection_years as number | undefined) ?? 5;
+
+  const defaultWACC = waccRaw != null
+    ? Math.round(waccRaw * 10000) / 100
+    : (assumptions.wacc as number);
   const defaultMultiple = assumptions.peer_ev_ebitda_multiple as number;
 
   const [wacc, setWACC] = useState(defaultWACC);
@@ -81,20 +87,21 @@ export function DCFFCFFEBITDAExitCards({ model, currentPrice, narrative, peers }
   const resetDefaults = () => { setWACC(defaultWACC); setMultiple(defaultMultiple); };
 
   const calc = useMemo(() => {
-    const w = wacc / 100;
+    // Use raw precision when at defaults to match server fair_value exactly
+    const w = !isCustom && waccRaw != null ? waccRaw : wacc / 100;
     const rows = projections.map((p) => {
       const df = 1 / Math.pow(1 + w, p.timing);
       return { ...p, discount_factor: df, pv_fcff: p.fcff * df };
     });
     const pvFCFFTotal = rows.reduce((sum, p) => sum + p.pv_fcff, 0);
     const tv = terminalYear.ebitda * multiple;
-    const pvTV = tv / Math.pow(1 + w, 5);
+    const pvTV = tv / Math.pow(1 + w, projectionYears);
     const ev = pvFCFFTotal + pvTV;
     const equity = ev - netDebt;
     const fairValue = Math.max(0, equity / sharesOut);
     const upsidePercent = ((fairValue - currentPrice) / currentPrice) * 100;
     return { rows, pvFCFFTotal, tv, pvTV, ev, equity, fairValue, upsidePercent };
-  }, [wacc, multiple, projections, terminalYear, netDebt, sharesOut, currentPrice]);
+  }, [wacc, multiple, projections, terminalYear, netDebt, sharesOut, currentPrice, projectionYears, isCustom, waccRaw]);
 
   const sm = details.sensitivity_matrix as Record<string, unknown>;
   const discountRateValues = sm.discount_rate_values as number[];

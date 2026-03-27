@@ -54,9 +54,18 @@ export function DCFFCFFCards({ model, currentPrice, narrative }: Props) {
     net_income: number; nwc: number;
   };
 
-  // Server defaults
-  const defaultWACC = assumptions.wacc as number;
-  const defaultTerminalGrowth = assumptions.terminal_growth_rate as number;
+  // Raw precision values for accurate recalculation; fall back to rounded assumptions
+  const waccRaw = details.wacc_raw as number | undefined;
+  const termGrowthRaw = details.terminal_growth_raw as number | undefined;
+  const projectionYears = (details.projection_years as number | undefined) ?? 5;
+
+  // Server defaults (percentage form for sliders)
+  const defaultWACC = waccRaw != null
+    ? Math.round(waccRaw * 10000) / 100
+    : (assumptions.wacc as number);
+  const defaultTerminalGrowth = termGrowthRaw != null
+    ? Math.round(termGrowthRaw * 10000) / 100
+    : (assumptions.terminal_growth_rate as number);
 
   // Interactive state
   const [wacc, setWACC] = useState(defaultWACC);
@@ -72,8 +81,9 @@ export function DCFFCFFCards({ model, currentPrice, narrative }: Props) {
 
   // Recalculate when parameters change
   const calc = useMemo(() => {
-    const w = wacc / 100;
-    const g = terminalGrowth / 100;
+    // Use raw precision when at defaults to match server fair_value exactly
+    const w = !isCustom && waccRaw != null ? waccRaw : wacc / 100;
+    const g = !isCustom && termGrowthRaw != null ? termGrowthRaw : terminalGrowth / 100;
 
     // PV of projected FCFFs (mid-year)
     const rows = projections.map((p) => {
@@ -86,7 +96,7 @@ export function DCFFCFFCards({ model, currentPrice, narrative }: Props) {
     // Terminal value
     const termFCFF = terminalYear.fcff;
     const tv = w > g ? termFCFF / (w - g) : termFCFF * 20;
-    const pvTV = tv / Math.pow(1 + w, 5);
+    const pvTV = tv / Math.pow(1 + w, projectionYears);
 
     const ev = pvFCFFTotal + pvTV;
     const equity = ev - netDebt;
@@ -96,7 +106,7 @@ export function DCFFCFFCards({ model, currentPrice, narrative }: Props) {
     const wLeG = w <= g;
 
     return { rows, pvFCFFTotal, tv, pvTV, ev, equity, fairValue, upsidePercent, wLeG };
-  }, [wacc, terminalGrowth, projections, terminalYear, netDebt, sharesOut, currentPrice]);
+  }, [wacc, terminalGrowth, projections, terminalYear, netDebt, sharesOut, currentPrice, projectionYears, isCustom, waccRaw, termGrowthRaw]);
 
   // Sensitivity matrix
   const sm = details.sensitivity_matrix as Record<string, unknown>;
