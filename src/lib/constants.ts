@@ -60,8 +60,12 @@ export const MAX_PFCF_RATIO = 200;
 export const TICKER_REGEX = /^[A-Z]{1,5}(-[A-Z]{1,2})?$/;
 
 // --- Cron ---
-/** Number of stocks to refresh estimates for per cron run (rotates through all) */
-export const CRON_ESTIMATES_BATCH_SIZE = 100;
+/** Number of stocks to refresh estimates for per cron run (rotates through all).
+ *  At 2 FMP calls × 300ms delay = 600ms/ticker, 250 tickers ≈ 150s — well within 300s Vercel limit. */
+export const CRON_ESTIMATES_BATCH_SIZE = 250;
+/** Number of companies to recompute valuations for in parallel.
+ *  10 concurrent × ~4 DB queries each = 40 peak connections — conservative for Supabase connection pool. */
+export const RECOMPUTE_CONCURRENCY = 10;
 
 // --- Content Limits ---
 /** Max characters for company description stored in DB */

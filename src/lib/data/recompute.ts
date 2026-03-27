@@ -12,13 +12,14 @@ import {
   getEstimates,
   getPriceHistory,
   computePeerMetricsFromDB,
-  getPeerEVEBITDAMedianFromDB,
   upsertValuation,
   upsertValuationHistory,
 } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
+import { median } from "@/lib/valuation/statistics";
 import { toDateString } from "@/lib/format";
+import { RECOMPUTE_CONCURRENCY } from "@/lib/constants";
 import type { Company } from "@/types";
 
 export interface RecomputeResult {
@@ -53,19 +54,23 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
   let skipped = 0;
   let errors = 0;
 
-  for (const company of companies as Company[]) {
+  async function processCompany(company: Company): Promise<"success" | "skipped" | "error"> {
     try {
-      const [historicals, estimates, peers, prices, peerEVEBITDAMedian] = await Promise.all([
+      const [historicals, estimates, peers, prices] = await Promise.all([
         getFinancials(company.ticker, "annual", 5),
         getEstimates(company.ticker),
         computePeerMetricsFromDB(company.ticker, 10),
         getPriceHistory(company.ticker, 365 * 5),
-        getPeerEVEBITDAMedianFromDB(company.ticker).catch(() => null),
       ]);
 
+      // Derive EV/EBITDA median directly from peers — avoids a duplicate DB round-trip
+      const validEVEBITDA = peers
+        .map((p) => p.ev_ebitda)
+        .filter((v): v is number => v !== null && v > 0 && v < 100);
+      const peerEVEBITDAMedian = validEVEBITDA.length > 0 ? median(validEVEBITDA) : null;
+
       if (historicals.length === 0 || (company.price || 0) <= 0) {
-        skipped++;
-        continue;
+        return "skipped";
       }
 
       const currentPrice = company.price!;
@@ -91,14 +96,28 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         summary.primary_fair_value
       );
 
-      success++;
-
-      if (success % 50 === 0) {
-        console.log(`[recompute] Progress: ${success}/${companies.length - skipped} ...`);
-      }
+      return "success";
     } catch (error) {
       console.error(`[recompute] Error for ${company.ticker}:`, error);
-      errors++;
+      return "error";
+    }
+  }
+
+  // Process companies in parallel batches to stay within Supabase connection limits
+  let lastLogAt = 0;
+  for (let i = 0; i < companies.length; i += RECOMPUTE_CONCURRENCY) {
+    const batch = (companies as Company[]).slice(i, i + RECOMPUTE_CONCURRENCY);
+    const results = await Promise.all(batch.map(processCompany));
+    for (const r of results) {
+      if (r === "success") success++;
+      else if (r === "skipped") skipped++;
+      else errors++;
+    }
+
+    const processed = success + skipped + errors;
+    if (processed - lastLogAt >= 100) {
+      console.log(`[recompute] Progress: ${processed}/${companies.length} (${success} ok, ${skipped} skipped, ${errors} errors)`);
+      lastLogAt = processed;
     }
   }
 
