@@ -69,7 +69,7 @@ describe("computeFullValuation — median strategy", () => {
     const { pillars } = result;
 
     expect(pillars.dcf.models.length).toBeGreaterThanOrEqual(1);
-    expect(pillars.dcf.models.length).toBeLessThanOrEqual(3);
+    expect(pillars.dcf.models.length).toBeLessThanOrEqual(4);
     pillars.dcf.models.forEach(m => {
       expect(m.model_type).toMatch(/^dcf_/);
     });

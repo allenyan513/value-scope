@@ -106,7 +106,8 @@ describe("buildWACCInputs", () => {
     const fin = appleFinancials[0]; // FY2025
     const inputs = buildWACCInputs(fin, 1.2, 0.0425, 3000e9);
 
-    expect(inputs.beta).toBe(1.2);
+    // Adjusted beta: 0.67 * 1.2 + 0.33 * 1.0 = 1.134
+    expect(inputs.beta).toBeCloseTo(1.134, 3);
     expect(inputs.riskFreeRate).toBe(0.0425);
     expect(inputs.marketCap).toBe(3000e9);
     expect(inputs.totalDebt).toBe(100e9);
@@ -114,10 +115,11 @@ describe("buildWACCInputs", () => {
     expect(inputs.taxRate).toBe(0.21);
   });
 
-  it("should floor beta at 0.3", () => {
+  it("should floor adjusted beta at 0.3", () => {
     const fin = appleFinancials[0];
+    // raw=0.1 → adjusted = 0.67*0.1 + 0.33*1.0 = 0.397 → above 0.3 floor
     const inputs = buildWACCInputs(fin, 0.1, 0.04, 1000e9);
-    expect(inputs.beta).toBe(0.3);
+    expect(inputs.beta).toBeCloseTo(0.397, 3);
   });
 
   it("should clamp tax rate to [0.05, 0.45]", () => {

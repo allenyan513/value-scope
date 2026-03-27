@@ -9,6 +9,7 @@ export type ValuationModelType =
   | "dcf_3stage"
   | "dcf_pe_exit_10y"
   | "dcf_ebitda_exit_fcfe_10y"
+  | "dcf_fcff_growth_5y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
   | "pb_multiples"
@@ -62,7 +63,90 @@ export interface DCFFCFEResult extends ValuationResult {
   };
 }
 
-// --- DCF Specific (legacy FCFF approach, @deprecated) ---
+// --- DCF Specific (FCFF approach — Unlevered Free Cash Flow to Firm) ---
+export interface DCFFCFFProjectionYear {
+  year: number;
+  revenue: number;
+  revenue_growth: number;
+  cogs: number;
+  gross_profit: number;
+  sga: number;
+  rnd: number;
+  operating_income: number;
+  interest_expense: number;
+  income_before_tax: number;
+  tax: number;
+  net_income: number;
+  ebitda: number;
+  depreciation: number;
+  capex: number;
+  delta_nwc: number;
+  fcff: number;
+  timing: number; // mid-year convention: 0.5, 1.5, 2.5, ...
+  discount_factor: number;
+  pv_fcff: number;
+}
+
+export interface DCFFCFFDASchedule {
+  useful_life: number;
+  vintages: { capex_year: number; amounts: number[] }[];
+  totals: number[];
+}
+
+export interface DCFFCFFWorkingCapital {
+  dso: number;
+  dpo: number;
+  dio: number;
+  years: number[];
+  receivables: number[];
+  payables: number[];
+  inventory: number[];
+  nwc: number[];
+  delta_nwc: number[];
+}
+
+export interface DCFFCFFExpenseRatios {
+  cogs_pct: number;
+  sga_pct: number;
+  rnd_pct: number;
+  interest_pct: number;
+  tax_rate: number;
+}
+
+export interface DCFFCFFResult extends ValuationResult {
+  details: {
+    projections: DCFFCFFProjectionYear[];
+    terminal_year: DCFFCFFProjectionYear;
+    terminal_value: number;
+    pv_terminal_value: number;
+    pv_fcff_total: number;
+    enterprise_value: number;
+    net_debt: number;
+    equity_value: number;
+    shares_outstanding: number;
+    da_schedule: DCFFCFFDASchedule;
+    working_capital: DCFFCFFWorkingCapital;
+    expense_ratios: DCFFCFFExpenseRatios;
+    base_year: {
+      year: number;
+      revenue: number;
+      cogs: number;
+      sga: number;
+      rnd: number;
+      interest_expense: number;
+      tax: number;
+      net_income: number;
+      nwc: number;
+    };
+    sensitivity_matrix: {
+      discount_rate_values: number[];
+      growth_values: number[];
+      prices: number[][];
+    };
+  };
+}
+
+/** @deprecated Legacy FCFF projection type — use DCFFCFFProjectionYear instead */
 export interface DCFProjectionYear {
   year: number;
   revenue: number;
@@ -82,7 +166,7 @@ export interface DCFProjectionYear {
   pv_fcf: number;
 }
 
-/** @deprecated Use DCFFCFEResult instead */
+/** @deprecated Use DCFFCFEResult or DCFFCFFResult instead */
 export interface DCFResult extends ValuationResult {
   details: {
     projections: DCFProjectionYear[];
@@ -95,8 +179,8 @@ export interface DCFResult extends ValuationResult {
     shares_outstanding: number;
     sensitivity_matrix: {
       wacc_values: number[];
-      growth_values: number[]; // or exit_multiple_values
-      prices: number[][]; // [wacc_index][growth_index]
+      growth_values: number[];
+      prices: number[][];
     };
   };
 }

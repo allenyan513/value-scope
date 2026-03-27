@@ -40,8 +40,8 @@ export function generateDCFNarrative(
   const margins = a.net_margins_by_year as number[] | undefined;
   const projYears = a.projection_years as number;
 
-  const pvFCFE = d.pv_fcfe_total as number;
-  const pvTV = d.pv_terminal_value as number;
+  const pvFCFE = (d.pv_fcfe_total ?? d.pv_fcff_total ?? 0) as number;
+  const pvTV = (d.pv_terminal_value ?? 0) as number;
   const totalPV = pvFCFE + pvTV;
   const tvPortion = totalPV > 0 ? Math.round((pvTV / totalPV) * 100) : 0;
 
@@ -88,6 +88,18 @@ export function generateDCFNarrative(
       `At a ${pct(discountRate)} cost of equity, we discount projected cash flows to present value.`,
       `In year ${projYears}, we value the enterprise at ${exitMult.toFixed(1)}x EV/EBITDA — the 5-year historical average — then subtract net debt to arrive at equity value. Terminal value represents ${tvPortion}% of total present value.`,
       `This yields an intrinsic value of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
+    ].filter(Boolean).join(" ");
+  }
+
+  // FCFF (unlevered)
+  if (model.model_type === "dcf_fcff_growth_5y") {
+    const waccRate = a.wacc as number ?? discountRate;
+    return [
+      `Using an unlevered Free Cash Flow to Firm (FCFF) model, we project ${companyName}'s cash flows over 5 years with line-by-line expense modeling.`,
+      growthDesc ? `Revenue is projected ${growthDesc}, with expenses (COGS, SG&A, R&D) held at historical ratios.` : "",
+      `Depreciation is computed from a vintage matrix based on a ${a.useful_life ?? 5}-year useful life. Working capital is modeled using historical turnover days (DSO ${a.dso ?? "N/A"}, DPO ${a.dpo ?? "N/A"}, DIO ${a.dio ?? "N/A"}).`,
+      `At a ${pct(waccRate)} WACC with mid-year discounting, the terminal value (${tvPortion}% of enterprise value) is derived from the Gordon Growth Model at a ${pct(terminalGrowth)} perpetual rate.`,
+      `After subtracting net debt, the equity value implies a fair price of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
     ].filter(Boolean).join(" ");
   }
 
