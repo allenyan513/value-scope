@@ -50,8 +50,12 @@ export function buildWACCInputs(
   // Clamp to reasonable range
   taxRate = Math.max(0.05, Math.min(0.45, taxRate));
 
+  // Bloomberg Adjusted Beta: mean-reversion toward 1.0 (Blume, 1971)
+  // Improves forward-looking beta prediction for DCF discount rates
+  const adjustedBeta = 0.67 * beta + 0.33 * 1.0;
+
   return {
-    beta: Math.max(0.3, beta), // Floor beta at 0.3
+    beta: Math.max(0.3, adjustedBeta),
     riskFreeRate,
     totalDebt: Math.max(0, financials.total_debt || 0),
     marketCap,

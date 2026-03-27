@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompany } from "@/lib/db/queries";
 import { DCFCards } from "@/components/valuation/dcf-cards";
+import { DCFFCFFCards } from "@/components/valuation/dcf-fcff-cards";
 import { MethodologyCard } from "@/components/valuation/methodology-card";
 import { getCoreTickerData } from "../../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
@@ -36,6 +37,16 @@ const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; 
     methodology: [
       "This model uses the same 10-year FCFE projection as the other DCF variants, but calculates terminal value using an EV/EBITDA exit multiple. Year 10 EBITDA is multiplied by the company's historical 5-year average EV/EBITDA ratio to arrive at an enterprise value, which is then converted to equity value by subtracting net debt.",
       "EV/EBITDA is capital-structure neutral, making it useful for comparing companies with different leverage levels. This approach works best for capital-intensive businesses where EBITDA is a better proxy for operating performance than net income.",
+    ],
+  },
+  "fcff-growth-5y": {
+    modelType: "dcf_fcff_growth_5y",
+    label: "FCFF Growth (5Y)",
+    metaTitle: "FCFF DCF Growth Exit Valuation",
+    metaDesc: "Unlevered DCF valuation using Free Cash Flow to Firm (FCFF) with Gordon Growth terminal value. 5-year projection with line-by-line expense modeling, D&A vintage schedule, and working capital analysis.",
+    methodology: [
+      "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 5-year projection period. Revenue is projected using analyst consensus estimates, while expenses (COGS, SG&A, R&D, Interest) are modeled as individual line items based on historical ratios. Depreciation is calculated from a vintage matrix that tracks each year's CapEx depreciated straight-line over its useful life. Working capital is projected using historical turnover days (DSO, DPO, DIO).",
+      "FCFF equals EBITDA minus taxes, capital expenditure, and change in net working capital. The terminal value is calculated using the Gordon Growth Model on the Year 6 FCFF. Cash flows are discounted at the Weighted Average Cost of Capital (WACC) using mid-year convention. Enterprise value is converted to equity value by subtracting net debt (total debt minus cash).",
     ],
   },
 };
@@ -110,17 +121,27 @@ export default async function DCFModelPage({ params }: Props) {
     },
   };
 
+  const isFCFF = config.modelType === "dcf_fcff_growth_5y";
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <DCFCards
-        model={dcfModel}
-        currentPrice={summary.current_price}
-        narrative={narrative}
-      />
+      {isFCFF ? (
+        <DCFFCFFCards
+          model={dcfModel}
+          currentPrice={summary.current_price}
+          narrative={narrative}
+        />
+      ) : (
+        <DCFCards
+          model={dcfModel}
+          currentPrice={summary.current_price}
+          narrative={narrative}
+        />
+      )}
       <MethodologyCard paragraphs={config.methodology} />
     </>
   );
