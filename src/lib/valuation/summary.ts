@@ -26,7 +26,7 @@ import {
   calculateDCF3StageEBITDAExit,
   type DCFExitMultipleInputs,
 } from "./dcf-3stage";
-import { calculateDCFFCFF, calculateDCFFCFF10Y, type DCFFCFFInputs } from "./dcf-fcff";
+import { calculateDCFFCFF, calculateDCFFCFF10Y, calculateDCFFCFFEBITDAExit, type DCFFCFFInputs, type DCFFCFFEBITDAExitInputs } from "./dcf-fcff";
 import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,
@@ -50,6 +50,8 @@ export interface FullValuationInputs {
   historicalMultiples?: HistoricalMultiplesPoint[];
   /** Override consensus strategy (defaults to DEFAULT_CONSENSUS_STRATEGY) */
   consensusStrategy?: ConsensusStrategy;
+  /** Peer EV/EBITDA median for the EBITDA Exit 5Y model terminal value */
+  peerEVEBITDAMedian?: number;
 }
 
 // --- DCF model types for pillar grouping ---
@@ -57,6 +59,7 @@ const DCF_MODEL_TYPES = new Set([
   "dcf_pe_exit_10y",
   "dcf_ebitda_exit_fcfe_10y",
   "dcf_fcff_growth_5y",
+  "dcf_fcff_ebitda_exit_5y",
   "dcf_fcff_growth_10y",
 ]);
 
@@ -143,6 +146,7 @@ export function computeFullValuation(
     peers,
     currentPrice,
     riskFreeRate,
+    peerEVEBITDAMedian,
   } = inputs;
 
   const strategy: ConsensusStrategy = inputs.consensusStrategy ?? DEFAULT_CONSENSUS_STRATEGY;
@@ -209,6 +213,20 @@ export function computeFullValuation(
     models.push(calculateDCFFCFF10Y(fcffInputs));
   } catch {
     /* skip if insufficient data */
+  }
+
+  // DCF: FCFF EBITDA Exit 5Y — uses peer EV/EBITDA median as terminal multiple
+  // Not included in consensus pillar; shown as standalone model on its own page
+  if (peerEVEBITDAMedian && peerEVEBITDAMedian > 0) {
+    try {
+      const ebitdaExitInputs: DCFFCFFEBITDAExitInputs = {
+        ...fcffInputs,
+        peerEVEBITDAMedian,
+      };
+      models.push(calculateDCFFCFFEBITDAExit(ebitdaExitInputs));
+    } catch {
+      /* skip if insufficient data */
+    }
   }
 
   // DCF: Perpetual Growth

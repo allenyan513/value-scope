@@ -1,8 +1,9 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCompany } from "@/lib/db/queries";
+import { getCompany, computePeerEBITDAMultiples } from "@/lib/db/queries";
 import { DCFCards } from "@/components/valuation/dcf-cards";
 import { DCFFCFFCards } from "@/components/valuation/dcf-fcff-cards";
+import { DCFFCFFEBITDAExitCards } from "@/components/valuation/dcf-fcff-ebitda-exit-cards";
 import { MethodologyCard } from "@/components/valuation/methodology-card";
 import { getCoreTickerData } from "../../../data";
 import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
@@ -57,6 +58,16 @@ const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; 
     methodology: [
       "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 10-year projection period. Revenue is projected using analyst consensus estimates for the first 3–5 years, then gradually fading toward long-term GDP growth (~3%) for the remaining years. Expenses (COGS, SG&A, R&D, Interest) are modeled as individual line items based on historical ratios. Depreciation is calculated from a vintage matrix that tracks each year's CapEx depreciated straight-line over its useful life. Working capital is projected using historical turnover days (DSO, DPO, DIO).",
       "The longer 10-year horizon reduces the weight of the terminal value in the total enterprise value, making the model less sensitive to terminal growth assumptions. FCFF equals EBITDA minus taxes, capital expenditure, and change in net working capital. The terminal value is calculated using the Gordon Growth Model on the Year 11 FCFF. Cash flows are discounted at the Weighted Average Cost of Capital (WACC) using mid-year convention. Enterprise value is converted to equity value by subtracting net debt (total debt minus cash).",
+    ],
+  },
+  "fcff-ebitda-exit-5y": {
+    modelType: "dcf_fcff_ebitda_exit_5y",
+    label: "FCFF EBITDA Exit (5Y)",
+    metaTitle: "FCFF DCF EBITDA Exit 5-Year Valuation",
+    metaDesc: "Unlevered DCF valuation using Free Cash Flow to Firm (FCFF) with peer EV/EBITDA exit multiple for terminal value. 5-year projection anchored to industry peer valuations.",
+    methodology: [
+      "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 5-year projection period. Revenue, expenses, D&A, and working capital are projected using the same line-by-line approach as the Growth Exit models. The key difference is the terminal value methodology: instead of assuming perpetual cash flow growth, the terminal value is calculated by applying the industry peer median EV/EBITDA multiple to the projected Year 6 EBITDA.",
+      "Using a peer exit multiple anchors the terminal value to how the market currently prices comparable companies, rather than relying on a theoretical perpetual growth assumption. This approach captures relative valuation dynamics and is particularly useful when a company is expected to converge toward industry-average profitability over time. The sensitivity matrix shows how fair value changes across different WACC and EV/EBITDA multiple scenarios.",
     ],
   },
 };
@@ -114,6 +125,11 @@ export default async function DCFModelPage({ params }: Props) {
     summary.current_price
   );
 
+  // Peer EBITDA table — only needed for the EBITDA Exit model
+  const peerEBITDARows = config.modelType === "dcf_fcff_ebitda_exit_5y"
+    ? await computePeerEBITDAMultiples(upperTicker).catch(() => [])
+    : [];
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FinancialProduct",
@@ -131,6 +147,7 @@ export default async function DCFModelPage({ params }: Props) {
     },
   };
 
+  const isEBITDAExit = config.modelType === "dcf_fcff_ebitda_exit_5y";
   const isFCFF = config.modelType === "dcf_fcff_growth_5y" || config.modelType === "dcf_fcff_growth_10y";
 
   return (
@@ -139,7 +156,14 @@ export default async function DCFModelPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {isFCFF ? (
+      {isEBITDAExit ? (
+        <DCFFCFFEBITDAExitCards
+          model={dcfModel}
+          currentPrice={summary.current_price}
+          narrative={narrative}
+          peers={peerEBITDARows}
+        />
+      ) : isFCFF ? (
         <DCFFCFFCards
           model={dcfModel}
           currentPrice={summary.current_price}

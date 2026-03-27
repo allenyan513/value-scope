@@ -12,6 +12,7 @@ import {
   getEstimates,
   getPriceHistory,
   computePeerMetricsFromDB,
+  getPeerEVEBITDAMedianFromDB,
   upsertValuation,
   upsertValuationHistory,
 } from "@/lib/db/queries";
@@ -54,11 +55,12 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
 
   for (const company of companies as Company[]) {
     try {
-      const [historicals, estimates, peers, prices] = await Promise.all([
+      const [historicals, estimates, peers, prices, peerEVEBITDAMedian] = await Promise.all([
         getFinancials(company.ticker, "annual", 5),
         getEstimates(company.ticker),
         computePeerMetricsFromDB(company.ticker, 10),
         getPriceHistory(company.ticker, 365 * 5),
+        getPeerEVEBITDAMedianFromDB(company.ticker).catch(() => null),
       ]);
 
       if (historicals.length === 0 || (company.price || 0) <= 0) {
@@ -77,6 +79,7 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         currentPrice,
         riskFreeRate,
         historicalMultiples,
+        peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
       });
 
       for (const model of summary.models) {

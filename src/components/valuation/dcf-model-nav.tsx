@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const DCF_MODELS = [
   { slug: "fcff-growth-5y", label: "Growth Exit (5Y)" },
   { slug: "fcff-growth-10y", label: "Growth Exit (10Y)" },
+  { slug: "fcff-ebitda-exit-5y", label: "EBITDA Exit (5Y)" },
   { slug: "pe-exit", label: "P/E Exit (10Y)" },
   { slug: "ev-ebitda-exit", label: "EV/EBITDA Exit (10Y)" },
 ];

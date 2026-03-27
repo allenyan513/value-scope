@@ -20,6 +20,7 @@ interface Props {
   historicalMultiples: HistoricalMultiplesPoint[];
   riskFreeRate: number;
   currentPrice: number;
+  peerEVEBITDAMedian?: number;
 }
 
 export function SummaryWithStrategy({
@@ -32,6 +33,7 @@ export function SummaryWithStrategy({
   historicalMultiples,
   riskFreeRate,
   currentPrice,
+  peerEVEBITDAMedian,
 }: Props) {
   const searchParams = useSearchParams();
   const strategyParam = searchParams.get("strategy");
@@ -55,8 +57,9 @@ export function SummaryWithStrategy({
       riskFreeRate,
       historicalMultiples,
       consensusStrategy: strategy,
+      peerEVEBITDAMedian,
     }) ?? defaultSummary;
-  }, [strategy, defaultSummary, company, historicals, estimates, peers, currentPrice, riskFreeRate, historicalMultiples]);
+  }, [strategy, defaultSummary, company, historicals, estimates, peers, currentPrice, riskFreeRate, historicalMultiples, peerEVEBITDAMedian]);
 
   return (
     <SummaryCard
