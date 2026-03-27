@@ -64,7 +64,15 @@ async function runAudit(): Promise<AuditIssue[]> {
   }
 
   // Fetch all valuations (paginate — Supabase default limit is 1000)
-  const allValuations: typeof valuations = [];
+  type ValuationRow = {
+    ticker: string;
+    model_type: string;
+    fair_value: number;
+    upside_percent: number;
+    computed_at: string;
+    assumptions: Record<string, unknown> | null;
+  };
+  const valuations: ValuationRow[] = [];
   let valOffset = 0;
   const PAGE_SIZE = 1000;
   while (true) {
@@ -73,11 +81,10 @@ async function runAudit(): Promise<AuditIssue[]> {
       .select("ticker, model_type, fair_value, upside_percent, computed_at, assumptions")
       .range(valOffset, valOffset + PAGE_SIZE - 1);
     if (!page || page.length === 0) break;
-    allValuations.push(...page);
+    valuations.push(...(page as ValuationRow[]));
     if (page.length < PAGE_SIZE) break;
     valOffset += PAGE_SIZE;
   }
-  const valuations = allValuations;
 
   // Fetch price target consensus
   const { data: priceTargets } = await db
