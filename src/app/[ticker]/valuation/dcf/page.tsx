@@ -6,5 +6,5 @@ interface Props {
 
 export default async function DCFIndex({ params }: Props) {
   const { ticker } = await params;
-  redirect(`/${ticker}/valuation/dcf/perpetual-growth`);
+  redirect(`/${ticker}/valuation/dcf/fcff-growth-5y`);
 }

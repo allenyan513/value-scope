@@ -26,23 +26,23 @@ describe("computeFullValuation — dcf_primary strategy (default)", () => {
     expect(result.consensus_strategy).toBe("dcf_primary");
   });
 
-  it("should use DCF Perpetual Growth fair value as consensus", () => {
+  it("should use FCFF Growth Exit 5Y fair value as consensus", () => {
     const result = computeFullValuation(BASE_INPUTS);
-    const dcfModel = result.models.find(m => m.model_type === "dcf_3stage");
-    expect(dcfModel).toBeDefined();
-    expect(result.consensus_fair_value).toBe(dcfModel!.fair_value);
+    const fcffModel = result.models.find(m => m.model_type === "dcf_fcff_growth_5y");
+    expect(fcffModel).toBeDefined();
+    expect(result.consensus_fair_value).toBe(fcffModel!.fair_value);
   });
 
-  it("should use DCF range as consensus range", () => {
+  it("should use FCFF Growth Exit 5Y range as consensus range", () => {
     const result = computeFullValuation(BASE_INPUTS);
-    const dcfModel = result.models.find(m => m.model_type === "dcf_3stage");
-    expect(result.consensus_low).toBe(dcfModel!.low_estimate);
-    expect(result.consensus_high).toBe(dcfModel!.high_estimate);
+    const fcffModel = result.models.find(m => m.model_type === "dcf_fcff_growth_5y");
+    expect(result.consensus_low).toBe(fcffModel!.low_estimate);
+    expect(result.consensus_high).toBe(fcffModel!.high_estimate);
   });
 
-  it("should set primary model to dcf_3stage", () => {
+  it("should set primary model to dcf_fcff_growth_5y", () => {
     const result = computeFullValuation(BASE_INPUTS);
-    expect(result.consensus_primary_model).toBe("dcf_3stage");
+    expect(result.consensus_primary_model).toBe("dcf_fcff_growth_5y");
   });
 
   it("should have no consensus_adjustments", () => {
@@ -69,7 +69,7 @@ describe("computeFullValuation — median strategy", () => {
     const { pillars } = result;
 
     expect(pillars.dcf.models.length).toBeGreaterThanOrEqual(1);
-    expect(pillars.dcf.models.length).toBeLessThanOrEqual(4);
+    expect(pillars.dcf.models.length).toBeLessThanOrEqual(5);
     pillars.dcf.models.forEach(m => {
       expect(m.model_type).toMatch(/^dcf_/);
     });

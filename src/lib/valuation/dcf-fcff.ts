@@ -1,7 +1,7 @@
 // ============================================================
-// FCFF DCF Growth Exit 5Y
+// FCFF DCF Growth Exit (5Y / 10Y)
 // Unlevered Free Cash Flow to Firm with Gordon Growth terminal value.
-// 5-year projection + 1 terminal year, mid-year discounting, WACC.
+// N-year projection + 1 terminal year, mid-year discounting, WACC.
 //
 // Key differences from FCFE models:
 // - Line-by-line expense modeling (COGS, SG&A, R&D, Interest)
@@ -170,7 +170,8 @@ function buildFCFFSensitivityMatrix(
   netDebt: number,
   sharesOutstanding: number,
   baseWACC: number,
-  baseG: number
+  baseG: number,
+  projectionYears: number = 5
 ): { discount_rate_values: number[]; growth_values: number[]; prices: number[][] } {
   const waccValues = [
     baseWACC - 0.02,
@@ -201,7 +202,7 @@ function buildFCFFSensitivityMatrix(
 
       // Terminal value
       const tv = wacc > g ? terminalFCFF / (wacc - g) : terminalFCFF * 20;
-      const pvTV = tv / Math.pow(1 + wacc, 5);
+      const pvTV = tv / Math.pow(1 + wacc, projectionYears);
 
       const ev = pvFCFF + pvTV;
       const equity = ev - netDebt;
@@ -215,7 +216,7 @@ function buildFCFFSensitivityMatrix(
 
 // --- Main Calculator ---
 
-export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
+function calculateFCFFInternal(inputs: DCFFCFFInputs, numYears: number): ValuationResult {
   const {
     historicals,
     estimates,
@@ -237,8 +238,8 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
   const recent = sorted.slice(-5);
   const lastFinancial = sorted[sorted.length - 1];
 
-  // 1. Revenue projection (5Y) — reuse shared helper
-  const revProj = projectRevenue(historicals, estimates, 5);
+  // 1. Revenue projection — reuse shared helper
+  const revProj = projectRevenue(historicals, estimates, numYears);
 
   // 2. Expense ratios from historical averages
   const ratios = computeExpenseRatios(recent);
@@ -282,7 +283,7 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
   const projections: DCFFCFFProjectionYear[] = [];
   const g = termGrowth;
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < numYears; i++) {
     const revenue = revProj.revenues[i];
     const prevRevenue = i === 0 ? lastFinancial.revenue : revProj.revenues[i - 1];
     const revenueGrowth = prevRevenue > 0 ? (revenue - prevRevenue) / prevRevenue : 0;
@@ -334,8 +335,8 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
     });
   }
 
-  // 7. Terminal year (Year 6) — grow all items by g
-  const lastProj = projections[4];
+  // 7. Terminal year (Year N+1) — grow all items by g
+  const lastProj = projections[numYears - 1];
   const termRevenue = lastProj.revenue * (1 + g);
   const termCOGS = termRevenue * ratios.cogs_pct;
   const termGrossProfit = termRevenue - termCOGS;
@@ -371,8 +372,8 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
     capex: termCapex,
     delta_nwc: termDeltaNWC,
     fcff: termFCFF,
-    timing: 5, // terminal discounted at year 5 (not mid-year)
-    discount_factor: 1 / Math.pow(1 + wacc, 5),
+    timing: numYears, // terminal discounted at year N (not mid-year)
+    discount_factor: 1 / Math.pow(1 + wacc, numYears),
     pv_fcff: 0, // will be set via terminal value
   };
 
@@ -381,7 +382,7 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
     ? termFCFF / (wacc - g)
     : termFCFF * 20; // fallback cap
 
-  const pvTerminalValue = terminalValue / Math.pow(1 + wacc, 5);
+  const pvTerminalValue = terminalValue / Math.pow(1 + wacc, numYears);
   const pvFCFFTotal = projections.reduce((sum, p) => sum + p.pv_fcff, 0);
 
   // 9. Enterprise → Equity bridge
@@ -392,7 +393,7 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
 
   // 10. Sensitivity matrix
   const sensitivity = buildFCFFSensitivityMatrix(
-    projections, termFCFF, netDebt, sharesOutstanding, wacc, g
+    projections, termFCFF, netDebt, sharesOutstanding, wacc, g, numYears
   );
   const allPrices = sensitivity.prices.flat();
 
@@ -410,7 +411,7 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
   };
 
   return {
-    model_type: "dcf_fcff_growth_5y",
+    model_type: numYears === 10 ? "dcf_fcff_growth_10y" : "dcf_fcff_growth_5y",
     fair_value: fairValue,
     upside_percent: ((fairValue - currentPrice) / currentPrice) * 100,
     low_estimate: Math.min(...allPrices),
@@ -419,7 +420,7 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
       wacc: Math.round(wacc * 10000) / 100,
       terminal_growth_rate: Math.round(g * 10000) / 100,
       terminal_method: "perpetuity",
-      projection_years: 5,
+      projection_years: numYears,
       useful_life: usefulLife,
       revenue_growth_rates: revProj.growthRates.map((r) => Math.round(r * 10000) / 100),
       revenue_source: revProj.source,
@@ -452,4 +453,12 @@ export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
     },
     computed_at: new Date().toISOString(),
   };
+}
+
+export function calculateDCFFCFF(inputs: DCFFCFFInputs): ValuationResult {
+  return calculateFCFFInternal(inputs, 5);
+}
+
+export function calculateDCFFCFF10Y(inputs: DCFFCFFInputs): ValuationResult {
+  return calculateFCFFInternal(inputs, 10);
 }

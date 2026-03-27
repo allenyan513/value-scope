@@ -4,11 +4,25 @@ import { ValuationHero } from "./valuation-hero";
 import { formatCurrency } from "@/lib/format";
 import type { ValuationSummary, ValuationResult } from "@/types";
 
+// Display order for models within each pillar group
+const MODEL_ORDER = [
+  "dcf_fcff_growth_5y",
+  "dcf_fcff_growth_10y",
+  "dcf_pe_exit_10y",
+  "dcf_ebitda_exit_fcfe_10y",
+  "pe_multiples",
+  "ev_ebitda_multiples",
+  "pb_multiples",
+  "ps_multiples",
+  "p_fcf_multiples",
+  "peg",
+];
+
 const MODEL_NAMES: Record<string, string> = {
-  dcf_3stage: "Perpetual Growth 10Y",
+  dcf_fcff_growth_5y: "Growth Exit 5Y",
+  dcf_fcff_growth_10y: "Growth Exit 10Y",
   dcf_pe_exit_10y: "P/E Exit 10Y",
   dcf_ebitda_exit_fcfe_10y: "EV/EBITDA Exit 10Y",
-  dcf_fcff_growth_5y: "FCFF Growth 5Y",
   pe_multiples: "P/E",
   ev_ebitda_multiples: "EV/EBITDA",
   pb_multiples: "P/B",
@@ -18,10 +32,10 @@ const MODEL_NAMES: Record<string, string> = {
 };
 
 const MODEL_LINKS: Record<string, string> = {
-  dcf_3stage: "/valuation/dcf/perpetual-growth",
   dcf_pe_exit_10y: "/valuation/dcf/pe-exit",
   dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
   dcf_fcff_growth_5y: "/valuation/dcf/fcff-growth-5y",
+  dcf_fcff_growth_10y: "/valuation/dcf/fcff-growth-10y",
   pe_multiples: "/valuation/trading-multiples",
   ev_ebitda_multiples: "/valuation/trading-multiples",
   pb_multiples: "/valuation/trading-multiples",
@@ -46,7 +60,7 @@ const PILLAR_CONFIG = [
   {
     key: "dcf" as const,
     label: "Discounted Cash Flow",
-    link: "/valuation/dcf/perpetual-growth",
+    link: "/valuation/dcf/fcff-growth-5y",
   },
   {
     key: "tradingMultiples" as const,
@@ -130,7 +144,7 @@ export function SummaryCard({ summary, strategySwitcher }: Props) {
         narrative={
           isDCFPrimary ? (
             <>
-              Using a 10-year discounted cash flow model with perpetual growth terminal value,{" "}
+              Using a 5-year unlevered FCFF model with Gordon Growth terminal value,{" "}
               {summary.company_name} ({summary.ticker}) has an intrinsic value of{" "}
               {formatCurrency(summary.consensus_fair_value)} (range:{" "}
               {formatCurrency(summary.consensus_low)} – {formatCurrency(summary.consensus_high)}),
@@ -214,9 +228,9 @@ export function SummaryCard({ summary, strategySwitcher }: Props) {
           {isDCFPrimary ? (
             <p>
               <strong>How we calculated this:</strong>{" "}
-              The fair value is derived from a 10-year DCF model that projects free cash flow to equity,
-              discounted at the cost of equity ({summary.wacc ? `${(summary.wacc.cost_of_equity * 100).toFixed(1)}%` : "—"}).
-              The terminal value uses a perpetual growth rate based on{" "}
+              The fair value is derived from a 5-year unlevered FCFF model with line-by-line expense modeling,
+              discounted at the WACC ({summary.wacc ? `${(summary.wacc.wacc * 100).toFixed(1)}%` : "—"}).
+              The terminal value uses a Gordon Growth perpetual rate based on{" "}
               {summary.company_name}&apos;s classification as a{" "}
               <ClassificationTooltip classification={summary.classification} />{" "}
               company. Other models are shown below for reference.
@@ -287,8 +301,12 @@ function PillarGroup({
           <td className="py-2.5 pl-4" />
         )}
       </tr>
-      {/* Child model rows */}
-      {models.map(model => (
+      {/* Child model rows — filtered to known models, sorted by preferred display order */}
+      {[...models].filter(m => m.model_type in MODEL_NAMES).sort((a, b) => {
+        const ai = MODEL_ORDER.indexOf(a.model_type);
+        const bi = MODEL_ORDER.indexOf(b.model_type);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      }).map(model => (
         <ModelRow
           key={model.model_type}
           model={model}

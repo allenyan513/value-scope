@@ -10,6 +10,7 @@ export type ValuationModelType =
   | "dcf_pe_exit_10y"
   | "dcf_ebitda_exit_fcfe_10y"
   | "dcf_fcff_growth_5y"
+  | "dcf_fcff_growth_10y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
   | "pb_multiples"

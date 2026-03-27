@@ -49,6 +49,16 @@ const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; 
       "FCFF equals EBITDA minus taxes, capital expenditure, and change in net working capital. The terminal value is calculated using the Gordon Growth Model on the Year 6 FCFF. Cash flows are discounted at the Weighted Average Cost of Capital (WACC) using mid-year convention. Enterprise value is converted to equity value by subtracting net debt (total debt minus cash).",
     ],
   },
+  "fcff-growth-10y": {
+    modelType: "dcf_fcff_growth_10y",
+    label: "FCFF Growth (10Y)",
+    metaTitle: "FCFF DCF Growth Exit 10-Year Valuation",
+    metaDesc: "Unlevered DCF valuation using Free Cash Flow to Firm (FCFF) with Gordon Growth terminal value. 10-year projection with line-by-line expense modeling, revenue fade-to-GDP growth, D&A vintage schedule, and working capital analysis.",
+    methodology: [
+      "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 10-year projection period. Revenue is projected using analyst consensus estimates for the first 3–5 years, then gradually fading toward long-term GDP growth (~3%) for the remaining years. Expenses (COGS, SG&A, R&D, Interest) are modeled as individual line items based on historical ratios. Depreciation is calculated from a vintage matrix that tracks each year's CapEx depreciated straight-line over its useful life. Working capital is projected using historical turnover days (DSO, DPO, DIO).",
+      "The longer 10-year horizon reduces the weight of the terminal value in the total enterprise value, making the model less sensitive to terminal growth assumptions. FCFF equals EBITDA minus taxes, capital expenditure, and change in net working capital. The terminal value is calculated using the Gordon Growth Model on the Year 11 FCFF. Cash flows are discounted at the Weighted Average Cost of Capital (WACC) using mid-year convention. Enterprise value is converted to equity value by subtracting net debt (total debt minus cash).",
+    ],
+  },
 };
 
 interface Props {
@@ -121,7 +131,7 @@ export default async function DCFModelPage({ params }: Props) {
     },
   };
 
-  const isFCFF = config.modelType === "dcf_fcff_growth_5y";
+  const isFCFF = config.modelType === "dcf_fcff_growth_5y" || config.modelType === "dcf_fcff_growth_10y";
 
   return (
     <>
