@@ -530,7 +530,10 @@ export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): Val
     usefulLife = 5,
   } = inputs;
 
-  // Reuse all projection logic from the 5Y growth model
+  // Reuse all projection logic from the 5Y growth model.
+  // terminalGrowthRate is a dummy value — the Gordon Growth terminal value
+  // computed by calculateFCFFInternal is discarded and replaced below
+  // with EBITDA × peer exit multiple.
   const baseResult = calculateFCFFInternal(
     { ...inputs, terminalGrowthRate: 0.025 },
     5
