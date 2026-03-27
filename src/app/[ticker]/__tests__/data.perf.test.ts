@@ -55,6 +55,7 @@ vi.mock("@/lib/db/queries", () => ({
   ),
   getValuationHistory: vi.fn(() => delayed([])),
   getPeerEVEBITDAMedianFromDB: vi.fn(() => delayed(15)),
+  upsertValuationHistory: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@/lib/data/fred", () => ({

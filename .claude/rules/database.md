@@ -12,5 +12,10 @@ paths:
 - `seedSingleCompany()` detects `reportedCurrency` from FMP and converts non-USD financials to USD at ingestion
 
 ## ISR Cache Invalidation
-- `revalidatePath("/${ticker}", "layout")` called from: daily cron, valuation API
+- `revalidatePath("/${ticker}", "layout")` called from: update-prices cron, refresh-estimates cron, valuation API
 - Ensures pages reflect DB updates immediately (no 1-hour stale wait)
+
+## Valuation Computation
+- Valuations are computed **lazily on page visit** via `getCoreTickerData()` → `computeFullValuation()`, NOT by a batch cron
+- `valuation_history` snapshots are written fire-and-forget on each page visit
+- ISR caches the rendered page for 1 hour; crons bust the cache after updating prices/estimates

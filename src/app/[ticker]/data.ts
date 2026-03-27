@@ -9,6 +9,7 @@ import {
   getPriceHistory,
   getValuationHistory,
   getPeerEVEBITDAMedianFromDB,
+  upsertValuationHistory,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
@@ -114,6 +115,13 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
     sectorUnleveredBeta: sectorUnleveredBeta ?? undefined,
   });
+
+  // Persist valuation_history snapshot (fire-and-forget, don't block render)
+  if (summary && currentPrice > 0) {
+    const today = toDateString(new Date());
+    upsertValuationHistory(upperTicker, today, currentPrice, summary.primary_fair_value)
+      .catch((err) => console.error(`[valuation-history] Error for ${upperTicker}:`, err));
+  }
 
   return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined };
 });
