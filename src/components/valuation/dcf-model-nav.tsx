@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const DCF_MODELS = [
-  { slug: "perpetual-growth", label: "Perpetual Growth (10Y)" },
+  { slug: "fcff-growth-5y", label: "Growth Exit (5Y)" },
+  { slug: "fcff-growth-10y", label: "Growth Exit (10Y)" },
   { slug: "pe-exit", label: "P/E Exit (10Y)" },
   { slug: "ev-ebitda-exit", label: "EV/EBITDA Exit (10Y)" },
-  { slug: "fcff-growth-5y", label: "FCFF Growth (5Y)" },
 ];
 
 interface Props {

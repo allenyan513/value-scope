@@ -91,14 +91,18 @@ export function generateDCFNarrative(
     ].filter(Boolean).join(" ");
   }
 
-  // FCFF (unlevered)
-  if (model.model_type === "dcf_fcff_growth_5y") {
+  // FCFF (unlevered) — 5Y and 10Y
+  if (model.model_type === "dcf_fcff_growth_5y" || model.model_type === "dcf_fcff_growth_10y") {
     const waccRate = a.wacc as number ?? discountRate;
+    const horizonDesc = projYears === 10
+      ? `over 10 years with analyst estimates for the first 3–5 years, fading toward long-term GDP growth for the remaining years`
+      : `over 5 years`;
+    const termYearNum = projYears + 1;
     return [
-      `Using an unlevered Free Cash Flow to Firm (FCFF) model, we project ${companyName}'s cash flows over 5 years with line-by-line expense modeling.`,
+      `Using an unlevered Free Cash Flow to Firm (FCFF) model, we project ${companyName}'s cash flows ${horizonDesc} with line-by-line expense modeling.`,
       growthDesc ? `Revenue is projected ${growthDesc}, with expenses (COGS, SG&A, R&D) held at historical ratios.` : "",
       `Depreciation is computed from a vintage matrix based on a ${a.useful_life ?? 5}-year useful life. Working capital is modeled using historical turnover days (DSO ${a.dso ?? "N/A"}, DPO ${a.dpo ?? "N/A"}, DIO ${a.dio ?? "N/A"}).`,
-      `At a ${pct(waccRate)} WACC with mid-year discounting, the terminal value (${tvPortion}% of enterprise value) is derived from the Gordon Growth Model at a ${pct(terminalGrowth)} perpetual rate.`,
+      `At a ${pct(waccRate)} WACC with mid-year discounting, the terminal value (${tvPortion}% of enterprise value) is derived from the Gordon Growth Model on Year ${termYearNum} FCFF at a ${pct(terminalGrowth)} perpetual rate.`,
       `After subtracting net debt, the equity value implies a fair price of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
     ].filter(Boolean).join(" ");
   }

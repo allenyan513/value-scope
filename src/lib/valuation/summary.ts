@@ -26,7 +26,7 @@ import {
   calculateDCF3StageEBITDAExit,
   type DCFExitMultipleInputs,
 } from "./dcf-3stage";
-import { calculateDCFFCFF, type DCFFCFFInputs } from "./dcf-fcff";
+import { calculateDCFFCFF, calculateDCFFCFF10Y, type DCFFCFFInputs } from "./dcf-fcff";
 import { computeMultiplesStats } from "./historical-multiples";
 import {
   calculatePEMultiples,
@@ -54,10 +54,10 @@ export interface FullValuationInputs {
 
 // --- DCF model types for pillar grouping ---
 const DCF_MODEL_TYPES = new Set([
-  "dcf_3stage",
   "dcf_pe_exit_10y",
   "dcf_ebitda_exit_fcfe_10y",
   "dcf_fcff_growth_5y",
+  "dcf_fcff_growth_10y",
 ]);
 
 const TRADING_MULTIPLES_MODEL_TYPES = new Set([
@@ -184,8 +184,32 @@ export function computeFullValuation(
     terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
   };
 
-  // 3. Run all 6 models
+  // 3. Run all models
   const models: ValuationResult[] = [];
+
+  // DCF: FCFF Growth Exit 5Y & 10Y (unlevered, WACC-based) — primary models
+  const fcffInputs: DCFFCFFInputs = {
+    historicals: sortedHistoricals,
+    estimates,
+    wacc: waccResult.wacc,
+    currentPrice,
+    sharesOutstanding,
+    cashAndEquivalents: latestFinancial.cash_and_equivalents || 0,
+    totalDebt: latestFinancial.total_debt || 0,
+    terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
+  };
+
+  try {
+    models.push(calculateDCFFCFF(fcffInputs));
+  } catch {
+    /* skip if insufficient data */
+  }
+
+  try {
+    models.push(calculateDCFFCFF10Y(fcffInputs));
+  } catch {
+    /* skip if insufficient data */
+  }
 
   // DCF: Perpetual Growth
   try {
@@ -213,24 +237,6 @@ export function computeFullValuation(
 
   try {
     models.push(calculateDCF3StageEBITDAExit(exitInputs));
-  } catch {
-    /* skip if insufficient data */
-  }
-
-  // DCF: FCFF Growth Exit 5Y (unlevered, WACC-based)
-  const fcffInputs: DCFFCFFInputs = {
-    historicals: sortedHistoricals,
-    estimates,
-    wacc: waccResult.wacc,
-    currentPrice,
-    sharesOutstanding,
-    cashAndEquivalents: latestFinancial.cash_and_equivalents || 0,
-    totalDebt: latestFinancial.total_debt || 0,
-    terminalGrowthRate: getTerminalGrowthRate(classification.archetype),
-  };
-
-  try {
-    models.push(calculateDCFFCFF(fcffInputs));
   } catch {
     /* skip if insufficient data */
   }
@@ -272,12 +278,12 @@ export function computeFullValuation(
   let adjustments: ValuationSummary["consensus_adjustments"];
 
   if (strategy === "dcf_primary") {
-    // --- DCF Perpetual Growth as single source of truth ---
-    const dcfModel = models.find(m => m.model_type === "dcf_3stage" && m.fair_value > 0);
+    // --- FCFF Growth Exit 5Y as single source of truth ---
+    const dcfModel = models.find(m => m.model_type === "dcf_fcff_growth_5y" && m.fair_value > 0);
     consensus = dcfModel?.fair_value ?? 0;
     low = dcfModel?.low_estimate ?? 0;
     high = dcfModel?.high_estimate ?? 0;
-    primaryModelType = "dcf_3stage";
+    primaryModelType = "dcf_fcff_growth_5y";
     adjustments = [];
   } else if (strategy === "median") {
     // --- Three-tier median consensus ---
@@ -322,7 +328,7 @@ export function computeFullValuation(
     .filter(v => v > 0).length;
 
   const methodDescription = strategy === "dcf_primary"
-    ? "our 10-year DCF model with perpetual growth terminal value"
+    ? "our 5-year unlevered FCFF model with Gordon Growth terminal value"
     : strategy === "median"
       ? `${pillarCount} valuation pillars (DCF, Trading Multiples, PEG) covering ${modelCount} models`
       : `${modelCount} valuation models`;
