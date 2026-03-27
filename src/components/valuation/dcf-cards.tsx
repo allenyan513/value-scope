@@ -107,11 +107,13 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
     revenue: number;
     net_margin: number;
     net_income: number;
-    net_capex: number;
+    depreciation_amortization: number;
+    capital_expenditure: number;
     fcfe: number;
     pv_fcfe: number;
     stage?: 1 | 2;
     ebitda?: number;
+    /** @deprecated */ net_capex?: number;
   }>;
 
   const isThreeStage = projections.some((p) => p.stage !== undefined);
@@ -196,8 +198,9 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
     // Terminal year derived values (for perpetuity display)
     const termRevenue = lastRow.revenue * (1 + g);
     const termNetIncome = termRevenue * lastRow.net_margin;
-    const termCapex = lastRow.revenue > 0 ? termRevenue * (lastRow.net_capex / lastRow.revenue) : 0;
-    const termFCFE = termNetIncome - termCapex;
+    const termDA = lastRow.revenue > 0 ? termRevenue * (lastRow.depreciation_amortization / lastRow.revenue) : 0;
+    const termCapex = lastRow.revenue > 0 ? termRevenue * (lastRow.capital_expenditure / lastRow.revenue) : 0;
+    const termFCFE = termNetIncome + termDA - termCapex;
     const termYear = lastRow.year + 1;
 
     const keLeG = !isExitMultiple && ke <= g;
@@ -212,6 +215,7 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
       upsidePercent,
       termRevenue,
       termNetIncome,
+      termDA,
       termCapex,
       termFCFE,
       termYear,
@@ -394,11 +398,18 @@ export function DCFCards({ model, currentPrice, narrative }: Props) {
               </tr>
               <tr><td colSpan={colSpan} className="h-1.5"></td></tr>
               <tr className="border-b hover:bg-muted/20 transition-colors">
-                <td className="p-2.5 font-medium">Net CapEx</td>
+                <td className="p-2.5 font-medium text-muted-foreground">(+) D&amp;A</td>
                 {calc.rows.map((p) => (
-                  <td key={p.year} className={`p-2.5 text-right font-mono ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.net_capex)}</td>
+                  <td key={p.year} className={`p-2.5 text-right font-mono text-muted-foreground ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.depreciation_amortization)}</td>
                 ))}
-                <td className="p-2.5 text-right font-mono">{formatMillions(calc.termCapex)}</td>
+                <td className="p-2.5 text-right font-mono text-muted-foreground">{formatMillions(calc.termDA)}</td>
+              </tr>
+              <tr className="border-b hover:bg-muted/20 transition-colors">
+                <td className="p-2.5 font-medium text-muted-foreground">(&minus;) CapEx</td>
+                {calc.rows.map((p) => (
+                  <td key={p.year} className={`p-2.5 text-right font-mono text-muted-foreground ${isThreeStage && p.stage === 2 ? "bg-violet-950/10" : ""}`}>{formatMillions(p.capital_expenditure)}</td>
+                ))}
+                <td className="p-2.5 text-right font-mono text-muted-foreground">{formatMillions(calc.termCapex)}</td>
               </tr>
               <tr className="border-b border-t-2 border-t-foreground/20 hover:bg-muted/20 transition-colors">
                 <td className="p-2.5 font-bold text-blue-400">FCFE</td>

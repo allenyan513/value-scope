@@ -33,12 +33,15 @@ export interface DCFProjectionYearFCFE {
   revenue: number;
   net_margin: number; // as decimal (e.g., 0.25 = 25%)
   net_income: number;
-  net_capex: number;
-  fcfe: number; // Free Cash Flow to Equity = Net Income - CapEx
+  depreciation_amortization: number; // D&A add-back (already deducted in Net Income)
+  capital_expenditure: number;       // Total CapEx (maintenance + growth)
+  fcfe: number; // FCFE = Net Income + D&A − CapEx
   discount_factor: number;
   pv_fcfe: number;
   stage?: 1 | 2; // Three-stage DCF: 1 = analyst-driven, 2 = transition
   ebitda?: number; // For exit multiple terminal value methods
+  /** @deprecated Use depreciation_amortization and capital_expenditure instead */
+  net_capex?: number;
 }
 
 export interface DCFFCFEResult extends ValuationResult {
