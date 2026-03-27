@@ -1,139 +1,112 @@
 import { describe, it, expect } from "vitest";
 import {
-  calculateDCF3StagePEExit,
-  calculateDCF3StageEBITDAExit,
-  type DCFExitMultipleInputs,
-} from "../dcf-3stage";
+  calculateDCFFCFFEBITDAExit,
+  calculateDCFFCFFEBITDAExit10Y,
+  type DCFFCFFEBITDAExitInputs,
+} from "../dcf-fcff";
 import { appleFinancials, testEstimates } from "./fixtures";
 
-const baseInputs: DCFExitMultipleInputs = {
+const baseInputs: DCFFCFFEBITDAExitInputs = {
   historicals: appleFinancials,
   estimates: testEstimates,
-  costOfEquity: 0.10,
+  wacc: 0.10,
   currentPrice: 200,
   sharesOutstanding: 15_000_000_000,
   cashAndEquivalents: 50e9,
   totalDebt: 100e9,
-  terminalGrowthRate: 0.035,
+  peerEVEBITDAMedian: 15,
 };
 
-describe("calculateDCF3StagePEExit", () => {
-  it("should return a valid result with positive fair value when exitPE is provided", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 25 });
+describe("calculateDCFFCFFEBITDAExit (5Y)", () => {
+  it("should return a valid result with positive fair value", () => {
+    const result = calculateDCFFCFFEBITDAExit(baseInputs);
 
-    expect(result.model_type).toBe("dcf_pe_exit_10y");
+    expect(result.model_type).toBe("dcf_fcff_ebitda_exit_5y");
     expect(result.fair_value).toBeGreaterThan(0);
     expect(result.computed_at).toBeTruthy();
   });
 
-  it("should return zero fair value when no exitPE provided", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs });
+  it("should produce 5 projection years", () => {
+    const result = calculateDCFFCFFEBITDAExit(baseInputs);
+    const projections = (result.details as Record<string, unknown>)
+      .projections as Array<Record<string, unknown>>;
 
-    expect(result.model_type).toBe("dcf_pe_exit_10y");
-    expect(result.fair_value).toBe(0);
+    expect(projections).toHaveLength(5);
   });
 
-  it("should return zero when exitPE is 0", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 0 });
-    expect(result.fair_value).toBe(0);
+  it("should include EBITDA exit assumptions", () => {
+    const result = calculateDCFFCFFEBITDAExit(baseInputs);
+    expect(result.assumptions.terminal_method).toBe("ebitda_exit");
+    expect(result.assumptions.peer_ev_ebitda_multiple).toBe(15);
   });
 
-  it("should produce 10 projection years (3-stage)", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 25 });
+  it("should have higher fair value with higher exit multiple", () => {
+    const lowMult = calculateDCFFCFFEBITDAExit({ ...baseInputs, peerEVEBITDAMedian: 10 });
+    const highMult = calculateDCFFCFFEBITDAExit({ ...baseInputs, peerEVEBITDAMedian: 20 });
+
+    expect(highMult.fair_value).toBeGreaterThan(lowMult.fair_value);
+  });
+});
+
+describe("calculateDCFFCFFEBITDAExit10Y", () => {
+  it("should return a valid result with positive fair value", () => {
+    const result = calculateDCFFCFFEBITDAExit10Y(baseInputs);
+
+    expect(result.model_type).toBe("dcf_fcff_ebitda_exit_10y");
+    expect(result.fair_value).toBeGreaterThan(0);
+    expect(result.computed_at).toBeTruthy();
+  });
+
+  it("should produce 10 projection years", () => {
+    const result = calculateDCFFCFFEBITDAExit10Y(baseInputs);
     const projections = (result.details as Record<string, unknown>)
       .projections as Array<Record<string, unknown>>;
 
     expect(projections).toHaveLength(10);
-    // First 5 should be stage 1, last 5 stage 2
-    expect(projections[0].stage).toBe(1);
-    expect(projections[4].stage).toBe(1);
-    expect(projections[5].stage).toBe(2);
-    expect(projections[9].stage).toBe(2);
   });
 
-  it("should include exit PE in assumptions", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 25 });
-    expect(result.assumptions.terminal_method).toBe("pe_exit");
-    expect(result.assumptions.exit_pe).toBe(25);
+  it("should include EBITDA exit assumptions", () => {
+    const result = calculateDCFFCFFEBITDAExit10Y(baseInputs);
+    expect(result.assumptions.terminal_method).toBe("ebitda_exit");
+    expect(result.assumptions.peer_ev_ebitda_multiple).toBe(15);
+    expect(result.assumptions.projection_years).toBe(10);
   });
 
-  it("should include sensitivity matrix (Ke × Exit PE)", () => {
-    const result = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 25 });
+  it("should include sensitivity matrix (WACC × EV/EBITDA Multiple)", () => {
+    const result = calculateDCFFCFFEBITDAExit10Y(baseInputs);
     const details = result.details as Record<string, unknown>;
     const matrix = details.sensitivity_matrix as {
       discount_rate_values: number[];
-      growth_values: number[];
+      multiple_values: number[];
       prices: number[][];
     };
 
     expect(matrix.discount_rate_values).toHaveLength(5);
-    expect(matrix.growth_values).toHaveLength(5);
+    expect(matrix.multiple_values).toHaveLength(5);
     expect(matrix.prices).toHaveLength(5);
-    // Growth values should be exit multiples (around 25), not percentages
-    matrix.growth_values.forEach((v) => {
-      expect(v).toBeGreaterThan(10);
-      expect(v).toBeLessThan(50);
-    });
   });
 
-  it("should have higher fair value with higher exit PE", () => {
-    const lowPE = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 15 });
-    const highPE = calculateDCF3StagePEExit({ ...baseInputs, exitPE: 35 });
-
-    expect(highPE.fair_value).toBeGreaterThan(lowPE.fair_value);
-  });
-});
-
-describe("calculateDCF3StageEBITDAExit", () => {
-  it("should return a valid result with positive fair value when exitEVEBITDA is provided", () => {
-    const result = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 15 });
-
-    expect(result.model_type).toBe("dcf_ebitda_exit_fcfe_10y");
-    expect(result.fair_value).toBeGreaterThan(0);
-    expect(result.computed_at).toBeTruthy();
-  });
-
-  it("should return zero fair value when no exitEVEBITDA provided", () => {
-    const result = calculateDCF3StageEBITDAExit({ ...baseInputs });
-    expect(result.fair_value).toBe(0);
-  });
-
-  it("should include ebitda in projections", () => {
-    const result = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 15 });
-    const projections = (result.details as Record<string, unknown>)
-      .projections as Array<{ ebitda?: number }>;
-
-    projections.forEach((p) => {
-      expect(p.ebitda).toBeGreaterThan(0);
-    });
-  });
-
-  it("should include EBITDA margin and exit multiple in assumptions", () => {
-    const result = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 15 });
-    expect(result.assumptions.terminal_method).toBe("ebitda_exit");
-    expect(result.assumptions.exit_ev_ebitda).toBe(15);
-    expect(result.assumptions.ebitda_margin).toBeGreaterThan(0);
-  });
-
-  it("should have higher fair value with higher exit EV/EBITDA", () => {
-    const lowMult = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 10 });
-    const highMult = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 20 });
+  it("should have higher fair value with higher exit multiple", () => {
+    const lowMult = calculateDCFFCFFEBITDAExit10Y({ ...baseInputs, peerEVEBITDAMedian: 10 });
+    const highMult = calculateDCFFCFFEBITDAExit10Y({ ...baseInputs, peerEVEBITDAMedian: 20 });
 
     expect(highMult.fair_value).toBeGreaterThan(lowMult.fair_value);
   });
 
-  it("should produce 10 projection years (3-stage)", () => {
-    const result = calculateDCF3StageEBITDAExit({ ...baseInputs, exitEVEBITDA: 15 });
-    const projections = (result.details as Record<string, unknown>)
-      .projections as Array<Record<string, unknown>>;
+  it("should differ from 5Y result", () => {
+    const result5Y = calculateDCFFCFFEBITDAExit(baseInputs);
+    const result10Y = calculateDCFFCFFEBITDAExit10Y(baseInputs);
 
-    expect(projections).toHaveLength(10);
+    // Both should produce valid results but with different fair values
+    expect(result5Y.fair_value).toBeGreaterThan(0);
+    expect(result10Y.fair_value).toBeGreaterThan(0);
+    expect(result5Y.fair_value).not.toBe(result10Y.fair_value);
   });
 
   it("should clamp fair value at 0 with extreme debt", () => {
-    const result = calculateDCF3StageEBITDAExit({
+    const result = calculateDCFFCFFEBITDAExit10Y({
       ...baseInputs,
-      exitEVEBITDA: 5,
+      peerEVEBITDAMedian: 5,
       totalDebt: 5000e9,
       cashAndEquivalents: 0,
     });

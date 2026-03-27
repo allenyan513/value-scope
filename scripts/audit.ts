@@ -103,7 +103,8 @@ async function runAudit(): Promise<AuditIssue[]> {
   }
 
   const currentModels = new Set([
-    "dcf_3stage", "dcf_pe_exit_10y", "dcf_ebitda_exit_fcfe_10y",
+    "dcf_3stage", "dcf_fcff_growth_5y", "dcf_fcff_growth_10y",
+    "dcf_fcff_ebitda_exit_5y", "dcf_fcff_ebitda_exit_10y",
     "pe_multiples", "ev_ebitda_multiples", "pb_multiples", "ps_multiples", "p_fcf_multiples",
     "peg",
   ]);

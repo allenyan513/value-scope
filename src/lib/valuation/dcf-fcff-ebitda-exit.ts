@@ -1,6 +1,6 @@
 // ============================================================
-// FCFF EBITDA Exit (5Y)
-// Same projection as Growth 5Y but terminal value = Terminal EBITDA × peer multiple.
+// FCFF EBITDA Exit (5Y / 10Y)
+// Same projection as Growth model but terminal value = Terminal EBITDA × peer multiple.
 // ============================================================
 
 import type { ValuationResult, DCFFCFFProjectionYear } from "@/types";
@@ -56,7 +56,7 @@ export function buildEBITDAExitSensitivityMatrix(
   return { discount_rate_values: waccValues, multiple_values: multipleValues, prices };
 }
 
-export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): ValuationResult {
+function calculateEBITDAExitInternal(inputs: DCFFCFFEBITDAExitInputs, numYears: number): ValuationResult {
   const {
     wacc,
     currentPrice,
@@ -67,13 +67,13 @@ export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): Val
     usefulLife = 5,
   } = inputs;
 
-  // Reuse all projection logic from the 5Y growth model.
+  // Reuse all projection logic from the growth model.
   // terminalGrowthRate is a dummy value — the Gordon Growth terminal value
   // computed by calculateFCFFInternal is discarded and replaced below
   // with EBITDA × peer exit multiple.
   const baseResult = calculateFCFFInternal(
     { ...inputs, terminalGrowthRate: 0.025 },
-    5
+    numYears
   );
 
   const terminalYear = baseResult.details.terminal_year as DCFFCFFProjectionYear;
@@ -83,7 +83,7 @@ export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): Val
   const netDebt = totalDebt - cashAndEquivalents;
 
   const terminalValue = terminalEBITDA * peerEVEBITDAMedian;
-  const pvTerminalValue = terminalValue / Math.pow(1 + wacc, 5);
+  const pvTerminalValue = terminalValue / Math.pow(1 + wacc, numYears);
   const pvFCFFTotal = projections.reduce((sum, p) => sum + p.pv_fcff, 0);
 
   const enterpriseValue = pvFCFFTotal + pvTerminalValue;
@@ -96,7 +96,7 @@ export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): Val
   const allPrices = sensitivity.prices.flat().filter((p) => p > 0);
 
   return {
-    model_type: "dcf_fcff_ebitda_exit_5y",
+    model_type: numYears === 10 ? "dcf_fcff_ebitda_exit_10y" : "dcf_fcff_ebitda_exit_5y",
     fair_value: fairValue,
     upside_percent: ((fairValue - currentPrice) / currentPrice) * 100,
     low_estimate: allPrices.length > 0 ? Math.min(...allPrices) : 0,
@@ -120,4 +120,12 @@ export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): Val
     },
     computed_at: new Date().toISOString(),
   };
+}
+
+export function calculateDCFFCFFEBITDAExit(inputs: DCFFCFFEBITDAExitInputs): ValuationResult {
+  return calculateEBITDAExitInternal(inputs, 5);
+}
+
+export function calculateDCFFCFFEBITDAExit10Y(inputs: DCFFCFFEBITDAExitInputs): ValuationResult {
+  return calculateEBITDAExitInternal(inputs, 10);
 }

@@ -2,7 +2,7 @@
 
 # ValuScope - Stock Valuation SaaS
 
-Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 9 automated valuation models (3 DCF + 5 Trading Multiples + PEG) with daily updates. SEO-driven organic growth.
+Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 10 automated valuation models (4 FCFF DCF + 1 FCFE DCF + 5 Trading Multiples + PEG) with daily updates. SEO-driven organic growth.
 
 ## Tech Stack
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5

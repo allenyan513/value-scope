@@ -20,26 +20,6 @@ const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; 
       "Fair value equals the present value of projected FCFE plus terminal value, adjusted for cash and debt, divided by shares outstanding. The discount rate is the cost of equity derived from CAPM. The sensitivity matrix shows how fair value changes under different discount rate and terminal growth assumptions.",
     ],
   },
-  "pe-exit": {
-    modelType: "dcf_pe_exit_10y",
-    label: "P/E Exit (10Y)",
-    metaTitle: "DCF P/E Exit Multiple Valuation",
-    metaDesc: "Discounted Cash Flow valuation using P/E exit multiple for terminal value. 10-year projection with historical P/E ratio applied at exit.",
-    methodology: [
-      "This model projects Free Cash Flow to Equity over 10 years using the same 3-stage approach (analyst estimates → transition → steady state), but replaces the Gordon Growth terminal value with a P/E exit multiple. The terminal value is calculated as Year 10 net income multiplied by the company's historical 5-year average P/E ratio.",
-      "Using an exit multiple anchors the terminal value to how the market has historically priced the company's earnings, rather than assuming perpetual growth. This approach tends to produce more conservative results when the stock's historical P/E is below its current trading multiple.",
-    ],
-  },
-  "ev-ebitda-exit": {
-    modelType: "dcf_ebitda_exit_fcfe_10y",
-    label: "EV/EBITDA Exit (10Y)",
-    metaTitle: "DCF EV/EBITDA Exit Multiple Valuation",
-    metaDesc: "Discounted Cash Flow valuation using EV/EBITDA exit multiple for terminal value. 10-year projection with enterprise value conversion.",
-    methodology: [
-      "This model uses the same 10-year FCFE projection as the other DCF variants, but calculates terminal value using an EV/EBITDA exit multiple. Year 10 EBITDA is multiplied by the company's historical 5-year average EV/EBITDA ratio to arrive at an enterprise value, which is then converted to equity value by subtracting net debt.",
-      "EV/EBITDA is capital-structure neutral, making it useful for comparing companies with different leverage levels. This approach works best for capital-intensive businesses where EBITDA is a better proxy for operating performance than net income.",
-    ],
-  },
   "fcff-growth-5y": {
     modelType: "dcf_fcff_growth_5y",
     label: "FCFF Growth (5Y)",
@@ -68,6 +48,16 @@ const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; 
     methodology: [
       "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 5-year projection period. Revenue, expenses, D&A, and working capital are projected using the same line-by-line approach as the Growth Exit models. The key difference is the terminal value methodology: instead of assuming perpetual cash flow growth, the terminal value is calculated by applying the industry peer median EV/EBITDA multiple to the projected Year 6 EBITDA.",
       "Using a peer exit multiple anchors the terminal value to how the market currently prices comparable companies, rather than relying on a theoretical perpetual growth assumption. This approach captures relative valuation dynamics and is particularly useful when a company is expected to converge toward industry-average profitability over time. The sensitivity matrix shows how fair value changes across different WACC and EV/EBITDA multiple scenarios.",
+    ],
+  },
+  "fcff-ebitda-exit-10y": {
+    modelType: "dcf_fcff_ebitda_exit_10y",
+    label: "FCFF EBITDA Exit (10Y)",
+    metaTitle: "FCFF DCF EBITDA Exit 10-Year Valuation",
+    metaDesc: "Unlevered DCF valuation using Free Cash Flow to Firm (FCFF) with peer EV/EBITDA exit multiple for terminal value. 10-year projection with revenue fade-to-GDP growth, anchored to industry peer valuations.",
+    methodology: [
+      "This is an unlevered Free Cash Flow to Firm (FCFF) model with a 10-year projection period. Revenue is projected using analyst consensus estimates for the first 3–5 years, then gradually fading toward long-term GDP growth (~3%) for the remaining years. Expenses, D&A, and working capital follow the same line-by-line approach as the 5-year variant. The terminal value is calculated by applying the industry peer median EV/EBITDA multiple to the projected Year 11 EBITDA.",
+      "The longer 10-year horizon reduces the weight of the terminal value in the total enterprise value, making the model less sensitive to the exit multiple assumption. This approach combines the advantages of detailed FCFF modeling with a market-anchored exit, providing a more robust valuation for companies where long-term fundamentals are expected to converge toward industry norms. The sensitivity matrix shows how fair value changes across different WACC and EV/EBITDA multiple scenarios.",
     ],
   },
 };
@@ -125,8 +115,8 @@ export default async function DCFModelPage({ params }: Props) {
     summary.current_price
   );
 
-  // Peer EBITDA table — only needed for the EBITDA Exit model
-  const peerEBITDARows = config.modelType === "dcf_fcff_ebitda_exit_5y"
+  // Peer EBITDA table — only needed for the EBITDA Exit models
+  const peerEBITDARows = (config.modelType === "dcf_fcff_ebitda_exit_5y" || config.modelType === "dcf_fcff_ebitda_exit_10y")
     ? await computePeerEBITDAMultiples(upperTicker).catch(() => [])
     : [];
 
@@ -147,7 +137,7 @@ export default async function DCFModelPage({ params }: Props) {
     },
   };
 
-  const isEBITDAExit = config.modelType === "dcf_fcff_ebitda_exit_5y";
+  const isEBITDAExit = config.modelType === "dcf_fcff_ebitda_exit_5y" || config.modelType === "dcf_fcff_ebitda_exit_10y";
   const isFCFF = config.modelType === "dcf_fcff_growth_5y" || config.modelType === "dcf_fcff_growth_10y";
 
   return (
