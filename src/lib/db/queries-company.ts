@@ -41,21 +41,36 @@ export async function upsertCompany(company: Partial<Company> & { ticker: string
     });
 }
 
+/**
+ * Get industry peers by industry name directly (avoids redundant getCompany() call).
+ * Preferred when caller already has company data.
+ */
+export async function getPeersByIndustry(
+  industry: string,
+  excludeTicker: string,
+  limit = 10
+): Promise<Company[]> {
+  const { data } = await db()
+    .from("companies")
+    .select("*")
+    .eq("industry", industry)
+    .neq("ticker", excludeTicker)
+    .order("market_cap", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as Company[];
+}
+
+/**
+ * Get industry peers by ticker (convenience wrapper — calls getCompany internally).
+ * Use getPeersByIndustry() when you already have the company object.
+ */
 export async function getIndustryPeers(
   ticker: string,
   limit = 10
 ): Promise<Company[]> {
   const company = await getCompany(ticker);
   if (!company) return [];
-
-  const { data } = await db()
-    .from("companies")
-    .select("*")
-    .eq("industry", company.industry)
-    .neq("ticker", ticker)
-    .order("market_cap", { ascending: false })
-    .limit(limit);
-  return (data ?? []) as Company[];
+  return getPeersByIndustry(company.industry, ticker, limit);
 }
 
 /**

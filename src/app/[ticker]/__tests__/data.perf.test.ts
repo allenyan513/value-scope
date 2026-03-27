@@ -40,7 +40,7 @@ vi.mock("@/lib/db/queries", () => ({
   getFinancials: vi.fn(() => delayed(appleFinancials)),
   getEstimates: vi.fn(() => delayed(testEstimates)),
   getLatestPrice: vi.fn(() => delayed(200)),
-  getIndustryPeers: vi.fn(() =>
+  getPeersByIndustry: vi.fn(() =>
     delayed(testPeers.map((p) => ({ ticker: p.ticker, name: p.name, market_cap: p.market_cap })))
   ),
   getPriceTargets: mockGetPriceTargets.mockImplementation(() =>
@@ -110,14 +110,16 @@ describe("getCoreTickerData — parallelism", () => {
     vi.clearAllMocks();
   });
 
-  it("completes within 300ms (7 parallel 100ms queries must not be sequential)", async () => {
+  it("completes within 400ms (6 parallel queries + sequential peer lookup + peer metrics)", async () => {
     const start = performance.now();
     const result = await getCoreTickerData("TEST");
     const duration = performance.now() - start;
 
-    // If parallel: ~100ms + peer metrics ~100ms + compute ≈ 200-250ms
-    // If any query became sequential: 100 * 7 = 700ms minimum
-    expect(duration).toBeLessThan(300);
+    // Level 1: 6 parallel queries ~100ms
+    // Level 2: getPeersByIndustry ~100ms (needs company.industry from L1)
+    // Level 3: peer metrics + peerEVEBITDAMedian ~100ms
+    // If any level became fully sequential: 100 * 8 = 800ms minimum
+    expect(duration).toBeLessThan(400);
     expect(result.company).toBeTruthy();
     expect(result.summary).toBeTruthy();
   });

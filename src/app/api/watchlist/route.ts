@@ -17,18 +17,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  // Enrich with company data and latest valuation
+  // Enrich with company data and latest valuation (parallel queries)
   const tickers = watchlistItems.map((w) => w.ticker);
-  const { data: companies } = await supabase
-    .from("companies")
-    .select("ticker, name, price, market_cap")
-    .in("ticker", tickers);
-
-  const { data: valuations } = await supabase
-    .from("valuations")
-    .select("ticker, fair_value, upside_percent")
-    .in("ticker", tickers)
-    .eq("model_type", "dcf_growth_exit_5y");
+  const [{ data: companies }, { data: valuations }] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("ticker, name, price, market_cap")
+      .in("ticker", tickers),
+    supabase
+      .from("valuations")
+      .select("ticker, fair_value, upside_percent")
+      .in("ticker", tickers)
+      .eq("model_type", "dcf_growth_exit_5y"),
+  ]);
 
   const companyMap = new Map(
     (companies ?? []).map((c) => [c.ticker, c])

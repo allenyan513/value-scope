@@ -2,50 +2,8 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { ValuationHero } from "./valuation-hero";
 import { formatCurrency } from "@/lib/format";
+import { MODEL_NAMES, MODEL_ORDER, MODEL_LINKS } from "@/lib/valuation/model-names";
 import type { ValuationSummary, ValuationResult } from "@/types";
-
-// Display order for models within each pillar group
-const MODEL_ORDER = [
-  "dcf_fcff_growth_5y",
-  "dcf_fcff_growth_10y",
-  "dcf_fcff_ebitda_exit_5y",
-  "dcf_pe_exit_10y",
-  "dcf_ebitda_exit_fcfe_10y",
-  "pe_multiples",
-  "ev_ebitda_multiples",
-  "pb_multiples",
-  "ps_multiples",
-  "p_fcf_multiples",
-  "peg",
-];
-
-const MODEL_NAMES: Record<string, string> = {
-  dcf_fcff_growth_5y: "Growth Exit 5Y",
-  dcf_fcff_growth_10y: "Growth Exit 10Y",
-  dcf_fcff_ebitda_exit_5y: "EBITDA Exit 5Y",
-  dcf_pe_exit_10y: "P/E Exit 10Y",
-  dcf_ebitda_exit_fcfe_10y: "EV/EBITDA Exit 10Y",
-  pe_multiples: "P/E",
-  ev_ebitda_multiples: "EV/EBITDA",
-  pb_multiples: "P/B",
-  ps_multiples: "P/S",
-  p_fcf_multiples: "P/FCF",
-  peg: "PEG Fair Value",
-};
-
-const MODEL_LINKS: Record<string, string> = {
-  dcf_pe_exit_10y: "/valuation/dcf/pe-exit",
-  dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
-  dcf_fcff_growth_5y: "/valuation/dcf/fcff-growth-5y",
-  dcf_fcff_growth_10y: "/valuation/dcf/fcff-growth-10y",
-  dcf_fcff_ebitda_exit_5y: "/valuation/dcf/fcff-ebitda-exit-5y",
-  pe_multiples: "/valuation/trading-multiples",
-  ev_ebitda_multiples: "/valuation/trading-multiples",
-  pb_multiples: "/valuation/trading-multiples",
-  ps_multiples: "/valuation/trading-multiples",
-  p_fcf_multiples: "/valuation/trading-multiples",
-  peg: "/valuation/peg",
-};
 
 const VERDICT_CONFIG = {
   undervalued: { label: "Undervalued", color: "text-success" },

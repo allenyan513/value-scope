@@ -2,9 +2,10 @@
 // Cron: Refresh Estimates
 // Rotates through all companies, refreshing analyst estimates
 // and price target consensus from FMP in batches.
-// Schedule: 5:00 PM ET weekdays
-// FMP calls: ~200/day (100 stocks × 2 endpoints)
+// Schedule: 4:00 PM ET (slot=0) + 6:00 PM ET (slot=1) weekdays
+// FMP calls: ~1000/day (250 stocks × 2 endpoints × 2 slots)
 // Supports ?full=true to refresh ALL stocks (for initial setup)
+// Supports ?slot=0|1 to select non-overlapping rotation windows
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   const isFull = request.nextUrl.searchParams.get("full") === "true";
+  const slot = parseInt(request.nextUrl.searchParams.get("slot") ?? "0", 10);
   const db = createServerClient();
 
   try {
@@ -49,19 +51,38 @@ export async function GET(request: NextRequest) {
     );
 
     // 2. Select batch to process
+    // slot=0 and slot=1 are offset by half the total batches so they cover different tickers
     let tickersToProcess: string[];
+    let batchLabel = "FULL";
     if (isFull) {
       tickersToProcess = allTickers;
     } else {
       const totalBatches = Math.ceil(allTickers.length / CRON_ESTIMATES_BATCH_SIZE);
-      const batchIndex = getDayOfYear() % totalBatches;
+      const slotOffset = slot === 1 ? Math.floor(totalBatches / 2) : 0;
+      const batchIndex = (getDayOfYear() + slotOffset) % totalBatches;
       const start = batchIndex * CRON_ESTIMATES_BATCH_SIZE;
       tickersToProcess = allTickers.slice(start, start + CRON_ESTIMATES_BATCH_SIZE);
+      batchLabel = `slot=${slot}, batch ${batchIndex + 1}/${totalBatches}`;
     }
 
     console.log(
-      `[refresh-estimates] Processing ${tickersToProcess.length}/${allTickers.length} companies` +
-      (isFull ? " (FULL)" : ` (batch ${getDayOfYear() % Math.ceil(allTickers.length / CRON_ESTIMATES_BATCH_SIZE) + 1})`)
+      `[refresh-estimates] Processing ${tickersToProcess.length}/${allTickers.length} companies (${batchLabel})`
+    );
+
+    // 3. Pre-fetch all distinct FX rates needed (one call per currency, not per ticker)
+    const distinctCurrencies = [
+      ...new Set(
+        tickersToProcess
+          .map((t) => currencyMap.get(t) || "USD")
+          .filter((c) => c !== "USD")
+      ),
+    ];
+    const fxRates = new Map<string, number>([["USD", 1.0]]);
+    await Promise.all(
+      distinctCurrencies.map(async (currency) => {
+        const rate = await getFXRateToUSD(currency).catch(() => 1.0);
+        fxRates.set(currency, rate);
+      })
     );
 
     let estimatesRefreshed = 0;
@@ -70,11 +91,11 @@ export async function GET(request: NextRequest) {
 
     for (const ticker of tickersToProcess) {
       try {
-        // Refresh analyst estimates (convert non-USD to USD)
+        // Refresh analyst estimates (convert non-USD to USD using pre-fetched FX rate)
         const fmpEstimates = await getAnalystEstimates(ticker, "annual", 5);
         if (fmpEstimates.length > 0) {
           const currency = currencyMap.get(ticker) || "USD";
-          const fxRate = currency !== "USD" ? await getFXRateToUSD(currency) : 1.0;
+          const fxRate = fxRates.get(currency) ?? 1.0;
           await upsertEstimates(
             fmpEstimates.map((e) =>
               convertEstimateToUSD(

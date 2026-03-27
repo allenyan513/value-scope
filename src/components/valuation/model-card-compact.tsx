@@ -2,32 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationResult } from "@/types";
-
-const MODEL_NAMES: Record<string, string> = {
-  dcf_growth_exit_5y: "DCF — Growth Exit (5Y)",
-  dcf_growth_exit_10y: "DCF — Growth Exit (10Y)",
-  dcf_ebitda_exit_5y: "DCF — EBITDA Exit (5Y)",
-  dcf_ebitda_exit_10y: "DCF — EBITDA Exit (10Y)",
-  dcf_3stage: "DCF — Perpetual Growth (10Y)",
-  dcf_pe_exit_10y: "DCF — P/E Exit (10Y)",
-  dcf_ebitda_exit_fcfe_10y: "DCF — EV/EBITDA Exit (10Y)",
-  pe_multiples: "P/E Multiples",
-  ev_ebitda_multiples: "EV/EBITDA Multiples",
-  peg: "PEG Fair Value",
-};
-
-const MODEL_LINKS: Record<string, string> = {
-  dcf_growth_exit_5y: "/valuation/dcf",
-  dcf_growth_exit_10y: "/valuation/dcf",
-  dcf_ebitda_exit_5y: "/valuation/dcf",
-  dcf_ebitda_exit_10y: "/valuation/dcf",
-  dcf_3stage: "/valuation/dcf",
-  dcf_pe_exit_10y: "/valuation/dcf",
-  dcf_ebitda_exit_fcfe_10y: "/valuation/dcf",
-  pe_multiples: "/valuation/trading-multiples",
-  ev_ebitda_multiples: "/valuation/trading-multiples",
-  peg: "/valuation/peg",
-};
+import { MODEL_NAMES, MODEL_LINKS } from "@/lib/valuation/model-names";
 
 interface Props {
   model: ValuationResult;
