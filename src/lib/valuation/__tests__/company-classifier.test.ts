@@ -25,8 +25,8 @@ describe("classifyCompany", () => {
     expect(result.model_weights).toBeDefined();
     // All 6 active models should have weight keys
     expect(result.model_weights).toHaveProperty("dcf_3stage");
-    expect(result.model_weights).toHaveProperty("dcf_pe_exit_10y");
-    expect(result.model_weights).toHaveProperty("dcf_ebitda_exit_fcfe_10y");
+    expect(result.model_weights).toHaveProperty("dcf_fcff_ebitda_exit_5y");
+    expect(result.model_weights).toHaveProperty("dcf_fcff_ebitda_exit_10y");
     expect(result.model_weights).toHaveProperty("pe_multiples");
     expect(result.model_weights).toHaveProperty("ev_ebitda_multiples");
     expect(result.model_weights).toHaveProperty("peg");
@@ -82,8 +82,8 @@ describe("classifyCompany", () => {
 describe("computeWeightedConsensus", () => {
   const models = [
     { model_type: "dcf_3stage", fair_value: 100, low_estimate: 80, high_estimate: 120 },
-    { model_type: "dcf_pe_exit_10y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
-    { model_type: "dcf_ebitda_exit_fcfe_10y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
+    { model_type: "dcf_fcff_ebitda_exit_5y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
+    { model_type: "dcf_fcff_ebitda_exit_10y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
     { model_type: "pe_multiples", fair_value: 150, low_estimate: 130, high_estimate: 170 },
     { model_type: "ev_ebitda_multiples", fair_value: 120, low_estimate: 100, high_estimate: 140 },
     { model_type: "peg", fair_value: 80, low_estimate: 60, high_estimate: 100 },
@@ -91,8 +91,8 @@ describe("computeWeightedConsensus", () => {
 
   const weights = {
     dcf_3stage: 0.15,
-    dcf_pe_exit_10y: 0.08,
-    dcf_ebitda_exit_fcfe_10y: 0.07,
+    dcf_fcff_ebitda_exit_5y: 0.08,
+    dcf_fcff_ebitda_exit_10y: 0.07,
     pe_multiples: 0.15,
     ev_ebitda_multiples: 0.15,
     peg: 0.40,
@@ -177,15 +177,15 @@ describe("computeWeightedConsensus", () => {
     // Models clustered around 100, one outlier at 170 (70% above median ~105)
     const modelsWithOutlier = [
       { model_type: "dcf_3stage", fair_value: 100, low_estimate: 80, high_estimate: 120 },
-      { model_type: "dcf_pe_exit_10y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
-      { model_type: "dcf_ebitda_exit_fcfe_10y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
+      { model_type: "dcf_fcff_ebitda_exit_5y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
+      { model_type: "dcf_fcff_ebitda_exit_10y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
       { model_type: "pe_multiples", fair_value: 170, low_estimate: 150, high_estimate: 190 },
       { model_type: "ev_ebitda_multiples", fair_value: 100, low_estimate: 80, high_estimate: 120 },
       { model_type: "peg", fair_value: 95, low_estimate: 75, high_estimate: 115 },
     ];
 
     const evenWeights = {
-      dcf_3stage: 0.15, dcf_pe_exit_10y: 0.15, dcf_ebitda_exit_fcfe_10y: 0.15,
+      dcf_3stage: 0.15, dcf_fcff_ebitda_exit_5y: 0.15, dcf_fcff_ebitda_exit_10y: 0.15,
       pe_multiples: 0.15, ev_ebitda_multiples: 0.15, peg: 0.25,
     };
 
@@ -201,15 +201,15 @@ describe("computeWeightedConsensus", () => {
     // Models clustered around 100, one extreme outlier at 220 (>100% above median)
     const modelsWithExtreme = [
       { model_type: "dcf_3stage", fair_value: 100, low_estimate: 80, high_estimate: 120 },
-      { model_type: "dcf_pe_exit_10y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
-      { model_type: "dcf_ebitda_exit_fcfe_10y", fair_value: 95, low_estimate: 75, high_estimate: 115 },
+      { model_type: "dcf_fcff_ebitda_exit_5y", fair_value: 105, low_estimate: 85, high_estimate: 125 },
+      { model_type: "dcf_fcff_ebitda_exit_10y", fair_value: 95, low_estimate: 75, high_estimate: 115 },
       { model_type: "pe_multiples", fair_value: 220, low_estimate: 200, high_estimate: 240 },
       { model_type: "ev_ebitda_multiples", fair_value: 100, low_estimate: 80, high_estimate: 120 },
       { model_type: "peg", fair_value: 110, low_estimate: 90, high_estimate: 130 },
     ];
 
     const evenWeights = {
-      dcf_3stage: 0.15, dcf_pe_exit_10y: 0.15, dcf_ebitda_exit_fcfe_10y: 0.15,
+      dcf_3stage: 0.15, dcf_fcff_ebitda_exit_5y: 0.15, dcf_fcff_ebitda_exit_10y: 0.15,
       pe_multiples: 0.15, ev_ebitda_multiples: 0.15, peg: 0.25,
     };
 
@@ -225,8 +225,8 @@ describe("computeWeightedConsensus", () => {
     // All models between 80 and 120 — all within 50% of median (~100)
     const tightModels = [
       { model_type: "dcf_3stage", fair_value: 100, low_estimate: 80, high_estimate: 120 },
-      { model_type: "dcf_pe_exit_10y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
-      { model_type: "dcf_ebitda_exit_fcfe_10y", fair_value: 95, low_estimate: 75, high_estimate: 115 },
+      { model_type: "dcf_fcff_ebitda_exit_5y", fair_value: 110, low_estimate: 90, high_estimate: 130 },
+      { model_type: "dcf_fcff_ebitda_exit_10y", fair_value: 95, low_estimate: 75, high_estimate: 115 },
       { model_type: "pe_multiples", fair_value: 120, low_estimate: 100, high_estimate: 140 },
       { model_type: "ev_ebitda_multiples", fair_value: 105, low_estimate: 85, high_estimate: 125 },
       { model_type: "peg", fair_value: 90, low_estimate: 70, high_estimate: 110 },

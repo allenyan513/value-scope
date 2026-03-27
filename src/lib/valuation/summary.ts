@@ -20,14 +20,8 @@ import type {
 import { VERDICT_THRESHOLD, DEFAULT_CONSENSUS_STRATEGY } from "@/lib/constants";
 import { calculateWACC, buildWACCInputs } from "./wacc";
 import type { DCFFCFEInputs } from "./dcf";
-import {
-  calculateDCF3Stage,
-  calculateDCF3StagePEExit,
-  calculateDCF3StageEBITDAExit,
-  type DCFExitMultipleInputs,
-} from "./dcf-3stage";
-import { calculateDCFFCFF, calculateDCFFCFF10Y, calculateDCFFCFFEBITDAExit, type DCFFCFFInputs, type DCFFCFFEBITDAExitInputs } from "./dcf-fcff";
-import { computeMultiplesStats } from "./historical-multiples";
+import { calculateDCF3Stage } from "./dcf-3stage";
+import { calculateDCFFCFF, calculateDCFFCFF10Y, calculateDCFFCFFEBITDAExit, calculateDCFFCFFEBITDAExit10Y, type DCFFCFFInputs, type DCFFCFFEBITDAExitInputs } from "./dcf-fcff";
 import {
   calculatePEMultiples,
   calculateEVEBITDAMultiples,
@@ -51,17 +45,16 @@ export interface FullValuationInputs {
   historicalMultiples?: HistoricalMultiplesPoint[];
   /** Override consensus strategy (defaults to DEFAULT_CONSENSUS_STRATEGY) */
   consensusStrategy?: ConsensusStrategy;
-  /** Peer EV/EBITDA median for the EBITDA Exit 5Y model terminal value */
+  /** Peer EV/EBITDA median for the EBITDA Exit models terminal value */
   peerEVEBITDAMedian?: number;
 }
 
 // --- DCF model types for pillar grouping ---
 const DCF_MODEL_TYPES = new Set([
-  "dcf_pe_exit_10y",
-  "dcf_ebitda_exit_fcfe_10y",
   "dcf_fcff_growth_5y",
-  "dcf_fcff_ebitda_exit_5y",
   "dcf_fcff_growth_10y",
+  "dcf_fcff_ebitda_exit_5y",
+  "dcf_fcff_ebitda_exit_10y",
 ]);
 
 const TRADING_MULTIPLES_MODEL_TYPES = new Set([
@@ -208,15 +201,19 @@ export function computeFullValuation(
     /* skip if insufficient data */
   }
 
-  // DCF: FCFF EBITDA Exit 5Y — uses peer EV/EBITDA median as terminal multiple
-  // Not included in consensus pillar; shown as standalone model on its own page
+  // DCF: FCFF EBITDA Exit 5Y & 10Y — uses peer EV/EBITDA median as terminal multiple
   if (peerEVEBITDAMedian && peerEVEBITDAMedian > 0) {
+    const ebitdaExitInputs: DCFFCFFEBITDAExitInputs = {
+      ...fcffInputs,
+      peerEVEBITDAMedian,
+    };
     try {
-      const ebitdaExitInputs: DCFFCFFEBITDAExitInputs = {
-        ...fcffInputs,
-        peerEVEBITDAMedian,
-      };
       models.push(calculateDCFFCFFEBITDAExit(ebitdaExitInputs));
+    } catch {
+      /* skip if insufficient data */
+    }
+    try {
+      models.push(calculateDCFFCFFEBITDAExit10Y(ebitdaExitInputs));
     } catch {
       /* skip if insufficient data */
     }
@@ -225,29 +222,6 @@ export function computeFullValuation(
   // DCF: Perpetual Growth
   try {
     models.push(calculateDCF3Stage(dcfInputs));
-  } catch {
-    /* skip if insufficient data */
-  }
-
-  // DCF: Exit multiple terminal values (P/E and EV/EBITDA)
-  const multiplesStats = inputs.historicalMultiples
-    ? computeMultiplesStats(inputs.historicalMultiples)
-    : null;
-
-  const exitInputs: DCFExitMultipleInputs = {
-    ...dcfInputs,
-    exitPE: multiplesStats?.pe?.avg5y,
-    exitEVEBITDA: multiplesStats?.ev_ebitda?.avg5y,
-  };
-
-  try {
-    models.push(calculateDCF3StagePEExit(exitInputs));
-  } catch {
-    /* skip if insufficient data */
-  }
-
-  try {
-    models.push(calculateDCF3StageEBITDAExit(exitInputs));
   } catch {
     /* skip if insufficient data */
   }

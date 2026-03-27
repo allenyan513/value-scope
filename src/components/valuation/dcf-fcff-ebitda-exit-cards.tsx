@@ -86,6 +86,8 @@ export function DCFFCFFEBITDAExitCards({ model, currentPrice, narrative, peers }
   const isCustom = wacc !== defaultWACC || multiple !== defaultMultiple;
   const resetDefaults = () => { setWACC(defaultWACC); setMultiple(defaultMultiple); };
 
+  const numYears = projections.length; // 5 or 10
+
   const calc = useMemo(() => {
     // Use raw precision when at defaults to match server fair_value exactly
     const w = !isCustom && waccRaw != null ? waccRaw : wacc / 100;

@@ -78,10 +78,10 @@ function buildModelApplicability(
     : "high";
   const dcfReason =
     dcfConfidence === "low" ? "DCF projects future cash flows; use with caution for unprofitable companies"
-    : dcfConfidence === "medium" ? "DCF captures intrinsic value based on projected free cash flows to equity"
+    : dcfConfidence === "medium" ? "DCF captures intrinsic value based on projected free cash flows"
     : "Predictable cash flows make DCF the most reliable intrinsic valuation";
 
-  for (const dcfType of ["dcf_3stage", "dcf_pe_exit_10y", "dcf_ebitda_exit_fcfe_10y"]) {
+  for (const dcfType of ["dcf_3stage", "dcf_fcff_ebitda_exit_5y", "dcf_fcff_ebitda_exit_10y"]) {
     applicability.push({
       model_type: dcfType,
       applicable: true,

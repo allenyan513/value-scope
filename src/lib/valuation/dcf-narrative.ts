@@ -65,42 +65,21 @@ export function generateDCFNarrative(
   }
 
   // Build narrative based on terminal method
-  if (method === "pe_exit") {
-    const exitPE = a.exit_pe as number;
-    return [
-      `Using a Discounted Cash Flow model with P/E exit multiple, we project ${companyName}'s free cash flows over ${projYears} years.`,
-      growthDesc ? `The first 5 years use analyst consensus estimates (${growthDesc}), while years 6–10 transition to the terminal phase.` : "",
-      marginDesc ? `${marginDesc}.` : "",
-      `At a ${pct(discountRate)} cost of equity, we discount projected cash flows to present value.`,
-      `In year ${projYears}, we assume the market values ${ticker} at a P/E of ${exitPE.toFixed(1)}x — its 5-year historical average — to derive the terminal value, which represents ${tvPortion}% of total present value.`,
-      `This yields an intrinsic value of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
-    ].filter(Boolean).join(" ");
-  }
 
-  // FCFF EBITDA Exit — must be checked before generic ebitda_exit (same terminal_method)
-  if (model.model_type === "dcf_fcff_ebitda_exit_5y") {
+  // FCFF EBITDA Exit (5Y and 10Y)
+  if (model.model_type === "dcf_fcff_ebitda_exit_5y" || model.model_type === "dcf_fcff_ebitda_exit_10y") {
     const waccRate = (a.wacc as number) ?? discountRate;
     const peerMultiple = a.peer_ev_ebitda_multiple as number;
+    const horizonDesc = projYears === 10
+      ? `over 10 years with analyst estimates for the first 3–5 years, fading toward long-term GDP growth for the remaining years`
+      : `over 5 years`;
+    const termYearNum = projYears + 1;
     return [
-      `Using an unlevered Free Cash Flow to Firm (FCFF) model, we project ${companyName}'s cash flows over 5 years with line-by-line expense modeling.`,
+      `Using an unlevered Free Cash Flow to Firm (FCFF) model, we project ${companyName}'s cash flows ${horizonDesc} with line-by-line expense modeling.`,
       growthDesc ? `Revenue is projected ${growthDesc}, with expenses (COGS, SG&A, R&D) held at historical ratios.` : "",
       `Depreciation is computed from a vintage matrix based on a ${a.useful_life ?? 5}-year useful life. Working capital is modeled using historical turnover days (DSO ${a.dso ?? "N/A"}, DPO ${a.dpo ?? "N/A"}, DIO ${a.dio ?? "N/A"}).`,
-      `At a ${pct(waccRate)} WACC with mid-year discounting, the terminal value (${tvPortion}% of enterprise value) is derived by applying the industry peer median EV/EBITDA multiple of ${peerMultiple != null ? peerMultiple.toFixed(1) : "N/A"}x to Year 6 EBITDA.`,
+      `At a ${pct(waccRate)} WACC with mid-year discounting, the terminal value (${tvPortion}% of enterprise value) is derived by applying the industry peer median EV/EBITDA multiple of ${peerMultiple != null ? peerMultiple.toFixed(1) : "N/A"}x to Year ${termYearNum} EBITDA.`,
       `After subtracting net debt, the equity value implies a fair price of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
-    ].filter(Boolean).join(" ");
-  }
-
-  if (method === "ebitda_exit") {
-    const exitMult = a.exit_ev_ebitda as number;
-    const ebitdaMargin = a.ebitda_margin as number | undefined;
-    return [
-      `Using a Discounted Cash Flow model with EV/EBITDA exit multiple, we project ${companyName}'s free cash flows over ${projYears} years.`,
-      growthDesc ? `The first 5 years use analyst consensus estimates (${growthDesc}), while years 6–10 transition to the terminal phase.` : "",
-      marginDesc ? `${marginDesc}.` : "",
-      ebitdaMargin ? `The historical EBITDA margin of ${pct(ebitdaMargin)} is applied to project terminal EBITDA.` : "",
-      `At a ${pct(discountRate)} cost of equity, we discount projected cash flows to present value.`,
-      `In year ${projYears}, we value the enterprise at ${exitMult.toFixed(1)}x EV/EBITDA — the 5-year historical average — then subtract net debt to arrive at equity value. Terminal value represents ${tvPortion}% of total present value.`,
-      `This yields an intrinsic value of ${dollar(model.fair_value)} per share, suggesting ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
     ].filter(Boolean).join(" ");
   }
 

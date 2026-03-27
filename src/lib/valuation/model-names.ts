@@ -30,8 +30,7 @@ export const MODEL_ORDER = [
   "dcf_fcff_growth_5y",
   "dcf_fcff_growth_10y",
   "dcf_fcff_ebitda_exit_5y",
-  "dcf_pe_exit_10y",
-  "dcf_ebitda_exit_fcfe_10y",
+  "dcf_fcff_ebitda_exit_10y",
   "pe_multiples",
   "ev_ebitda_multiples",
   "pb_multiples",
@@ -45,6 +44,7 @@ export const MODEL_LINKS: Record<string, string> = {
   dcf_fcff_growth_5y: "/valuation/dcf/fcff-growth-5y",
   dcf_fcff_growth_10y: "/valuation/dcf/fcff-growth-10y",
   dcf_fcff_ebitda_exit_5y: "/valuation/dcf/fcff-ebitda-exit-5y",
+  dcf_fcff_ebitda_exit_10y: "/valuation/dcf/fcff-ebitda-exit-10y",
   dcf_pe_exit_10y: "/valuation/dcf/pe-exit",
   dcf_ebitda_exit_fcfe_10y: "/valuation/dcf/ev-ebitda-exit",
   // Legacy keys

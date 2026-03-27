@@ -6,11 +6,6 @@
  */
 import { describe, it, expect } from "vitest";
 import {
-  calculateDCF3Stage,
-  calculateDCF3StagePEExit,
-  calculateDCF3StageEBITDAExit,
-} from "../dcf-3stage";
-import {
   calculatePSMultiples,
   calculatePBMultiples,
   calculatePEMultiples,
@@ -23,70 +18,8 @@ import {
   makeFinancial,
   generateHistoricalMultiples,
 } from "./fixtures";
-import type { DCFExitMultipleInputs } from "../dcf-3stage";
 import type { TradingMultiplesInputs } from "../trading-multiples";
 import type { Company } from "@/types";
-
-// ============================================================
-// Bug #1 Guard: High-debt companies should NOT get near-zero DCF
-// Root cause was double net-debt subtraction in EV/EBITDA exit
-// ============================================================
-describe("Bug #1 Guard: DCF EV/EBITDA exit with high debt", () => {
-  // Simulate Tyson Foods: high debt, low margin, moderate revenue
-  const highDebtInputs: DCFExitMultipleInputs = {
-    historicals: [
-      makeFinancial(2025, { revenue: 55e9, net_income: 1.5e9, ebitda: 4e9, eps: 4.2, eps_diluted: 4.2 }),
-      makeFinancial(2024, { revenue: 53e9, net_income: 2e9, ebitda: 4.5e9, eps: 5.6, eps_diluted: 5.6 }),
-      makeFinancial(2023, { revenue: 52e9, net_income: 1e9, ebitda: 3.5e9, eps: 2.8, eps_diluted: 2.8 }),
-      makeFinancial(2022, { revenue: 53e9, net_income: 3e9, ebitda: 5e9, eps: 8.4, eps_diluted: 8.4 }),
-      makeFinancial(2021, { revenue: 47e9, net_income: 3e9, ebitda: 5e9, eps: 8.4, eps_diluted: 8.4 }),
-    ],
-    estimates: testEstimates,
-    costOfEquity: 0.08,
-    currentPrice: 63,
-    sharesOutstanding: 356_000_000,
-    cashAndEquivalents: 1e9,
-    totalDebt: 25e9, // High debt relative to EBITDA
-    terminalGrowthRate: 0.025,
-    exitEVEBITDA: 8,
-  };
-
-  it("should produce fair value > $1 (not near-zero)", () => {
-    const result = calculateDCF3StageEBITDAExit(highDebtInputs);
-    expect(result.fair_value).toBeGreaterThan(1);
-  });
-
-  it("should not double-count debt in EV/EBITDA exit vs perpetuity", () => {
-    const ebitdaExit = calculateDCF3StageEBITDAExit(highDebtInputs);
-    const perpetuity = calculateDCF3Stage(highDebtInputs);
-
-    // Both models should produce values in the same order of magnitude
-    // (not 100x apart like the bug produced)
-    if (ebitdaExit.fair_value > 0 && perpetuity.fair_value > 0) {
-      const ratio = ebitdaExit.fair_value / perpetuity.fair_value;
-      expect(ratio).toBeGreaterThan(0.1);
-      expect(ratio).toBeLessThan(10);
-    }
-  });
-
-  it("sensitivity matrix should agree with main calculation", () => {
-    const result = calculateDCF3StageEBITDAExit(highDebtInputs);
-    const prices = (result.details as { sensitivity_matrix?: { prices: number[][] } })
-      .sensitivity_matrix?.prices;
-
-    if (prices) {
-      // Center cell of sensitivity matrix should be close to fair_value
-      const centerRow = Math.floor(prices.length / 2);
-      const centerCol = Math.floor(prices[centerRow].length / 2);
-      const centerValue = prices[centerRow][centerCol];
-
-      // Allow 5% tolerance (sensitivity uses slightly different calculation path)
-      const ratio = centerValue / result.fair_value;
-      expect(ratio).toBeGreaterThan(0.9);
-      expect(ratio).toBeLessThan(1.1);
-    }
-  });
-});
 
 // ============================================================
 // Bug #3 Guard: Trading multiples with historical data should

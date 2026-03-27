@@ -1,6 +1,7 @@
 export { calculateWACC, buildWACCInputs } from "./wacc";
 export { calculateDCF } from "./dcf";
-export { calculateDCF3Stage, calculateDCF3StagePEExit, calculateDCF3StageEBITDAExit } from "./dcf-3stage";
+export { calculateDCF3Stage } from "./dcf-3stage";
+export { calculateDCFFCFFEBITDAExit, calculateDCFFCFFEBITDAExit10Y } from "./dcf-fcff";
 export { calculatePEMultiples, calculateEVEBITDAMultiples } from "./trading-multiples";
 export { calculatePEG } from "./peg";
 export { computeFullValuation } from "./summary";

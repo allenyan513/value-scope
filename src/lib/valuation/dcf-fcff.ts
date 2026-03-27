@@ -9,4 +9,4 @@
 export type { DCFFCFFInputs } from "./dcf-fcff-builders";
 export { calculateDCFFCFF, calculateDCFFCFF10Y } from "./dcf-fcff-growth";
 export type { DCFFCFFEBITDAExitInputs } from "./dcf-fcff-ebitda-exit";
-export { calculateDCFFCFFEBITDAExit } from "./dcf-fcff-ebitda-exit";
+export { calculateDCFFCFFEBITDAExit, calculateDCFFCFFEBITDAExit10Y } from "./dcf-fcff-ebitda-exit";

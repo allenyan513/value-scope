@@ -95,4 +95,4 @@ All `/valuation` sub-pages use semantic CSS classes defined in `globals.css @lay
 `src/components/valuation/summary-card.tsx` — Main summary page table with tree-style pillar grouping.
 - Accepts `strategySwitcher` slot (ReactNode) rendered next to the heading
 - Three display modes driven by `consensus_strategy`: `dcf_primary` (no consensus footer, no pillar values), `median` (pillar values + consensus footer), `weighted` (same layout as median)
-- `MODEL_NAMES` record maps model_type → display name (9 models). If adding models, update here.
+- `MODEL_NAMES` record maps model_type → display name (10 models). If adding models, update here.

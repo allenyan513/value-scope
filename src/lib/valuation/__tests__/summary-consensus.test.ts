@@ -193,7 +193,7 @@ describe("computeFullValuation — cross-strategy comparison", () => {
 });
 
 describe("computeFullValuation — shared behavior", () => {
-  it("should run all 9 models (3 DCF + 5 multiples + PEG)", () => {
+  it("should run all 10 models (5 DCF + 5 multiples + PEG — some may be N/A)", () => {
     const result = computeFullValuation(BASE_INPUTS);
     expect(result.models.length).toBeGreaterThanOrEqual(7);
   });
