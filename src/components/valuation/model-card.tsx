@@ -4,16 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ValuationResult } from "@/types";
 import { formatLargeNumber } from "@/lib/format";
-
-const MODEL_NAMES: Record<string, string> = {
-  dcf_growth_exit_5y: "DCF Valuation",
-  dcf_3stage: "DCF Perpetual Growth",
-  dcf_pe_exit_10y: "DCF P/E Exit",
-  dcf_ebitda_exit_fcfe_10y: "DCF EV/EBITDA Exit",
-  pe_multiples: "P/E Multiples",
-  ev_ebitda_multiples: "EV/EBITDA Multiples",
-  peg: "PEG Fair Value",
-};
+import { MODEL_NAMES } from "@/lib/valuation/model-names";
 
 interface Props {
   model: ValuationResult;

@@ -4,7 +4,7 @@ import {
   getFinancials,
   getEstimates,
   getLatestPrice,
-  getIndustryPeers,
+  getPeersByIndustry,
   getPriceTargets,
   getPriceHistory,
   getValuationHistory,
@@ -27,8 +27,8 @@ import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDo
 export const getCoreTickerData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
 
-  // Level 1: ALL independent queries in parallel (flattened from 2 sequential batches)
-  const [company, historicals, estimates, riskFreeRate, prices, latestPrice, peerCompanies] =
+  // Level 1: ALL independent queries in parallel
+  const [company, historicals, estimates, riskFreeRate, prices, latestPrice] =
     await Promise.all([
       getCompany(upperTicker),
       getFinancials(upperTicker, "annual", 5),
@@ -36,7 +36,6 @@ export const getCoreTickerData = cache(async (ticker: string) => {
       getTenYearTreasuryYield().catch(() => 0.0425),
       getPriceHistory(upperTicker, 365 * 5),
       getLatestPrice(upperTicker),
-      getIndustryPeers(upperTicker, 15),
     ]);
 
   if (!company) {
@@ -65,7 +64,8 @@ export const getCoreTickerData = cache(async (ticker: string) => {
 
   const currentPrice = latestPrice || company.price || 0;
 
-  // Level 2: computation + peer metrics in parallel
+  // Level 2: peers + computation + peer metrics in parallel
+  const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
 
   const peerMetricsPromises = peerCompanies.slice(0, 10).map(async (peer) => {

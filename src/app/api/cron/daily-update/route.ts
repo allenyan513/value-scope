@@ -12,7 +12,7 @@ import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes, getPriceTargetConsensus, getAnalystEstimates, getFXRateToUSD } from "@/lib/data/fmp";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getFinancials, getEstimates, getIndustryPeers, getPriceHistory, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
+import { getFinancials, getEstimates, getPeersByIndustry, getPriceHistory, upsertValuation, upsertValuationHistory, upsertPriceTargets, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getKeyMetrics } from "@/lib/data/fmp";
@@ -63,16 +63,19 @@ export async function GET(request: NextRequest) {
         .upsert(priceRows.slice(i, i + 500), { onConflict: "ticker,date" });
     }
 
-    // Also update company price
-    for (const q of quotes) {
-      await db
+    // Also update company price (parallel batches of 50)
+    const priceUpdates = quotes.map((q) =>
+      db
         .from("companies")
         .update({
           price: q.price,
           market_cap: q.marketCap,
           updated_at: new Date().toISOString(),
         })
-        .eq("ticker", q.symbol);
+        .eq("ticker", q.symbol)
+    );
+    for (let i = 0; i < priceUpdates.length; i += 50) {
+      await Promise.all(priceUpdates.slice(i, i + 50));
     }
 
     // 4. Recompute valuations for each company
@@ -125,29 +128,32 @@ export async function GET(request: NextRequest) {
           }
         } catch { /* non-critical: valuation still works with historical CAGR */ }
 
-        // Fetch peers (limited to avoid rate limits)
-        const peerCompanies = await getIndustryPeers(ticker, 8);
-        const peers: PeerComparison[] = [];
-        for (const peer of peerCompanies.slice(0, 5)) {
-          try {
-            const metrics = await getKeyMetrics(peer.ticker, "annual", 1);
-            if (metrics.length > 0) {
-              peers.push({
-                ticker: peer.ticker,
-                name: peer.name,
-                market_cap: peer.market_cap,
-                trailing_pe: metrics[0].priceToEarningsRatio ?? null,
-                forward_pe: null,
-                ev_ebitda: null,
-                price_to_book: metrics[0].priceToBookRatio ?? null,
-                price_to_sales: metrics[0].priceToSalesRatio ?? null,
-                revenue_growth: null,
-                net_margin: null,
-                roe: null,
-              });
-            }
-          } catch { /* skip */ }
-        }
+        // Fetch peers (parallel, limited to avoid rate limits)
+        const peerCompanies = await getPeersByIndustry(company.industry, ticker, 8);
+        const peerResults = await Promise.all(
+          peerCompanies.slice(0, 5).map(async (peer): Promise<PeerComparison | null> => {
+            try {
+              const metrics = await getKeyMetrics(peer.ticker, "annual", 1);
+              if (metrics.length > 0) {
+                return {
+                  ticker: peer.ticker,
+                  name: peer.name,
+                  market_cap: peer.market_cap,
+                  trailing_pe: metrics[0].priceToEarningsRatio ?? null,
+                  forward_pe: null,
+                  ev_ebitda: null,
+                  price_to_book: metrics[0].priceToBookRatio ?? null,
+                  price_to_sales: metrics[0].priceToSalesRatio ?? null,
+                  revenue_growth: null,
+                  net_margin: null,
+                  roe: null,
+                };
+              }
+              return null;
+            } catch { return null; }
+          })
+        );
+        const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
         const [historicalMultiples, peerEVEBITDAMedian] = await Promise.all([
           Promise.resolve(computeHistoricalMultiples(historicals, prices)),
@@ -165,10 +171,8 @@ export async function GET(request: NextRequest) {
           peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
         });
 
-        // Save each model result
-        for (const model of summary.models) {
-          await upsertValuation(ticker, model);
-        }
+        // Save each model result (parallel upserts)
+        await Promise.all(summary.models.map((model) => upsertValuation(ticker, model)));
 
         // Save valuation history snapshot
         await upsertValuationHistory(

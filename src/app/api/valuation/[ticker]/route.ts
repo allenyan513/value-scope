@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getIndustryPeers, getPriceHistory, upsertValuation, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getPeersByIndustry, getPriceHistory, upsertValuation, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
@@ -118,35 +118,37 @@ export async function GET(
       );
     }
 
-    // Get peer data for trading multiples
-    const peerCompanies = await getIndustryPeers(upperTicker, 15);
-    const peers: PeerComparison[] = [];
-
-    for (const peer of peerCompanies) {
-      try {
-        const [metrics, evMetrics] = await Promise.all([
-          getKeyMetrics(peer.ticker, "annual", 1),
-          getEVMetrics(peer.ticker, 1),
-        ]);
-        if (metrics.length > 0) {
-          peers.push({
-            ticker: peer.ticker,
-            name: peer.name,
-            market_cap: peer.market_cap,
-            trailing_pe: metrics[0].priceToEarningsRatio ?? null,
-            forward_pe: null,
-            ev_ebitda: evMetrics[0]?.evToEBITDA ?? null,
-            price_to_book: metrics[0].priceToBookRatio ?? null,
-            price_to_sales: metrics[0].priceToSalesRatio ?? null,
-            revenue_growth: null,
-            net_margin: null,
-            roe: null,
-          });
+    // Get peer data for trading multiples (parallel fetch, no redundant getCompany)
+    const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
+    const peerResults = await Promise.all(
+      peerCompanies.map(async (peer): Promise<PeerComparison | null> => {
+        try {
+          const [metrics, evMetrics] = await Promise.all([
+            getKeyMetrics(peer.ticker, "annual", 1),
+            getEVMetrics(peer.ticker, 1),
+          ]);
+          if (metrics.length > 0) {
+            return {
+              ticker: peer.ticker,
+              name: peer.name,
+              market_cap: peer.market_cap,
+              trailing_pe: metrics[0].priceToEarningsRatio ?? null,
+              forward_pe: null,
+              ev_ebitda: evMetrics[0]?.evToEBITDA ?? null,
+              price_to_book: metrics[0].priceToBookRatio ?? null,
+              price_to_sales: metrics[0].priceToSalesRatio ?? null,
+              revenue_growth: null,
+              net_margin: null,
+              roe: null,
+            };
+          }
+          return null;
+        } catch {
+          return null;
         }
-      } catch {
-        // Skip peers with no data
-      }
-    }
+      })
+    );
+    const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
     // Compute historical multiples for self-comparison
     const [historicalMultiples, peerEVEBITDAMedian] = await Promise.all([
@@ -166,10 +168,8 @@ export async function GET(
       peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
     });
 
-    // Cache results
-    for (const model of summary.models) {
-      await upsertValuation(upperTicker, model);
-    }
+    // Cache results (parallel upserts)
+    await Promise.all(summary.models.map((model) => upsertValuation(upperTicker, model)));
 
     // Bust ISR cache so page reflects fresh valuation
     revalidatePath(`/${upperTicker}`, "layout");

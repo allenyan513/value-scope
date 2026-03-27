@@ -82,9 +82,7 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
       });
 
-      for (const model of summary.models) {
-        await upsertValuation(company.ticker, model);
-      }
+      await Promise.all(summary.models.map((model) => upsertValuation(company.ticker, model)));
 
       await upsertValuationHistory(
         company.ticker,
