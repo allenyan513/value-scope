@@ -53,6 +53,8 @@ export interface FullValuationInputs {
   consensusStrategy?: ConsensusStrategy;
   /** Peer EV/EBITDA median for the EBITDA Exit 5Y model terminal value */
   peerEVEBITDAMedian?: number;
+  /** Sector median unlevered beta for bottom-up WACC (optional) */
+  sectorUnleveredBeta?: number;
 }
 
 // --- DCF model types for pillar grouping ---
@@ -162,7 +164,8 @@ export function computeFullValuation(
     latestFinancial,
     company.beta || 1.0,
     riskFreeRate,
-    company.market_cap || currentPrice * company.shares_outstanding
+    company.market_cap || currentPrice * company.shares_outstanding,
+    inputs.sectorUnleveredBeta
   );
   const waccResult = calculateWACC(waccInputs);
 

@@ -14,6 +14,7 @@ import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
+import { getSectorBeta } from "@/lib/data/sector-beta";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
@@ -64,9 +65,12 @@ export const getCoreTickerData = cache(async (ticker: string) => {
 
   const currentPrice = latestPrice || company.price || 0;
 
-  // Level 2: peers + computation + peer metrics in parallel
+  // Level 2: peers + computation + peer metrics + sector beta in parallel
   const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+  const sectorBetaPromise = company.sector
+    ? getSectorBeta(company.sector).catch(() => null)
+    : Promise.resolve(null);
 
   const peerMetricsPromises = peerCompanies.slice(0, 10).map(async (peer) => {
     try {
@@ -92,9 +96,10 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     return null;
   });
 
-  const [peerResults, peerEVEBITDAMedian] = await Promise.all([
+  const [peerResults, peerEVEBITDAMedian, sectorUnleveredBeta] = await Promise.all([
     Promise.all(peerMetricsPromises),
     getPeerEVEBITDAMedianFromDB(upperTicker).catch(() => null),
+    sectorBetaPromise,
   ]);
   const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
@@ -107,6 +112,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     riskFreeRate,
     historicalMultiples,
     peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
+    sectorUnleveredBeta: sectorUnleveredBeta ?? undefined,
   });
 
   return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined };

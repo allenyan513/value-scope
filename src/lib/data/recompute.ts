@@ -18,6 +18,7 @@ import {
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { median } from "@/lib/valuation/statistics";
+import { getAllSectorBetas } from "@/lib/data/sector-beta";
 import { toDateString } from "@/lib/format";
 import { RECOMPUTE_CONCURRENCY } from "@/lib/constants";
 import type { Company } from "@/types";
@@ -49,7 +50,10 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
 
   console.log(`[recompute] Processing ${companies.length} companies...`);
 
-  const riskFreeRate = await getTenYearTreasuryYield().catch(() => 0.0425);
+  const [riskFreeRate, sectorBetaMap] = await Promise.all([
+    getTenYearTreasuryYield().catch(() => 0.0425),
+    getAllSectorBetas(),
+  ]);
   let success = 0;
   let skipped = 0;
   let errors = 0;
@@ -85,6 +89,7 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         riskFreeRate,
         historicalMultiples,
         peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
+        sectorUnleveredBeta: sectorBetaMap.get(company.sector) ?? undefined,
       });
 
       await Promise.all(summary.models.map((model) => upsertValuation(company.ticker, model)));
