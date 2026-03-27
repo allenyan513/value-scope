@@ -3,6 +3,7 @@
 import { createServerClient } from "./supabase";
 import type { Company, PeerComparison, PeerEBITDARow } from "@/types";
 import { getIndustryPeers as getFMPStockPeers } from "@/lib/data/fmp-financials";
+import { median } from "@/lib/valuation/statistics";
 
 const db = () => createServerClient();
 
@@ -141,13 +142,6 @@ export async function getPeerEVEBITDAMedianFromDB(
   ticker: string,
   limit = 10
 ): Promise<number | null> {
-  function median(values: number[]): number | null {
-    if (values.length === 0) return null;
-    values.sort((a, b) => a - b);
-    const mid = Math.floor(values.length / 2);
-    return values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-  }
-
   // Try DB industry peers first (fast, no FMP call)
   const dbPeers = await computePeerMetricsFromDB(ticker, limit);
   const dbValid = dbPeers
@@ -184,7 +178,7 @@ export async function getPeerEVEBITDAMedianFromDB(
         if (evEbitda > 0 && evEbitda < 100) fmpValid.push(evEbitda);
       }
     }
-    return median(fmpValid);
+    return fmpValid.length > 0 ? median(fmpValid) : null;
   } catch {
     return null;
   }
