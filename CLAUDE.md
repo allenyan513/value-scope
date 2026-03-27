@@ -8,7 +8,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 10 au
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5
 - **Database**: Supabase (PostgreSQL 17) — project ID: `kbvldznefhrxnbxgvktw`
 - **Styling**: Tailwind CSS 4 + shadcn/ui + Recharts 3
-- **Deployment**: Vercel (ISR + Cron)
+- **Deployment**: Vercel (ISR) + GitHub Actions (Cron)
 - **External APIs**: FMP Stable API (financials), FRED (Treasury yields)
 
 ## Commands
@@ -69,10 +69,12 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - The `as` SQL alias syntax silently fails and returns null/empty results
 
 ## Cron Jobs
+Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron (Hobby plan doesn't support multiple daily jobs). GitHub Actions calls the Vercel-hosted API routes with `CRON_SECRET`.
 - **Update Prices** (`/api/cron/update-prices`): 3x weekdays — 8:30 AM, 10:30 AM, 5:30 PM ET
 - **Refresh Estimates** (`/api/cron/refresh-estimates`): 2x weekdays — 4:00 PM (slot=0), 6:00 PM ET (slot=1). Rotates 250 tickers/slot, 500/day.
 - **Recompute Valuations** (`/api/cron/recompute-valuations`): Weekdays 6:30 PM ET. DB-only, zero FMP calls.
-- Manual trigger: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
+- Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
+- Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
 
 ## Environment Variables
 Required in `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `FMP_API_KEY`, `FRED_API_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_API_PRICE_ID`
