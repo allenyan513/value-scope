@@ -23,6 +23,17 @@ CREATE TABLE companies (
 
 CREATE INDEX idx_companies_sector ON companies(sector);
 
+-- Sector Betas (pre-computed median unlevered beta + WACC stats per sector)
+CREATE TABLE sector_betas (
+  sector TEXT PRIMARY KEY,
+  median_unlevered_beta REAL NOT NULL,
+  peer_count INTEGER NOT NULL DEFAULT 0,
+  median_wacc REAL,
+  p25_wacc REAL,
+  p75_wacc REAL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Financial Statements (annual + quarterly)
 CREATE TABLE financial_statements (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

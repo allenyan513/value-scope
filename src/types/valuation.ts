@@ -234,6 +234,10 @@ export interface WACCResult {
   equity_weight: number;
   total_debt: number;
   total_equity: number;
+  /** Which beta approach was used */
+  beta_method: "individual" | "bottom_up";
+  /** Sector median unlevered beta (only set when beta_method = "bottom_up") */
+  sector_unlevered_beta?: number;
 }
 
 // --- Consensus Adjustments ---

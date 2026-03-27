@@ -10,6 +10,7 @@ describe("calculateWACC", () => {
     marketCap: 3000e9,
     interestExpense: 3e9,
     taxRate: 0.21,
+    betaMethod: "individual",
   };
 
   it("should compute CAPM cost of equity correctly", () => {
@@ -99,10 +100,26 @@ describe("calculateWACC", () => {
     // Ke = 0.0425 + 1.2 × 0.045 + 0.02 = 0.1165
     expect(result.cost_of_equity).toBeCloseTo(0.1165, 4);
   });
+
+  it("should propagate beta_method and sector_unlevered_beta", () => {
+    const result = calculateWACC({
+      ...baseInputs,
+      betaMethod: "bottom_up",
+      sectorUnleveredBeta: 1.05,
+    });
+    expect(result.beta_method).toBe("bottom_up");
+    expect(result.sector_unlevered_beta).toBe(1.05);
+  });
+
+  it("should default beta_method to individual when not specified", () => {
+    const result = calculateWACC(baseInputs);
+    expect(result.beta_method).toBe("individual");
+    expect(result.sector_unlevered_beta).toBeUndefined();
+  });
 });
 
 describe("buildWACCInputs", () => {
-  it("should extract inputs from financial statements", () => {
+  it("should extract inputs from financial statements (individual beta)", () => {
     const fin = appleFinancials[0]; // FY2025
     const inputs = buildWACCInputs(fin, 1.2, 0.0425, 3000e9);
 
@@ -113,6 +130,8 @@ describe("buildWACCInputs", () => {
     expect(inputs.totalDebt).toBe(100e9);
     expect(inputs.interestExpense).toBe(2e9);
     expect(inputs.taxRate).toBe(0.21);
+    expect(inputs.betaMethod).toBe("individual");
+    expect(inputs.sectorUnleveredBeta).toBeUndefined();
   });
 
   it("should floor adjusted beta at 0.3", () => {
@@ -146,5 +165,82 @@ describe("buildWACCInputs", () => {
     const fin = { ...appleFinancials[0], total_debt: -50e9 };
     const inputs = buildWACCInputs(fin, 1.0, 0.04, 1000e9);
     expect(inputs.totalDebt).toBe(0);
+  });
+});
+
+describe("buildWACCInputs — bottom-up sector beta", () => {
+  it("should use sector unlevered beta when provided", () => {
+    const fin = appleFinancials[0]; // total_debt = 100B
+    const marketCap = 3000e9;
+    const sectorUnleveredBeta = 1.05;
+
+    const inputs = buildWACCInputs(fin, 2.38, 0.04, marketCap, sectorUnleveredBeta);
+
+    expect(inputs.betaMethod).toBe("bottom_up");
+    expect(inputs.sectorUnleveredBeta).toBe(1.05);
+
+    // Re-lever: 1.05 × (1 + (1-0.21) × 100B/3000B) = 1.05 × (1 + 0.79 × 0.03333) = 1.05 × 1.02633 ≈ 1.0776
+    // Bloomberg: 0.67 × 1.0776 + 0.33 × 1.0 = 0.7220 + 0.33 = 1.0520
+    const deRatio = 100e9 / 3000e9;
+    const relevered = 1.05 * (1 + (1 - 0.21) * deRatio);
+    const bloombergAdjusted = 0.67 * relevered + 0.33 * 1.0;
+    expect(inputs.beta).toBeCloseTo(bloombergAdjusted, 3);
+  });
+
+  it("should produce lower beta than individual approach for high-beta stocks", () => {
+    const fin = appleFinancials[0];
+    const marketCap = 3000e9;
+
+    // Individual: raw beta 2.38 (like NVDA)
+    const individual = buildWACCInputs(fin, 2.38, 0.04, marketCap);
+    // Bottom-up: sector median ~1.05
+    const bottomUp = buildWACCInputs(fin, 2.38, 0.04, marketCap, 1.05);
+
+    expect(bottomUp.beta).toBeLessThan(individual.beta);
+    expect(bottomUp.betaMethod).toBe("bottom_up");
+    expect(individual.betaMethod).toBe("individual");
+  });
+
+  it("should re-lever correctly for high-debt company", () => {
+    const fin = { ...appleFinancials[0], total_debt: 500e9 }; // Heavy debt
+    const marketCap = 500e9; // D/E = 1.0
+    const sectorBeta = 0.8;
+
+    const inputs = buildWACCInputs(fin, 1.0, 0.04, marketCap, sectorBeta);
+
+    // Re-lever: 0.8 × (1 + (1-0.21) × 500B/500B) = 0.8 × (1 + 0.79) = 0.8 × 1.79 = 1.432
+    // Bloomberg: 0.67 × 1.432 + 0.33 × 1.0 = 0.9594 + 0.33 = 1.2894
+    const relevered = 0.8 * (1 + (1 - 0.21) * 1.0);
+    const bloombergAdjusted = 0.67 * relevered + 0.33 * 1.0;
+    expect(inputs.beta).toBeCloseTo(bloombergAdjusted, 3);
+  });
+
+  it("should fall back to individual beta when sector beta is null", () => {
+    const fin = appleFinancials[0];
+    const inputs = buildWACCInputs(fin, 1.2, 0.04, 3000e9, undefined);
+
+    expect(inputs.betaMethod).toBe("individual");
+    // Bloomberg: 0.67 × 1.2 + 0.33 × 1.0 = 1.134
+    expect(inputs.beta).toBeCloseTo(1.134, 3);
+  });
+
+  it("should fall back to individual beta when sector beta is zero", () => {
+    const fin = appleFinancials[0];
+    const inputs = buildWACCInputs(fin, 1.2, 0.04, 3000e9, 0);
+
+    expect(inputs.betaMethod).toBe("individual");
+  });
+
+  it("should handle all-equity company with bottom-up beta (D/E = 0)", () => {
+    const fin = { ...appleFinancials[0], total_debt: 0 };
+    const marketCap = 3000e9;
+    const sectorBeta = 1.1;
+
+    const inputs = buildWACCInputs(fin, 1.0, 0.04, marketCap, sectorBeta);
+
+    // D/E = 0, so re-lever = sectorBeta × (1 + 0) = sectorBeta = 1.1
+    // Bloomberg: 0.67 × 1.1 + 0.33 × 1.0 = 0.737 + 0.33 = 1.067
+    expect(inputs.beta).toBeCloseTo(0.67 * 1.1 + 0.33 * 1.0, 3);
+    expect(inputs.betaMethod).toBe("bottom_up");
   });
 });

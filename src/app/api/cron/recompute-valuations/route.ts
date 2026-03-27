@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
 import { recomputeAllValuations } from "@/lib/data/recompute";
+import { refreshAllSectorBetas } from "@/lib/data/sector-beta";
 
 export const maxDuration = 300;
 
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Refresh sector betas before recomputing valuations
+    await refreshAllSectorBetas();
     const result = await recomputeAllValuations();
 
     // Bust ISR cache for all tickers

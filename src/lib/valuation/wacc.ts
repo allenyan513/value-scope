@@ -9,8 +9,15 @@ import type { WACCResult, FinancialStatement } from "@/types";
 // Review annually — Damodaran publishes updated estimates each January
 const DEFAULT_ERP = 0.045;
 
+// Bloomberg Adjusted Beta coefficients (Blume, 1971)
+const BLOOMBERG_WEIGHT = 0.67;
+const BLOOMBERG_MEAN = 1.0;
+
+// Beta floor — prevents unrealistically low discount rates
+const BETA_FLOOR = 0.3;
+
 export interface WACCInputs {
-  /** Company beta (from FMP or calculated) */
+  /** Company beta (Bloomberg-adjusted, from individual or bottom-up) */
   beta: number;
   /** Risk-free rate (10Y Treasury yield, decimal) */
   riskFreeRate: number;
@@ -26,16 +33,27 @@ export interface WACCInputs {
   interestExpense: number;
   /** Effective tax rate (decimal, e.g., 0.21) */
   taxRate: number;
+  /** Which beta approach was used */
+  betaMethod: "individual" | "bottom_up";
+  /** Sector median unlevered beta (only set when betaMethod = "bottom_up") */
+  sectorUnleveredBeta?: number;
 }
 
 /**
- * Build WACC inputs from financial data and market data
+ * Build WACC inputs from financial data and market data.
+ *
+ * When sectorUnleveredBeta is provided, uses bottom-up beta approach:
+ *   1. Re-lever sector median unlevered beta with company's own D/E
+ *   2. Bloomberg adjust the re-levered beta
+ *
+ * Otherwise falls back to individual beta with Bloomberg adjustment.
  */
 export function buildWACCInputs(
   financials: FinancialStatement,
   beta: number,
   riskFreeRate: number,
-  marketCap: number
+  marketCap: number,
+  sectorUnleveredBeta?: number
 ): WACCInputs {
   // Effective tax rate: use actual, with fallback and bounds
   let taxRate = financials.tax_rate;
@@ -50,17 +68,37 @@ export function buildWACCInputs(
   // Clamp to reasonable range
   taxRate = Math.max(0.05, Math.min(0.45, taxRate));
 
-  // Bloomberg Adjusted Beta: mean-reversion toward 1.0 (Blume, 1971)
-  // Improves forward-looking beta prediction for DCF discount rates
-  const adjustedBeta = 0.67 * beta + 0.33 * 1.0;
+  const totalDebt = Math.max(0, financials.total_debt || 0);
+
+  let adjustedBeta: number;
+  let betaMethod: "individual" | "bottom_up";
+  let sectorBetaUsed: number | undefined;
+
+  if (sectorUnleveredBeta != null && sectorUnleveredBeta > 0) {
+    // Bottom-Up Beta approach:
+    // 1. Re-lever with target company's own D/E
+    const deRatio = marketCap > 0 ? totalDebt / marketCap : 0;
+    const relevered = sectorUnleveredBeta * (1 + (1 - taxRate) * deRatio);
+
+    // 2. Bloomberg adjust
+    adjustedBeta = BLOOMBERG_WEIGHT * relevered + (1 - BLOOMBERG_WEIGHT) * BLOOMBERG_MEAN;
+    betaMethod = "bottom_up";
+    sectorBetaUsed = sectorUnleveredBeta;
+  } else {
+    // Individual Beta approach (fallback)
+    adjustedBeta = BLOOMBERG_WEIGHT * beta + (1 - BLOOMBERG_WEIGHT) * BLOOMBERG_MEAN;
+    betaMethod = "individual";
+  }
 
   return {
-    beta: Math.max(0.3, adjustedBeta),
+    beta: Math.max(BETA_FLOOR, adjustedBeta),
     riskFreeRate,
-    totalDebt: Math.max(0, financials.total_debt || 0),
+    totalDebt,
     marketCap,
     interestExpense: Math.abs(financials.interest_expense || 0),
     taxRate,
+    betaMethod,
+    sectorUnleveredBeta: sectorBetaUsed,
   };
 }
 
@@ -77,6 +115,8 @@ export function calculateWACC(inputs: WACCInputs): WACCResult {
     marketCap,
     interestExpense,
     taxRate,
+    betaMethod,
+    sectorUnleveredBeta,
   } = inputs;
 
   // Cost of Equity (CAPM)
@@ -119,5 +159,7 @@ export function calculateWACC(inputs: WACCInputs): WACCResult {
     equity_weight: equityWeight,
     total_debt: totalDebt,
     total_equity: marketCap,
+    beta_method: betaMethod,
+    sector_unlevered_beta: sectorUnleveredBeta,
   };
 }
