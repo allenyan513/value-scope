@@ -4,55 +4,8 @@ import { useState, useMemo } from "react";
 import type { ValuationResult, DCFFCFFProjectionYear, PeerEBITDARow } from "@/types";
 import { SensitivityHeatmap } from "./sensitivity-heatmap";
 import { ValuationHero } from "./valuation-hero";
+import { ParamInput, highlightNarrative } from "./shared-dcf-ui";
 import { formatMillions } from "@/lib/format";
-
-// --- Shared helpers (same pattern as dcf-fcff-cards.tsx) ---
-
-function ParamInput({
-  label, value, onChange, min, max, step, suffix,
-}: {
-  label: string; value: number; onChange: (v: number) => void;
-  min: number; max: number; step: number; suffix: string;
-}) {
-  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
-  return (
-    <div className="text-center p-4 rounded-xl border border-border/60 bg-muted/30">
-      <div className="text-sm text-muted-foreground mb-2">{label}</div>
-      <div className="flex items-center justify-center gap-2">
-        <button onClick={() => onChange(clamp(value - step))}
-          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
-          aria-label={`Decrease ${label}`}>−</button>
-        <span className="text-xl font-bold font-mono min-w-[5rem]">
-          {value.toFixed(step < 1 ? 2 : 1)}{suffix}
-        </span>
-        <button onClick={() => onChange(clamp(value + step))}
-          className="w-8 h-8 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
-          aria-label={`Increase ${label}`}>+</button>
-      </div>
-      <div className="text-[11px] text-muted-foreground mt-1.5">{min}{suffix} – {max}{suffix}</div>
-    </div>
-  );
-}
-
-function highlightNarrative(text: string): React.ReactNode[] {
-  const pattern = /(\$[\d,.]+[TB]?|\d+(?:\.\d+)?%|\d+(?:\.\d+)?x|undervalued|overvalued|fairly valued)/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    const value = match[0];
-    const isVerdict = value === "undervalued" || value === "overvalued" || value === "fairly valued";
-    parts.push(
-      <span key={match.index} className={isVerdict ? "font-semibold text-foreground" : "font-semibold text-foreground tabular-nums"}>
-        {value}
-      </span>
-    );
-    lastIndex = pattern.lastIndex;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts;
-}
 
 function Row({ label, values, terminal, muted }: {
   label: string; values: number[]; terminal: number | null; muted?: boolean;
@@ -256,6 +209,7 @@ export function DCFFCFFEBITDAExitCards({ model, currentPrice, narrative, peers }
           xLabel="EV/EBITDA Exit Multiple"
           isPercent={false}
         />
+        <p className="text-xs text-muted-foreground text-center mt-2">Based on default parameters</p>
       </div>
     </div>
   );
@@ -407,6 +361,14 @@ function MultiplesTab({
   const fmt = (v: number | null) => v !== null ? `${v.toFixed(1)}x` : "—";
 
   const modelMatchesMedian = trailingMedian !== null && Math.abs(modelMultiple - trailingMedian) < 0.5;
+
+  if (!subjectRow && peerRows.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Peer data unavailable — the EV/EBITDA exit multiple was derived from the most recent valuation run.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

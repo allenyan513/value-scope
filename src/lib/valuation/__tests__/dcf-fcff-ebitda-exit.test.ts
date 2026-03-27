@@ -116,4 +116,36 @@ describe("FCFF EBITDA Exit 5Y", () => {
     expect(result.low_estimate).toBeLessThanOrEqual(result.fair_value);
     expect(result.high_estimate).toBeGreaterThanOrEqual(result.fair_value);
   });
+
+  // --- Edge cases ---
+
+  it("should clamp fair value to 0 when equity is negative (very low multiple)", () => {
+    const result = calculateDCFFCFFEBITDAExit(makeInputs({ peerEVEBITDAMedian: 0.5 }));
+    expect(result.fair_value).toBeGreaterThanOrEqual(0);
+  });
+
+  it("should handle net cash position (cash > debt)", () => {
+    const result = calculateDCFFCFFEBITDAExit(
+      makeInputs({ cashAndEquivalents: 200e9, totalDebt: 50e9 })
+    );
+    const netDebt = result.details.net_debt as number;
+    expect(netDebt).toBeLessThan(0); // net cash
+    expect(result.fair_value).toBeGreaterThan(0);
+  });
+
+  it("should produce finite values with very high WACC", () => {
+    const result = calculateDCFFCFFEBITDAExit(makeInputs({ wacc: 0.25 }));
+    expect(result.fair_value).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(result.fair_value)).toBe(true);
+  });
+
+  it("all sensitivity prices should be non-negative", () => {
+    const result = calculateDCFFCFFEBITDAExit(makeInputs());
+    const sm = result.details.sensitivity_matrix as { prices: number[][] };
+    for (const row of sm.prices) {
+      for (const price of row) {
+        expect(price).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
 });

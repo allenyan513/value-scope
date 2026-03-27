@@ -215,6 +215,9 @@ export async function computePeerEBITDAMultiples(
     peerTickers = dbPeers.map((p) => p.ticker);
   }
 
+  // Ensure subject ticker isn't duplicated if FMP includes it in peers
+  peerTickers = peerTickers.filter((t) => t !== ticker);
+
   const allTickers = [ticker, ...peerTickers];
 
   // 2. Fetch company data + latest financials + next-year revenue estimate in parallel
