@@ -21,8 +21,8 @@ interface ThreeStageProjectionResult {
   g: number;
   avgNetMargin: number;
   avgEbitdaMargin: number;
-  maintenanceCapex: number;
-  growthCapexIntensity: number;
+  capexRatio: number;
+  daRatio: number;
   stage1GrowthRates: number[];
   stage1RevSource: string;
   analystMarginSource: boolean;
@@ -71,18 +71,16 @@ function build3StageProjections(inputs: DCFFCFEInputs): ThreeStageProjectionResu
     }
   }
 
-  const maintenanceCapex = lastFinancial.depreciation_amortization > 0
-    ? lastFinancial.depreciation_amortization
-    : Math.abs(lastFinancial.capital_expenditure) * 0.8;
+  // CapEx & D&A as stable % of Revenue (historical averages)
+  const daRatios = recent
+    .filter((f) => f.depreciation_amortization > 0)
+    .map((f) => f.depreciation_amortization / f.revenue);
+  const daRatio = daRatios.length > 0 ? avg(daRatios) : 0.03;
 
-  const growthCapexRatios: number[] = [];
-  for (let i = 1; i < recent.length; i++) {
-    const revIncrease = recent[i].revenue - recent[i - 1].revenue;
-    const da = recent[i].depreciation_amortization > 0 ? recent[i].depreciation_amortization : 0;
-    const growthCapex = Math.abs(recent[i].capital_expenditure) - da;
-    if (revIncrease > 0 && growthCapex > 0) growthCapexRatios.push(growthCapex / revIncrease);
-  }
-  const growthCapexIntensity = growthCapexRatios.length > 0 ? avg(growthCapexRatios) : 0.05;
+  const capexRatios = recent
+    .filter((f) => f.capital_expenditure !== 0)
+    .map((f) => Math.abs(f.capital_expenditure) / f.revenue);
+  const capexRatio = capexRatios.length > 0 ? avg(capexRatios) : 0.05;
 
   const stage1Rev = projectRevenue(historicals, estimates, 5);
   const ke = costOfEquity;
@@ -114,20 +112,19 @@ function build3StageProjections(inputs: DCFFCFEInputs): ThreeStageProjectionResu
     }
 
     const netIncome = revenue * netMargin;
-    const revenueIncrease = Math.max(0, revenue - prevRevenue);
-    const maintenanceGrowth = 1 + Math.max(0, stage1Rev.growthRates[i] * 0.2);
-    const yearMaintenanceCapex = i === 0 ? maintenanceCapex : maintenanceCapex * Math.pow(maintenanceGrowth, i);
-    const netCapex = yearMaintenanceCapex + revenueIncrease * growthCapexIntensity;
-    prevRevenue = revenue;
+    const yearDA = revenue * daRatio;
+    const yearCapex = revenue * capexRatio;
 
-    const fcfe = netIncome - netCapex;
+    const fcfe = netIncome + yearDA - yearCapex;
+    prevRevenue = revenue;
     const t = i + 1;
     projections.push({
       year,
       revenue,
       net_margin: netMargin,
       net_income: netIncome,
-      net_capex: netCapex,
+      depreciation_amortization: yearDA,
+      capital_expenditure: yearCapex,
       fcfe,
       discount_factor: 1 / Math.pow(1 + ke, t),
       pv_fcfe: fcfe / Math.pow(1 + ke, t),
@@ -148,22 +145,20 @@ function build3StageProjections(inputs: DCFFCFEInputs): ThreeStageProjectionResu
 
     const revenue = prevRevenue * (1 + growthRate);
     const netIncome = revenue * netMargin;
-    const revenueIncrease = Math.max(0, revenue - prevRevenue);
-    const yearIdx = 5 + i;
-    const maintenanceGrowth = 1 + Math.max(0, growthRate * 0.2);
-    const yearMaintenanceCapex = maintenanceCapex * Math.pow(maintenanceGrowth, yearIdx);
-    const netCapex = yearMaintenanceCapex + revenueIncrease * growthCapexIntensity;
+    const yearDA = revenue * daRatio;
+    const yearCapex = revenue * capexRatio;
     prevRevenue = revenue;
 
     const year = lastYear + 6 + i;
     const t = 6 + i;
-    const fcfe = netIncome - netCapex;
+    const fcfe = netIncome + yearDA - yearCapex;
     projections.push({
       year,
       revenue,
       net_margin: netMargin,
       net_income: netIncome,
-      net_capex: netCapex,
+      depreciation_amortization: yearDA,
+      capital_expenditure: yearCapex,
       fcfe,
       discount_factor: 1 / Math.pow(1 + ke, t),
       pv_fcfe: fcfe / Math.pow(1 + ke, t),
@@ -178,8 +173,8 @@ function build3StageProjections(inputs: DCFFCFEInputs): ThreeStageProjectionResu
     g,
     avgNetMargin,
     avgEbitdaMargin,
-    maintenanceCapex,
-    growthCapexIntensity,
+    capexRatio,
+    daRatio,
     stage1GrowthRates: stage1Rev.growthRates,
     stage1RevSource: stage1Rev.source,
     analystMarginSource: analystMargins.size > 0,
@@ -197,8 +192,8 @@ function build3StageAssumptions(
     net_margin: Math.round(ctx.avgNetMargin * 10000) / 100,
     net_margins_by_year: ctx.projections.map((p) => Math.round(p.net_margin * 10000) / 100),
     margin_source: ctx.analystMarginSource ? "analyst" : "historical",
-    maintenance_capex: Math.round(ctx.maintenanceCapex / 1e6),
-    growth_capex_intensity: Math.round(ctx.growthCapexIntensity * 10000) / 100,
+    capex_pct_revenue: Math.round(ctx.capexRatio * 10000) / 100,
+    da_pct_revenue: Math.round(ctx.daRatio * 10000) / 100,
     discount_rate: Math.round(ctx.ke * 10000) / 100,
     terminal_growth_rate: Math.round(ctx.g * 10000) / 100,
     projection_years: 10,

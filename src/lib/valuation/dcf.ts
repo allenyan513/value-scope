@@ -77,35 +77,25 @@ export function calculateDCF(
     }
   }
 
-  // CapEx model: Maintenance (≈ D&A) + Growth CapEx (tied to revenue increase)
+  // CapEx & D&A as stable % of Revenue (historical averages)
   const lastFinancial = sorted[sorted.length - 1];
-  const maintenanceCapex = lastFinancial.depreciation_amortization > 0
-    ? lastFinancial.depreciation_amortization
-    : Math.abs(lastFinancial.capital_expenditure) * 0.8; // fallback: 80% of total capex as maintenance
   const lastRevenue = lastFinancial.revenue;
 
-  // Growth CapEx intensity: how much incremental capex per dollar of revenue growth
-  // Derived from historical: (total capex - D&A) / revenue increase
-  const growthCapexRatios: number[] = [];
-  for (let i = 1; i < recent.length; i++) {
-    const revIncrease = recent[i].revenue - recent[i - 1].revenue;
-    const da = recent[i].depreciation_amortization > 0 ? recent[i].depreciation_amortization : 0;
-    const totalCapex = Math.abs(recent[i].capital_expenditure);
-    const growthCapex = totalCapex - da;
-    if (revIncrease > 0 && growthCapex > 0) {
-      growthCapexRatios.push(growthCapex / revIncrease);
-    }
-  }
-  const growthCapexIntensity = growthCapexRatios.length > 0
-    ? avg(growthCapexRatios)
-    : 0.05; // fallback: 5 cents of growth capex per dollar of revenue increase
+  const daRatios = recent
+    .filter((f) => f.depreciation_amortization > 0)
+    .map((f) => f.depreciation_amortization / f.revenue);
+  const daRatio = daRatios.length > 0 ? avg(daRatios) : 0.03; // fallback 3%
+
+  const capexRatios = recent
+    .filter((f) => f.capital_expenditure !== 0)
+    .map((f) => Math.abs(f.capital_expenditure) / f.revenue);
+  const capexRatio = capexRatios.length > 0 ? avg(capexRatios) : 0.05; // fallback 5%
 
   const ke = costOfEquity;
   const g = termGrowth;
 
   // Build FCFE projections
   const projections: DCFProjectionYearFCFE[] = [];
-  let prevRevenue = lastRevenue;
 
   for (let i = 0; i < revenueProjection.revenues.length; i++) {
     const revenue = revenueProjection.revenues[i];
@@ -133,15 +123,12 @@ export function calculateDCF(
 
     const netIncome = revenue * netMargin;
 
-    // CapEx = Maintenance (D&A, grows slowly) + Growth (tied to revenue increase)
-    const revenueIncrease = Math.max(0, revenue - prevRevenue);
-    const maintenanceGrowth = 1 + Math.max(0, revenueProjection.growthRates[i] * 0.2); // D&A grows at ~20% of revenue growth
-    const yearMaintenanceCapex = i === 0 ? maintenanceCapex : maintenanceCapex * Math.pow(maintenanceGrowth, i);
-    const yearGrowthCapex = revenueIncrease * growthCapexIntensity;
-    const netCapex = yearMaintenanceCapex + yearGrowthCapex;
-    prevRevenue = revenue;
+    // D&A and CapEx as % of revenue (stable ratios from historical averages)
+    // FCFE = Net Income + D&A − CapEx
+    const yearDA = revenue * daRatio;
+    const yearCapex = revenue * capexRatio;
 
-    const fcfe = netIncome - netCapex;
+    const fcfe = netIncome + yearDA - yearCapex;
     const t = i + 1;
     const discountFactor = 1 / Math.pow(1 + ke, t);
     const pvFCFE = fcfe * discountFactor;
@@ -151,7 +138,8 @@ export function calculateDCF(
       revenue,
       net_margin: netMargin,
       net_income: netIncome,
-      net_capex: netCapex,
+      depreciation_amortization: yearDA,
+      capital_expenditure: yearCapex,
       fcfe,
       discount_factor: discountFactor,
       pv_fcfe: pvFCFE,
@@ -200,8 +188,8 @@ export function calculateDCF(
       net_margin: Math.round(avgNetMargin * 10000) / 100,
       net_margins_by_year: projections.map((p) => Math.round(p.net_margin * 10000) / 100),
       margin_source: analystMargins.size > 0 ? "analyst" : "historical",
-      maintenance_capex: Math.round(maintenanceCapex / 1e6),
-      growth_capex_intensity: Math.round(growthCapexIntensity * 10000) / 100,
+      capex_pct_revenue: Math.round(capexRatio * 10000) / 100,
+      da_pct_revenue: Math.round(daRatio * 10000) / 100,
       discount_rate: Math.round(ke * 10000) / 100,
       terminal_growth_rate: Math.round(g * 10000) / 100,
       projection_years: projectionYears,

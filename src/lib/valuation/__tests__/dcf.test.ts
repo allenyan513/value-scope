@@ -126,6 +126,25 @@ describe("calculateDCF", () => {
     ).toThrow("No historical revenue data");
   });
 
+  it("should compute FCFE as Net Income + D&A − CapEx (no D&A double-counting)", () => {
+    const result = calculateDCF(baseInputs, 5);
+    const projections = (result.details as Record<string, unknown>)
+      .projections as Array<{
+        net_income: number;
+        depreciation_amortization: number;
+        capital_expenditure: number;
+        fcfe: number;
+      }>;
+
+    projections.forEach((p) => {
+      const expectedFCFE = p.net_income + p.depreciation_amortization - p.capital_expenditure;
+      expect(p.fcfe).toBeCloseTo(expectedFCFE, 0);
+      // FCFE must be greater than Net Income − CapEx (the old buggy formula)
+      // because D&A add-back makes it higher
+      expect(p.fcfe).toBeGreaterThanOrEqual(p.net_income - p.capital_expenditure);
+    });
+  });
+
   it("should handle high cost of equity with Gordon Growth fallback", () => {
     // When Ke <= terminal growth, should use fallback (lastFCFE * 20)
     const result = calculateDCF(
