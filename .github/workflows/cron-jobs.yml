@@ -1,0 +1,85 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    # Update Prices: 3x weekdays — 8:30 AM, 10:30 AM, 5:30 PM ET (UTC: 13:30, 15:30, 21:30)
+    - cron: '30 13 * * 1-5'
+    - cron: '30 15 * * 1-5'
+    - cron: '30 21 * * 1-5'
+    # Refresh Estimates: 2x weekdays — 4:00 PM, 6:00 PM ET (UTC: 20:00, 22:00)
+    - cron: '0 20 * * 1-5'
+    - cron: '0 22 * * 1-5'
+    # Recompute Valuations: weekdays 6:30 PM ET (UTC: 22:30)
+    - cron: '30 22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which cron job to run'
+        required: true
+        type: choice
+        options:
+          - update-prices
+          - refresh-estimates-slot0
+          - refresh-estimates-slot1
+          - recompute-valuations
+          - all
+
+env:
+  BASE_URL: https://valuescope.vercel.app
+
+jobs:
+  update-prices:
+    if: >-
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'update-prices' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && (github.event.schedule == '30 13 * * 1-5' || github.event.schedule == '30 15 * * 1-5' || github.event.schedule == '30 21 * * 1-5')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger update-prices
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ env.BASE_URL }}/api/cron/update-prices")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then exit 1; fi
+
+  refresh-estimates-slot0:
+    if: >-
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'refresh-estimates-slot0' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && github.event.schedule == '0 20 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger refresh-estimates slot=0
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ env.BASE_URL }}/api/cron/refresh-estimates?slot=0")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then exit 1; fi
+
+  refresh-estimates-slot1:
+    if: >-
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'refresh-estimates-slot1' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && github.event.schedule == '0 22 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger refresh-estimates slot=1
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ env.BASE_URL }}/api/cron/refresh-estimates?slot=1")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then exit 1; fi
+
+  recompute-valuations:
+    if: >-
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'recompute-valuations' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && github.event.schedule == '30 22 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger recompute-valuations
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ env.BASE_URL }}/api/cron/recompute-valuations")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then exit 1; fi
