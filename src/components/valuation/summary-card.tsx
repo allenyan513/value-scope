@@ -33,6 +33,11 @@ const PILLAR_CONFIG = [
     label: "PEG",
     link: "/valuation/peg",
   },
+  {
+    key: "epv" as const,
+    label: "Earnings Power Value",
+    link: "/valuation/epv",
+  },
 ];
 
 function UpsideCell({ value }: { value: number }) {

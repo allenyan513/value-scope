@@ -98,7 +98,7 @@ export function calculateEPV(inputs: EPVInputs): ValuationResult {
 
     // Effective tax rate: use reported, fallback compute, fallback 21%
     let taxRate = f.tax_rate;
-    if (!taxRate || taxRate <= 0 || taxRate > 0.5) {
+    if (!taxRate || taxRate <= 0 || taxRate > 0.6) {
       taxRate =
         f.income_before_tax > 0 ? f.income_tax / f.income_before_tax : 0.21;
     }
@@ -126,15 +126,11 @@ export function calculateEPV(inputs: EPVInputs): ValuationResult {
   const sustainableGrossProfit = sustainableRevenue * sustainableGrossMargin;
 
   // --- Step 2: Normalized EBIT ---
+  // Maintenance OpEx = sustainable revenue × avg(opex / revenue)
   const maintenanceOpexPct = avg(historical.map((h) => h.opex_pct));
-  const maintenanceOpex = sustainableGrossProfit * (maintenanceOpexPct / sustainableGrossMargin);
-  // Better approach: maintenance OpEx as % of sustainable revenue
-  // maintenanceOpex = sustainableRevenue * maintenanceOpexPct
-  // But competitor uses: sustainableGrossProfit - (sustainableGrossProfit * opex_ratio_to_gross_profit)
-  // Let's use the cleaner: sustainableRevenue * avg(opex/revenue)
-  const maintenanceOpexClean = sustainableRevenue * maintenanceOpexPct;
+  const maintenanceOpex = sustainableRevenue * maintenanceOpexPct;
 
-  const normalizedEBIT = sustainableGrossProfit - maintenanceOpexClean;
+  const normalizedEBIT = sustainableGrossProfit - maintenanceOpex;
   const avgTaxRate = avg(historical.map((h) => h.tax_rate));
   const afterTaxNormalizedEBIT = normalizedEBIT * (1 - avgTaxRate);
 
@@ -182,7 +178,7 @@ export function calculateEPV(inputs: EPVInputs): ValuationResult {
     sustainable_gross_margin: sustainableGrossMargin,
     sustainable_gross_profit: sustainableGrossProfit,
     maintenance_opex_pct: maintenanceOpexPct,
-    maintenance_opex: maintenanceOpexClean,
+    maintenance_opex: maintenanceOpex,
     normalized_ebit: normalizedEBIT,
     avg_tax_rate: avgTaxRate,
     after_tax_normalized_ebit: afterTaxNormalizedEBIT,

@@ -20,6 +20,8 @@ export const MODEL_NAMES: Record<string, string> = {
   ev_ebitda_multiples: "EV/EBITDA",
   // PEG
   peg: "PEG Fair Value",
+  // EPV
+  epv: "Earnings Power Value",
 };
 
 /** Display order for models in summary view */
@@ -31,6 +33,7 @@ export const MODEL_ORDER = [
   "pe_multiples",
   "ev_ebitda_multiples",
   "peg",
+  "epv",
 ];
 
 /** Model type → detail page link */
@@ -50,4 +53,5 @@ export const MODEL_LINKS: Record<string, string> = {
   pe_multiples: "/valuation/trading-multiples",
   ev_ebitda_multiples: "/valuation/trading-multiples",
   peg: "/valuation/peg",
+  epv: "/valuation/epv",
 };
