@@ -7,9 +7,7 @@ import {
   getPeersByIndustry,
   getPriceTargets,
   getPriceHistory,
-  getValuationHistory,
   getPeerEVEBITDAMedianFromDB,
-  upsertValuationHistory,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
@@ -116,13 +114,6 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     sectorUnleveredBeta: sectorUnleveredBeta ?? undefined,
   });
 
-  // Persist valuation_history snapshot (fire-and-forget, don't block render)
-  if (summary && currentPrice > 0) {
-    const today = toDateString(new Date());
-    upsertValuationHistory(upperTicker, today, currentPrice, summary.primary_fair_value)
-      .catch((err) => console.error(`[valuation-history] Error for ${upperTicker}:`, err));
-  }
-
   return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined };
 });
 
@@ -200,30 +191,20 @@ export const getAnalystData = cache(async (ticker: string) => {
 
 /**
  * Chart history data — needed only by the summary page chart.
- * Extracted from /api/history/[ticker] to avoid client-side waterfall.
+ * Uses daily_prices from DB (or FMP fallback) + EMA synthetic intrinsic value.
  */
 export const getChartHistory = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
   const days = DEFAULT_HISTORY_DAYS;
 
-  // Fetch both valuation history and price history in parallel
-  const [history, dbPrices] = await Promise.all([
-    getValuationHistory(upperTicker, days),
-    getPriceHistory(upperTicker, days),
-  ]);
-
-  // If we have enough valuation history (>30 days), use it directly
-  if (history.length >= 30) {
-    return history;
-  }
-
-  // Otherwise, build from daily_prices as the price backbone
+  // Try daily_prices table first
   let closePrices: { date: string; close: number }[] = [];
+  const dbPrices = await getPriceHistory(upperTicker, days);
   if (dbPrices.length > 0) {
     closePrices = dbPrices.map((p) => ({ date: p.date, close: p.close }));
   }
 
-  // Fallback 2: FMP API
+  // Fallback: FMP API
   if (closePrices.length === 0) {
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - days);
@@ -261,15 +242,10 @@ export const getChartHistory = cache(async (ticker: string) => {
   const discountFactor =
     lastPrice > 0 ? Math.min(lastEma / lastPrice, 0.95) : 0.7;
 
-  // Merge real intrinsic values from valuation_history where available
-  const realIVMap = new Map(
-    history.map((h) => [h.date, h.intrinsic_value])
-  );
-
   const syntheticHistory = closePrices.map((p, i) => ({
     date: p.date,
     close_price: p.close,
-    intrinsic_value: realIVMap.get(p.date) ?? Math.round(emaValues[i] * discountFactor * 100) / 100,
+    intrinsic_value: Math.round(emaValues[i] * discountFactor * 100) / 100,
   }));
 
   // Sample to ~500 points max

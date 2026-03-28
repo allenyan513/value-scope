@@ -1,7 +1,7 @@
 // GET /api/history/[ticker]?days=1825
-// Returns price vs intrinsic value history for chart
+// Returns price history with synthetic EMA intrinsic value for chart
 import { NextRequest, NextResponse } from "next/server";
-import { getValuationHistory, getPriceHistory } from "@/lib/db/queries";
+import { getPriceHistory } from "@/lib/db/queries";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
@@ -14,20 +14,14 @@ export async function GET(
   const upperTicker = ticker.toUpperCase();
   const days = parseInt(request.nextUrl.searchParams.get("days") || String(DEFAULT_HISTORY_DAYS));
 
-  // Try real valuation history first
-  const history = await getValuationHistory(upperTicker, days);
-  if (history.length > 0) {
-    return NextResponse.json(history);
-  }
-
-  // Fallback 1: use daily_prices table
+  // Try daily_prices table first
   let closePrices: { date: string; close: number }[] = [];
   const dbPrices = await getPriceHistory(upperTicker, days);
   if (dbPrices.length > 0) {
     closePrices = dbPrices.map((p) => ({ date: p.date, close: p.close }));
   }
 
-  // Fallback 2: fetch from FMP API directly
+  // Fallback: fetch from FMP API directly
   if (closePrices.length === 0) {
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - days);
@@ -49,7 +43,7 @@ export async function GET(
     return NextResponse.json([]);
   }
 
-  // Generate synthetic intrinsic value as a smoothed trend line
+  // Generate synthetic intrinsic value as a smoothed trend line (EMA)
   const prices = closePrices.map((p) => p.close);
   const emaSpan = Math.min(MAX_EMA_SPAN, Math.floor(prices.length / 3));
   const alpha = 2 / (emaSpan + 1);

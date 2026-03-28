@@ -1,18 +1,17 @@
 // ============================================================
 // GET /api/valuation/[ticker]
-// Compute or return cached valuation for a stock
+// Compute valuation for a stock on demand
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getValuations, getPeersByIndustry, getPriceHistory, upsertValuation, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getPeersByIndustry, getPriceHistory, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import type { PeerComparison, ValuationSummary, AnalystEstimate } from "@/types";
+import type { PeerComparison, AnalystEstimate } from "@/types";
 import { getKeyMetrics, getAnalystEstimates, getEVMetrics, getFXRateToUSD } from "@/lib/data/fmp";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
-import { VERDICT_THRESHOLD } from "@/lib/constants";
 
 export async function GET(
   request: NextRequest,
@@ -22,43 +21,6 @@ export async function GET(
   const upperTicker = ticker.toUpperCase();
 
   try {
-    // Check if we have a recent cached valuation (less than 1 hour old)
-    const cached = await getValuations(upperTicker);
-    if (cached.length > 0) {
-      const latestComputed = new Date(cached[0].computed_at);
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
-
-      if (latestComputed > hourAgo && !forceRefresh) {
-        // Return cached results
-        const company = await getCompany(upperTicker);
-        const price = await getLatestPrice(upperTicker);
-        if (company && price) {
-          const primaryModel = cached.find(
-            (m) => m.model_type === "dcf_growth_exit_5y"
-          );
-          const primaryFairValue = primaryModel?.fair_value ?? 0;
-          const primaryUpside = primaryModel?.upside_percent ?? 0;
-          let verdict: "undervalued" | "fairly_valued" | "overvalued";
-          if (primaryUpside > VERDICT_THRESHOLD) verdict = "undervalued";
-          else if (primaryUpside < -VERDICT_THRESHOLD) verdict = "overvalued";
-          else verdict = "fairly_valued";
-
-          return NextResponse.json({
-            ticker: upperTicker,
-            company_name: company.name,
-            current_price: price,
-            primary_fair_value: primaryFairValue,
-            primary_upside: primaryUpside,
-            models: cached,
-            verdict,
-            computed_at: cached[0].computed_at,
-            cached: true,
-          });
-        }
-      }
-    }
-
     // Fetch fresh data
     const [company, historicals, dbEstimates, riskFreeRate, prices] = await Promise.all([
       getCompany(upperTicker),
@@ -118,7 +80,7 @@ export async function GET(
       );
     }
 
-    // Get peer data for trading multiples (parallel fetch, no redundant getCompany)
+    // Get peer data for trading multiples
     const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
     const peerResults = await Promise.all(
       peerCompanies.map(async (peer): Promise<PeerComparison | null> => {
@@ -151,13 +113,11 @@ export async function GET(
     const peers = peerResults.filter((p): p is PeerComparison => p !== null);
 
     // Compute historical multiples for self-comparison
-    const [historicalMultiples, peerEVEBITDAMedian] = await Promise.all([
-      Promise.resolve(computeHistoricalMultiples(historicals, prices)),
-      getPeerEVEBITDAMedianFromDB(upperTicker).catch(() => null),
-    ]);
+    const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+    const peerEVEBITDAMedian = await getPeerEVEBITDAMedianFromDB(upperTicker).catch(() => null);
 
     // Compute full valuation
-    const summary: ValuationSummary = computeFullValuation({
+    const summary = computeFullValuation({
       company,
       historicals,
       estimates,
@@ -168,13 +128,10 @@ export async function GET(
       peerEVEBITDAMedian: peerEVEBITDAMedian ?? undefined,
     });
 
-    // Cache results (parallel upserts)
-    await Promise.all(summary.models.map((model) => upsertValuation(upperTicker, model)));
-
     // Bust ISR cache so page reflects fresh valuation
     revalidatePath(`/${upperTicker}`, "layout");
 
-    return NextResponse.json({ ...summary, cached: false });
+    return NextResponse.json(summary);
   } catch (error) {
     console.error(`Valuation error for ${upperTicker}:`, error);
     return NextResponse.json(
