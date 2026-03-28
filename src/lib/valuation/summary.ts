@@ -28,6 +28,7 @@ import {
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePEG } from "./peg";
+import { calculateEPV } from "./epv";
 import { classifyCompany, computeWeightedConsensus, getTerminalGrowthRate } from "./company-classifier";
 import { median } from "./statistics";
 
@@ -83,6 +84,9 @@ function computeMedianConsensus(
   const tmFairValue = tmModels.length > 0 ? median(tmModels.map(m => m.fair_value)) : 0;
   const pegFairValue = pegModel && pegModel.fair_value > 0 ? pegModel.fair_value : 0;
 
+  const epvModel = models.find(m => m.model_type === "epv");
+  const epvFairValue = epvModel && epvModel.fair_value > 0 ? epvModel.fair_value : 0;
+
   const upside = (fv: number) => currentPrice > 0 ? ((fv - currentPrice) / currentPrice) * 100 : 0;
 
   const pillars: ValuationPillars = {
@@ -101,10 +105,15 @@ function computeMedianConsensus(
       upside: upside(pegFairValue),
       models: pegModel ? [pegModel] : [],
     },
+    epv: {
+      fairValue: epvFairValue,
+      upside: upside(epvFairValue),
+      models: epvModel ? [epvModel] : [],
+    },
   };
 
   // Final consensus: median of pillar fair values (only those > 0)
-  const pillarValues = [dcfFairValue, tmFairValue, pegFairValue].filter(v => v > 0);
+  const pillarValues = [dcfFairValue, tmFairValue, pegFairValue, epvFairValue].filter(v => v > 0);
   const consensus = pillarValues.length > 0 ? median(pillarValues) : 0;
 
   // Low/high: median of all model lows/highs
@@ -245,6 +254,21 @@ export function computeFullValuation(
     })
   );
 
+  // Earnings Power Value
+  try {
+    models.push(
+      calculateEPV({
+        historicals: sortedHistoricals,
+        wacc: waccResult.wacc,
+        currentPrice,
+        sharesOutstanding,
+        netDebt: latestFinancial.net_debt ?? 0,
+      })
+    );
+  } catch {
+    /* skip if insufficient data */
+  }
+
   // 4. Compute consensus based on strategy
   // Always build pillars for display regardless of strategy
   const medianResult = computeMedianConsensus(models, currentPrice);
@@ -303,13 +327,13 @@ export function computeFullValuation(
 
   const modelCount = models.filter(m => m.fair_value > 0).length;
   const absUpside = Math.abs(verdictUpside).toFixed(1);
-  const pillarCount = [pillars.dcf.fairValue, pillars.tradingMultiples.fairValue, pillars.peg.fairValue]
+  const pillarCount = [pillars.dcf.fairValue, pillars.tradingMultiples.fairValue, pillars.peg.fairValue, pillars.epv.fairValue]
     .filter(v => v > 0).length;
 
   const methodDescription = strategy === "dcf_primary"
     ? "our 5-year unlevered FCFF model with Gordon Growth terminal value"
     : strategy === "median"
-      ? `${pillarCount} valuation pillars (DCF, Trading Multiples, PEG) covering ${modelCount} models`
+      ? `${pillarCount} valuation pillars (DCF, Trading Multiples, PEG, EPV) covering ${modelCount} models`
       : `${modelCount} valuation models`;
 
   if (verdictUpside > VERDICT_THRESHOLD) {

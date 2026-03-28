@@ -106,6 +106,7 @@ describe("computeFullValuation — median strategy", () => {
       pillars.dcf.fairValue,
       pillars.tradingMultiples.fairValue,
       pillars.peg.fairValue,
+      pillars.epv.fairValue,
     ].filter(v => v > 0).sort((a, b) => a - b);
 
     expect(pillarValues.length).toBeGreaterThanOrEqual(1);
@@ -132,7 +133,7 @@ describe("computeFullValuation — median strategy", () => {
     const result = computeFullValuation(MEDIAN_INPUTS);
     const { pillars, current_price } = result;
 
-    for (const key of ["dcf", "tradingMultiples", "peg"] as const) {
+    for (const key of ["dcf", "tradingMultiples", "peg", "epv"] as const) {
       const pillar = pillars[key];
       if (pillar.fairValue > 0) {
         const expectedUpside = ((pillar.fairValue - current_price) / current_price) * 100;
