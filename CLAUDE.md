@@ -16,10 +16,28 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 9 aut
 npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
-npm test             # Run unit tests (Vitest, 263 tests)
+npm test             # Run unit tests (Vitest, 249 tests)
 npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
+
+## Design Targets
+**Coverage & Data**:
+- **8,000+ US stocks** (current: ~500 S&P 500). All cron, DB queries, and batch operations must be designed for 8k tickers.
+- **Zero FMP calls in user request path**. All external API calls happen in cron jobs; page visits read only from Supabase.
+- **Data freshness**: Prices updated ~1.5h after market close. Financials refreshed next day after earnings. Valuation snapshots stale after 25h.
+
+**Page Performance** (Core Web Vitals — target "Good" rating):
+- **LCP** (Largest Contentful Paint): < 2.5s
+- **INP** (Interaction to Next Paint): < 200ms
+- **CLS** (Cumulative Layout Shift): < 0.1
+- **TTFB**: < 800ms (ISR hit should be < 200ms)
+- **API latency (P95)**: < 500ms — for `/api/valuation/[ticker]` and MCP server
+- **ISR cold compute**: < 3s — fallback when snapshot is missing or stale
+
+**Cron Design**: Minimize unnecessary operations. Event-driven over blind rotation. Each Vercel function must complete within 300s limit.
+
+**Infrastructure Cost**: Minimize spend while keeping operational complexity low. One-person team — prefer managed services (Vercel, Supabase) over self-hosted alternatives even if slightly more expensive. Current: Vercel Hobby (free) + Supabase Free + FMP Starter ($19/mo).
 
 ## Architecture Principles
 - **3 services only**: Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
@@ -70,12 +88,18 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - The `as` SQL alias syntax silently fails and returns null/empty results
 
 ## Cron Jobs
-Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron (Hobby plan doesn't support multiple daily jobs). GitHub Actions calls the Vercel-hosted API routes with `CRON_SECRET`.
-- **Update Prices** (`/api/cron/update-prices`): 3x weekdays — 8:30 AM, 10:30 AM, 5:30 PM ET. Also refreshes sector betas and busts ISR cache.
-- **Refresh Estimates** (`/api/cron/refresh-estimates`): 2x weekdays — 4:00 PM (slot=0), 6:00 PM ET (slot=1). Rotates 250 tickers/slot, 500/day. Busts ISR cache for processed tickers.
-- **No recompute cron** — valuations are computed lazily on page visit via `getCoreTickerData()` → `computeFullValuation()`, cached by ISR (1 hour). No `valuations` or `valuation_history` tables — all computation is ephemeral, cached only as ISR HTML.
-- Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
-- Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
+Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron. → See `docs/data-pipeline.md` for detailed flow, design decisions, and API budget.
+
+| Job | Schedule | Route |
+|-----|----------|-------|
+| Update Prices | 5:30 PM ET weekdays | `/api/cron/update-prices` |
+| Refresh After Earnings | 7:00 PM ET weekdays | `/api/cron/refresh-after-earnings` |
+| Refresh Estimates (full) | Manual only | `/api/cron/refresh-estimates?full=true` |
+| Recompute Valuations | Manual only | `/api/cron/recompute-valuations` |
+
+- Valuation snapshots stored in `valuation_snapshots` (JSONB). Upside%/verdict recalculated at read time from live price.
+- Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3001/api/cron/update-prices`
+- Manual trigger (prod): GitHub Actions → "Cron Jobs" → Run workflow → select job
 
 ## MCP Server
 - **Endpoint**: `POST /api/mcp` — Streamable HTTP, stateless (no sessions)

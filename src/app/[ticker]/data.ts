@@ -8,6 +8,7 @@ import {
   getPriceHistory,
   computePeerMetricsFromDB,
   getValuationSnapshot,
+  refreshSummaryWithLivePrice,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
@@ -65,10 +66,12 @@ export const getCoreTickerData = cache(async (ticker: string) => {
 
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
 
-  // Snapshot path: use pre-computed valuation as-is (no FMP, no FRED)
-  // Use snapshot price for consistency — upside%, verdict, all numbers stay coherent
+  // Snapshot path: use pre-computed fair values, recalculate upside% with live price
   if (snapshot && (Date.now() - new Date(snapshot.computed_at).getTime()) < SNAPSHOT_MAX_AGE_MS) {
     const summary = snapshot.summary as ValuationSummary;
+    const livePrice = latestPrice || company.price || summary.current_price;
+    refreshSummaryWithLivePrice(summary, livePrice);
+
     const peers = (snapshot.peers ?? []) as PeerComparison[];
     const validEV = peers.map(p => p.ev_ebitda).filter((v): v is number => v !== null && v > 0 && v < 100);
     const peerEVEBITDAMedian = validEV.length > 0 ? median(validEV) : undefined;

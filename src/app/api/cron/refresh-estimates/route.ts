@@ -1,11 +1,9 @@
 // ============================================================
-// Cron: Refresh Estimates
-// Rotates through all companies, refreshing analyst estimates
-// and price target consensus from FMP in batches.
-// Schedule: 4:00 PM ET (slot=0) + 6:00 PM ET (slot=1) weekdays
-// FMP calls: ~1000/day (250 stocks × 2 endpoints × 2 slots)
-// Supports ?full=true to refresh ALL stocks (for initial setup)
-// Supports ?slot=0|1 to select non-overlapping rotation windows
+// Cron: Refresh Estimates (Manual / Recovery)
+// Refreshes analyst estimates and price target consensus for ALL
+// tracked companies. Use ?full=true to trigger.
+// Not scheduled — run manually after bulk onboarding or data recovery.
+// FMP calls: ~2 per ticker (estimates + price targets)
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,17 +11,10 @@ import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
 import { getAnalystEstimates, getPriceTargetConsensus, getFXRateToUSD } from "@/lib/data/fmp";
 import { upsertEstimates, upsertPriceTargets } from "@/lib/db/queries";
-import { CRON_ESTIMATES_BATCH_SIZE, FMP_API_DELAY_MS } from "@/lib/constants";
+import { FMP_API_DELAY_MS } from "@/lib/constants";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
 
 export const maxDuration = 300;
-
-function getDayOfYear(): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const diff = now.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -32,7 +23,13 @@ export async function GET(request: NextRequest) {
   }
 
   const isFull = request.nextUrl.searchParams.get("full") === "true";
-  const slot = parseInt(request.nextUrl.searchParams.get("slot") ?? "0", 10);
+  if (!isFull) {
+    return NextResponse.json(
+      { error: "Pass ?full=true to refresh all estimates" },
+      { status: 400 }
+    );
+  }
+
   const db = createServerClient();
 
   try {
@@ -46,31 +43,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "No companies to update" });
     }
 
-    const allTickers = companies.map((c) => c.ticker);
+    const tickersToProcess = companies.map((c) => c.ticker);
     const currencyMap = new Map(
       companies.map((c) => [c.ticker, c.reporting_currency || "USD"])
     );
 
-    // 2. Select batch to process
-    // slot=0 and slot=1 are offset by half the total batches so they cover different tickers
-    let tickersToProcess: string[];
-    let batchLabel = "FULL";
-    if (isFull) {
-      tickersToProcess = allTickers;
-    } else {
-      const totalBatches = Math.ceil(allTickers.length / CRON_ESTIMATES_BATCH_SIZE);
-      const slotOffset = slot === 1 ? Math.floor(totalBatches / 2) : 0;
-      const batchIndex = (getDayOfYear() + slotOffset) % totalBatches;
-      const start = batchIndex * CRON_ESTIMATES_BATCH_SIZE;
-      tickersToProcess = allTickers.slice(start, start + CRON_ESTIMATES_BATCH_SIZE);
-      batchLabel = `slot=${slot}, batch ${batchIndex + 1}/${totalBatches}`;
-    }
-
     console.log(
-      `[refresh-estimates] Processing ${tickersToProcess.length}/${allTickers.length} companies (${batchLabel})`
+      `[refresh-estimates] Processing ${tickersToProcess.length} companies (full refresh)`
     );
 
-    // 3. Pre-fetch all distinct FX rates needed (one call per currency, not per ticker)
+    // 2. Pre-fetch all distinct FX rates needed (one call per currency, not per ticker)
     const distinctCurrencies = [
       ...new Set(
         tickersToProcess
@@ -152,8 +134,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       message: "Estimates refreshed",
-      total_companies: allTickers.length,
-      batch_size: tickersToProcess.length,
+      total_companies: tickersToProcess.length,
       estimates_refreshed: estimatesRefreshed,
       price_targets_refreshed: priceTargetsRefreshed,
       errors,

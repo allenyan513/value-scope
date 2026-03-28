@@ -3,7 +3,7 @@
 // Used by both /api/valuation/[ticker] and MCP server
 // ============================================================
 
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getPriceHistory, computePeerMetricsFromDB, getValuationSnapshot } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getPriceHistory, computePeerMetricsFromDB, getValuationSnapshot, refreshSummaryWithLivePrice } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { median } from "@/lib/valuation/statistics";
@@ -43,7 +43,10 @@ export async function computeValuationForTicker(ticker: string): Promise<Valuati
   }
 
   if (snapshot && (Date.now() - new Date(snapshot.computed_at).getTime()) < SNAPSHOT_MAX_AGE_MS) {
-    return { summary: snapshot.summary as ValuationSummary, company: snapshotCompany };
+    const summary = snapshot.summary as ValuationSummary;
+    const livePrice = snapshotCompany.price || summary.current_price;
+    refreshSummaryWithLivePrice(summary, livePrice);
+    return { summary, company: snapshotCompany };
   }
 
   // Fallback: full live computation (DB-only peers + FRED + CPU — no FMP calls)
