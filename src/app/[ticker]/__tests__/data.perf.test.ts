@@ -40,9 +40,7 @@ vi.mock("@/lib/db/queries", () => ({
   getFinancials: vi.fn(() => delayed(appleFinancials)),
   getEstimates: vi.fn(() => delayed(testEstimates)),
   getLatestPrice: vi.fn(() => delayed(200)),
-  resolvePeers: vi.fn(() =>
-    delayed(testPeers.map((p) => ({ ticker: p.ticker, name: p.name, market_cap: p.market_cap })))
-  ),
+  computePeerMetricsFromDB: vi.fn(() => delayed(testPeers)),
   getPriceTargets: mockGetPriceTargets.mockImplementation(() =>
     delayed({ average: 250, high: 300, low: 200, current: 200, number_of_analysts: 20 })
   ),
@@ -53,7 +51,6 @@ vi.mock("@/lib/db/queries", () => ({
       { date: "2025-01-01", close: 210 },
     ])
   ),
-  getPeerEVEBITDAMedianFromDB: vi.fn(() => delayed(15)),
   getValuationSnapshot: vi.fn(() => delayed(null)),
 }));
 
@@ -61,10 +58,11 @@ vi.mock("@/lib/data/fred", () => ({
   getTenYearTreasuryYield: vi.fn(() => delayed(0.0425)),
 }));
 
+vi.mock("@/lib/data/sector-beta", () => ({
+  getSectorBeta: vi.fn(() => delayed(1.1)),
+}));
+
 vi.mock("@/lib/data/fmp", () => ({
-  getKeyMetrics: vi.fn(() =>
-    delayed([{ priceToEarningsRatio: 25 }])
-  ),
   getEarningsSurprises: mockGetEarningsSurprises.mockImplementation(() =>
     delayed([
       { date: "2025-01-01", actualEarningResult: 7.0, estimatedEarning: 6.8 },
@@ -110,16 +108,15 @@ describe("getCoreTickerData — parallelism", () => {
     vi.clearAllMocks();
   });
 
-  it("completes within 400ms (6 parallel queries + sequential peer lookup + peer metrics)", async () => {
+  it("completes within 300ms (6 parallel L1 queries + parallel L2 peers/FRED/beta)", async () => {
     const start = performance.now();
     const result = await getCoreTickerData("TEST");
     const duration = performance.now() - start;
 
-    // Level 1: 6 parallel queries ~100ms
-    // Level 2: resolvePeers ~100ms (needs company from L1)
-    // Level 3: peer metrics + peerEVEBITDAMedian ~100ms
+    // Level 1: 6 parallel queries ~100ms (snapshot returns null → fallback)
+    // Level 2: computePeerMetricsFromDB + FRED + sectorBeta ~100ms (all parallel)
     // If any level became fully sequential: 100 * 8 = 800ms minimum
-    expect(duration).toBeLessThan(400);
+    expect(duration).toBeLessThan(300);
     expect(result.company).toBeTruthy();
     expect(result.summary).toBeTruthy();
   });

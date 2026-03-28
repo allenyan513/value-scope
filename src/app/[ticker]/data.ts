@@ -6,12 +6,11 @@ import {
   getLatestPrice,
   getPriceTargets,
   getPriceHistory,
-  getPeerEVEBITDAMedianFromDB,
+  computePeerMetricsFromDB,
   getValuationSnapshot,
-  resolvePeers,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
-import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
+import { getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
 import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getSectorBeta } from "@/lib/data/sector-beta";
@@ -77,49 +76,17 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian };
   }
 
-  // Fallback: full live computation (FMP calls + FRED + CPU)
+  // Fallback: full live computation (DB-only peers + FRED + CPU — no FMP metric calls)
   const currentPrice = latestPrice || company.price || 0;
 
-  // Level 2a: peer resolution + FRED in parallel
-  const [peerCompanies, riskFreeRate] = await Promise.all([
-    resolvePeers(upperTicker, 10),
+  // Level 2: peer metrics (DB-only) + FRED + sector beta in parallel
+  const [peers, riskFreeRate, sectorUnleveredBeta] = await Promise.all([
+    computePeerMetricsFromDB(upperTicker, 10),
     getTenYearTreasuryYield().catch(() => 0.0425),
+    company.sector ? getSectorBeta(company.sector).catch(() => null) : Promise.resolve(null),
   ]);
-  const sectorBetaPromise = company.sector
-    ? getSectorBeta(company.sector).catch(() => null)
-    : Promise.resolve(null);
-
-  const peerMetricsPromises = peerCompanies.slice(0, 10).map(async (peer) => {
-    try {
-      const metrics = await getKeyMetrics(peer.ticker, "annual", 1);
-      if (metrics.length > 0) {
-        return {
-          ticker: peer.ticker,
-          name: peer.name,
-          market_cap: peer.market_cap,
-          trailing_pe: metrics[0].priceToEarningsRatio ?? null,
-          forward_pe: null,
-          ev_ebitda: null,
-          forward_ev_ebitda: null,
-          price_to_book: metrics[0].priceToBookRatio ?? null,
-          price_to_sales: metrics[0].priceToSalesRatio ?? null,
-          revenue_growth: null,
-          net_margin: null,
-          roe: null,
-        } as PeerComparison;
-      }
-    } catch {
-      // Skip unavailable peers
-    }
-    return null;
-  });
-
-  const [peerResults, peerEVEBITDAMedian, sectorUnleveredBeta] = await Promise.all([
-    Promise.all(peerMetricsPromises),
-    getPeerEVEBITDAMedianFromDB(upperTicker).catch(() => null),
-    sectorBetaPromise,
-  ]);
-  const peers = peerResults.filter((p): p is PeerComparison => p !== null);
+  const validEV = peers.map(p => p.ev_ebitda).filter((v): v is number => v !== null && v > 0 && v < 100);
+  const peerEVEBITDAMedian = validEV.length > 0 ? median(validEV) : null;
 
   const summary = computeFullValuation({
     company,
