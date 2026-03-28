@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCompany, computePeerEBITDAMultiples } from "@/lib/db/queries";
-import { DCFCards } from "@/components/valuation/dcf-cards";
 import { DCFFCFFCards } from "@/components/valuation/dcf-fcff-cards";
 import { DCFFCFFEBITDAExitCards } from "@/components/valuation/dcf-fcff-ebitda-exit-cards";
 import { MethodologyCard } from "@/components/valuation/methodology-card";
@@ -10,16 +9,6 @@ import { generateDCFNarrative } from "@/lib/valuation/dcf-narrative";
 import type { ValuationModelType } from "@/types";
 
 const MODEL_MAP: Record<string, { modelType: ValuationModelType; label: string; metaTitle: string; metaDesc: string; methodology: string[] }> = {
-  "perpetual-growth": {
-    modelType: "dcf_3stage",
-    label: "Perpetual Growth (10Y)",
-    metaTitle: "DCF Perpetual Growth Valuation",
-    metaDesc: "Discounted Cash Flow valuation using Gordon Growth perpetual terminal value. 10-year projection with analyst estimates (Y1–5) and transition phase (Y6–10).",
-    methodology: [
-      "This is a 3-stage Free Cash Flow to Equity (FCFE) model. Stage 1 (Years 1–5) uses analyst consensus revenue and margin estimates. Stage 2 (Years 6–10) transitions growth from the analyst trajectory toward a long-term sustainable rate. The terminal value is calculated using the Gordon Growth Model, assuming cash flows grow at a perpetual rate tied to nominal GDP growth.",
-      "Fair value equals the present value of projected FCFE plus terminal value, adjusted for cash and debt, divided by shares outstanding. The discount rate is the cost of equity derived from CAPM. The sensitivity matrix shows how fair value changes under different discount rate and terminal growth assumptions.",
-    ],
-  },
   "fcff-growth-5y": {
     modelType: "dcf_fcff_growth_5y",
     label: "FCFF Growth (5Y)",
@@ -138,7 +127,6 @@ export default async function DCFModelPage({ params }: Props) {
   };
 
   const isEBITDAExit = config.modelType === "dcf_fcff_ebitda_exit_5y" || config.modelType === "dcf_fcff_ebitda_exit_10y";
-  const isFCFF = config.modelType === "dcf_fcff_growth_5y" || config.modelType === "dcf_fcff_growth_10y";
 
   return (
     <>
@@ -153,14 +141,8 @@ export default async function DCFModelPage({ params }: Props) {
           narrative={narrative}
           peers={peerEBITDARows}
         />
-      ) : isFCFF ? (
-        <DCFFCFFCards
-          model={dcfModel}
-          currentPrice={summary.current_price}
-          narrative={narrative}
-        />
       ) : (
-        <DCFCards
+        <DCFFCFFCards
           model={dcfModel}
           currentPrice={summary.current_price}
           narrative={narrative}

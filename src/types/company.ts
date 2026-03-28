@@ -40,6 +40,5 @@ export interface CompanyClassification {
   label: string;
   description: string;
   traits: string[];
-  model_weights: Record<string, number>;
   model_applicability: ModelApplicability[];
 }

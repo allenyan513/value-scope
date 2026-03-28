@@ -6,7 +6,6 @@ export type ValuationModelType =
   | "dcf_growth_exit_10y"
   | "dcf_ebitda_exit_5y"
   | "dcf_ebitda_exit_10y"
-  | "dcf_3stage"
   | "dcf_fcff_growth_5y"
   | "dcf_fcff_growth_10y"
   | "dcf_fcff_ebitda_exit_5y"
@@ -38,7 +37,6 @@ export interface DCFProjectionYearFCFE {
   fcfe: number; // FCFE = Net Income + D&A − CapEx
   discount_factor: number;
   pv_fcfe: number;
-  stage?: 1 | 2; // Three-stage DCF: 1 = analyst-driven, 2 = transition
   ebitda?: number; // For exit multiple terminal value methods
   /** @deprecated Use depreciation_amortization and capital_expenditure instead */
   net_capex?: number;
@@ -239,17 +237,7 @@ export interface WACCResult {
 }
 
 // --- Consensus Adjustments ---
-export interface ConsensusAdjustment {
-  model: string;
-  originalWeight: number;
-  adjustedWeight: number;
-  reason: string;
-}
-
-// --- Consensus Strategy ---
-export type ConsensusStrategy = "median" | "weighted" | "dcf_primary";
-
-// --- Three-Tier Pillar Structure ---
+// --- Pillar Structure ---
 export interface ValuationPillar {
   fairValue: number;
   upside: number;
@@ -275,13 +263,7 @@ export interface ValuationSummary {
   consensus_low: number;
   consensus_high: number;
   consensus_upside: number;
-  /** The strategy used for consensus: "median" (3 pillars) or "weighted" (archetype-based) */
-  consensus_strategy: ConsensusStrategy;
-  /** The model_type of the primary (dominant) model for this archetype (weighted strategy only) */
-  consensus_primary_model: string;
-  /** Outlier adjustments applied during consensus calculation (weighted strategy only) */
-  consensus_adjustments: ConsensusAdjustment[];
-  /** Three-tier pillar breakdown (median strategy) */
+  /** Pillar breakdown for display grouping */
   pillars: ValuationPillars;
   models: ValuationResult[];
   wacc: WACCResult;

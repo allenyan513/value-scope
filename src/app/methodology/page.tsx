@@ -182,105 +182,21 @@ export default function MethodologyPage() {
         </div>
       </section>
 
-      {/* Consensus & Weighting */}
+      {/* Fair Value Methodology */}
       <section id="consensus" className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Consensus Price &amp; Weighting</h2>
+        <h2 className="text-2xl font-bold mb-4">Fair Value</h2>
         <p className="text-muted-foreground mb-4">
-          The consensus fair value is a weighted average across all applicable models.
-          Weights are not equal &mdash; they depend on the company&apos;s classification
-          and are adjusted dynamically when outliers are detected.
+          The headline fair value is derived from our primary DCF model &mdash; a 5-year
+          unlevered Free Cash Flow to Firm (FCFF) projection with a Gordon Growth terminal
+          value. All other models (FCFF EBITDA Exit, Trading Multiples, PEG, EPV) are shown
+          on the summary page for reference and cross-validation.
         </p>
-
-        <h3 className="text-lg font-semibold mt-8 mb-3">Company Classification</h3>
         <p className="text-muted-foreground mb-4">
-          Each company is automatically classified into one of 8 archetypes based on
-          financial metrics including revenue growth, profitability, dividend yield,
-          earnings volatility, and asset intensity.
+          Each company is automatically classified into one of 8 archetypes (e.g., High Growth,
+          Mature &amp; Stable, Cyclical) based on financial metrics including revenue growth,
+          profitability, dividend yield, and earnings volatility. The archetype determines
+          the terminal growth rate used in all DCF models.
         </p>
-        <div className="rounded-lg border overflow-hidden text-sm">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left p-3 font-medium">Classification</th>
-                <th className="text-left p-3 font-medium">Profile</th>
-                <th className="text-left p-3 font-medium">Primary Model (40%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="p-3 font-medium">High Growth</td>
-                <td className="p-3 text-muted-foreground">Revenue CAGR &gt;20%, low margins</td>
-                <td className="p-3">PEG Fair Value</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Profitable Growth</td>
-                <td className="p-3 text-muted-foreground">Strong growth + healthy profitability</td>
-                <td className="p-3">PEG Fair Value</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Mature &amp; Stable</td>
-                <td className="p-3 text-muted-foreground">Low growth, predictable earnings</td>
-                <td className="p-3">P/E Multiples</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Dividend Payer</td>
-                <td className="p-3 text-muted-foreground">Dividend yield &gt;2%, stable cash flows</td>
-                <td className="p-3">DCF (Perpetual Growth)</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Cyclical</td>
-                <td className="p-3 text-muted-foreground">High earnings volatility, tied to economy</td>
-                <td className="p-3">EV/EBITDA Multiples</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Turnaround</td>
-                <td className="p-3 text-muted-foreground">Currently unprofitable, improving trend</td>
-                <td className="p-3">EV/EBITDA Multiples</td>
-              </tr>
-              <tr className="border-b">
-                <td className="p-3 font-medium">Asset-Heavy</td>
-                <td className="p-3 text-muted-foreground">Capital-intensive (banks, utilities, REITs)</td>
-                <td className="p-3">EV/EBITDA Multiples</td>
-              </tr>
-              <tr>
-                <td className="p-3 font-medium">Loss-Making</td>
-                <td className="p-3 text-muted-foreground">Unprofitable, no clear improvement</td>
-                <td className="p-3">EV/EBITDA Multiples</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <h3 className="text-lg font-semibold mt-8 mb-3">Why a Primary Model?</h3>
-        <p className="text-muted-foreground mb-4">
-          No single model works well for every company. A high-growth company
-          is best valued by its growth-adjusted earnings (PEG), while a stable
-          blue chip is best compared to its peers (P/E). The primary model
-          receives 40% of the total weight; the remaining 60% is distributed
-          across the other 5 models for cross-validation.
-        </p>
-
-        <h3 className="text-lg font-semibold mt-8 mb-3">Outlier Penalty</h3>
-        <p className="text-muted-foreground mb-4">
-          Sometimes a model produces an estimate far from the others &mdash;
-          for example, a DCF result of $500 when all other models cluster
-          around $200. To prevent one outlier from dominating the consensus:
-        </p>
-        <div className="rounded-lg border p-6 space-y-3 text-sm">
-          <div>
-            We compute the <strong>median</strong> fair value across all valid models.
-          </div>
-          <div>
-            If a model deviates <strong>&gt;50%</strong> from the median, its weight is <strong>halved</strong>.
-          </div>
-          <div>
-            If a model deviates <strong>&gt;100%</strong> from the median, its weight is <strong>quartered</strong>.
-          </div>
-          <div className="text-muted-foreground pt-2 border-t">
-            Outlier detection requires at least 3 valid models.
-            Adjusted weights are shown in the summary table with a strikethrough on the original weight.
-          </div>
-        </div>
       </section>
 
       {/* Data Sources */}

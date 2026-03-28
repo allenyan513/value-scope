@@ -66,7 +66,6 @@ const mockClassification: CompanyClassification = {
   label: "Profitable Growth",
   description: "Strong growth with profitability",
   traits: ["growing", "profitable"],
-  model_weights: { peg: 0.4 },
   model_applicability: [],
 };
 
@@ -93,9 +92,6 @@ const mockSummary: ValuationSummary = {
   consensus_low: 180,
   consensus_high: 260,
   consensus_upside: 7.5,
-  consensus_strategy: "dcf_primary",
-  consensus_primary_model: "dcf_fcff_growth_5y",
-  consensus_adjustments: [],
   pillars: {
     dcf: { fairValue: 220, upside: 10, models: [] },
     tradingMultiples: { fairValue: 210, upside: 5, models: [] },

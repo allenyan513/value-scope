@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { getCompany } from "@/lib/db/queries";
 import { getCoreTickerData } from "../../data";
 import { ValuationChartSection } from "./valuation-chart-section";
-import { SummaryWithStrategy } from "./summary-with-strategy";
+import { SummaryCard } from "@/components/valuation/summary-card";
 import { WallStreetSection } from "./wall-street-section";
 
 interface Props {
@@ -91,19 +91,7 @@ export default async function SummaryPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Client component handles ?strategy= param without breaking ISR */}
-      <SummaryWithStrategy
-        defaultSummary={summary}
-        ticker={upperTicker}
-        company={data.company}
-        historicals={data.historicals}
-        estimates={data.estimates}
-        peers={data.peers}
-        historicalMultiples={data.historicalMultiples}
-        riskFreeRate={summary.wacc.risk_free_rate}
-        currentPrice={summary.current_price}
-        peerEVEBITDAMedian={data.peerEVEBITDAMedian}
-      />
+      <SummaryCard summary={summary} />
 
       {/* ValuScope vs Wall Street */}
       <Suspense
