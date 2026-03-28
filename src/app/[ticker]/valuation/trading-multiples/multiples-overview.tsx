@@ -1,84 +1,126 @@
 "use client";
 
-import type { MultipleSummary } from "./data";
-import { PercentileBar } from "./percentile-bar";
+import type { MultipleDetail, MultipleKey } from "./data";
 
 interface Props {
-  multiples: MultipleSummary[];
+  multiples: MultipleDetail[];
+  currentPrice: number;
+  activeKey: MultipleKey;
+  onKeyChange: (key: MultipleKey) => void;
 }
 
-export function MultiplesOverview({ multiples }: Props) {
-  // Only show multiples that have data
-  const available = multiples.filter((m) => m.current !== null || m.fairValue !== null);
-
-  if (available.length === 0) return null;
-
+export function MultiplesOverview({ multiples, currentPrice, activeKey, onKeyChange }: Props) {
   return (
-    <div className="val-card">
-      <h3 className="val-card-title">Multiples Overview</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {available.map((m) => (
-          <MultipleCard key={m.key} data={m} />
-        ))}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {multiples.map((m) => {
+        const isActive = m.key === activeKey;
+        return (
+          <button
+            key={m.key}
+            onClick={() => onKeyChange(m.key)}
+            className={`text-left rounded-lg border p-4 transition-all ${
+              isActive
+                ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                : "border-border/60 bg-card/50 hover:border-border"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold">{m.label} Multiples</span>
+              {m.fairValue !== null && m.upside !== null && (
+                <span className={`text-xs font-semibold ${m.upside >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {m.upside >= 0 ? "+" : ""}{m.upside.toFixed(1)}%
+                </span>
+              )}
+            </div>
+
+            {m.fairValue !== null ? (
+              <div className="space-y-2">
+                {/* Fair value range bar */}
+                <FairValueRange
+                  low={m.peerRange.p25 > 0
+                    ? (m.isEVBased
+                      ? (m.peerRange.p25 * (m.trailing?.companyMetric ?? 0) - m.netDebt) / m.sharesOutstanding
+                      : m.peerRange.p25 * (m.trailing?.companyMetric ?? 0) / m.sharesOutstanding)
+                    : null}
+                  selected={m.fairValue}
+                  high={m.peerRange.p75 > 0
+                    ? (m.isEVBased
+                      ? (m.peerRange.p75 * (m.trailing?.companyMetric ?? 0) - m.netDebt) / m.sharesOutstanding
+                      : m.peerRange.p75 * (m.trailing?.companyMetric ?? 0) / m.sharesOutstanding)
+                    : null}
+                  currentPrice={currentPrice}
+                />
+
+                {/* Legs summary */}
+                <div className="flex gap-3 text-[11px] text-muted-foreground">
+                  {m.trailing && (
+                    <span>Trailing: <span className="font-mono text-foreground">${m.trailing.fairPrice.toFixed(2)}</span></span>
+                  )}
+                  {m.forward && (
+                    <span>Forward: <span className="font-mono text-foreground">${m.forward.fairPrice.toFixed(2)}</span></span>
+                  )}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {m.peerCount} peers &middot; {m.trailing && m.forward ? "Trailing + Forward" : m.trailing ? "Trailing only" : "Forward only"}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">Insufficient data</div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function MultipleCard({ data }: { data: MultipleSummary }) {
-  const hasCurrent = data.current !== null;
-  const hasAvg = data.avg5y !== null;
-  const isPremium = hasCurrent && hasAvg && data.current! > data.avg5y!;
-
-  // Border color: green if below avg (cheap), red if above (premium)
-  const borderClass = !hasCurrent || !hasAvg
-    ? "border-border"
-    : isPremium
-      ? "border-red-900/40"
-      : "border-green-900/40";
+function FairValueRange({
+  low,
+  selected,
+  high,
+  currentPrice,
+}: {
+  low: number | null;
+  selected: number;
+  high: number | null;
+  currentPrice: number;
+}) {
+  const displayLow = low && low > 0 ? low : selected * 0.7;
+  const displayHigh = high && high > 0 ? high : selected * 1.3;
 
   return (
-    <div className={`rounded-lg border ${borderClass} bg-card/50 p-3 space-y-2`}>
-      <div className="text-xs font-medium text-muted-foreground">{data.label}</div>
-
-      {/* Current value */}
-      <div className="text-xl font-bold font-mono">
-        {hasCurrent ? `${data.current!.toFixed(1)}x` : "—"}
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-lg font-bold font-mono">${selected.toFixed(2)}</span>
+        <span className="text-xs text-muted-foreground">
+          ${displayLow.toFixed(0)} – ${displayHigh.toFixed(0)}
+        </span>
       </div>
-
-      {/* 5Y Average */}
-      {hasAvg && (
-        <div className="text-[11px] text-muted-foreground">
-          5Y Avg: <span className="font-mono">{data.avg5y!.toFixed(1)}x</span>
-        </div>
-      )}
-
-      {/* vs Peers */}
-      {data.peerMedian !== null && hasCurrent && (
-        <div className="text-[11px] text-muted-foreground">
-          Peers: <span className="font-mono">{data.peerMedian.toFixed(1)}x</span>
-          {" "}
-          <span className={data.current! > data.peerMedian ? "text-red-400" : "text-green-400"}>
-            {data.current! > data.peerMedian ? "▲" : "▼"}
-          </span>
-        </div>
-      )}
-
-      {/* Percentile bar */}
-      <PercentileBar percentile={data.percentile} />
-
-      {/* Fair value from this multiple */}
-      {data.fairValue !== null && data.upside !== null && (
-        <div className="pt-1 border-t border-border/50">
-          <div className="text-[11px] text-muted-foreground">Fair Value</div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-sm font-semibold font-mono">${data.fairValue.toFixed(2)}</span>
-            <span className={`text-[11px] font-medium ${data.upside >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {data.upside >= 0 ? "+" : ""}{data.upside.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Simple range indicator */}
+      <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className="absolute h-full bg-primary/40 rounded-full"
+          style={{
+            left: "15%",
+            right: "15%",
+          }}
+        />
+        {/* Selected marker */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-primary rounded-full"
+          style={{ left: "50%" }}
+        />
+        {/* Current price marker */}
+        {currentPrice > 0 && displayLow > 0 && displayHigh > displayLow && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-foreground/60 rounded-full"
+            style={{
+              left: `${Math.min(95, Math.max(5, ((currentPrice - displayLow) / (displayHigh - displayLow)) * 100))}%`,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

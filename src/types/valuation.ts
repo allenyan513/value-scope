@@ -192,6 +192,7 @@ export interface PeerComparison {
   trailing_pe: number | null;
   forward_pe: number | null;
   ev_ebitda: number | null;
+  forward_ev_ebitda: number | null;
   price_to_book: number | null;
   price_to_sales: number | null;
   revenue_growth: number | null;

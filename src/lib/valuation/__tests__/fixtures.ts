@@ -34,9 +34,9 @@ export const testEstimates: AnalystEstimate[] = [
 ];
 
 export const testPeers: PeerComparison[] = [
-  { ticker: "PEER1", name: "Peer One", market_cap: 2e12, trailing_pe: 25, forward_pe: 22, ev_ebitda: 20, price_to_book: 12, price_to_sales: 8, revenue_growth: 0.08, net_margin: 0.22, roe: 0.35 },
-  { ticker: "PEER2", name: "Peer Two", market_cap: 1.5e12, trailing_pe: 30, forward_pe: 27, ev_ebitda: 25, price_to_book: 15, price_to_sales: 10, revenue_growth: 0.12, net_margin: 0.18, roe: 0.28 },
-  { ticker: "PEER3", name: "Peer Three", market_cap: 1e12, trailing_pe: 22, forward_pe: 20, ev_ebitda: 18, price_to_book: 8, price_to_sales: 6, revenue_growth: 0.05, net_margin: 0.25, roe: 0.40 },
+  { ticker: "PEER1", name: "Peer One", market_cap: 2e12, trailing_pe: 25, forward_pe: 22, ev_ebitda: 20, forward_ev_ebitda: 17, price_to_book: 12, price_to_sales: 8, revenue_growth: 0.08, net_margin: 0.22, roe: 0.35 },
+  { ticker: "PEER2", name: "Peer Two", market_cap: 1.5e12, trailing_pe: 30, forward_pe: 27, ev_ebitda: 25, forward_ev_ebitda: 21, price_to_book: 15, price_to_sales: 10, revenue_growth: 0.12, net_margin: 0.18, roe: 0.28 },
+  { ticker: "PEER3", name: "Peer Three", market_cap: 1e12, trailing_pe: 22, forward_pe: 20, ev_ebitda: 18, forward_ev_ebitda: 15, price_to_book: 8, price_to_sales: 6, revenue_growth: 0.05, net_margin: 0.25, roe: 0.40 },
 ];
 
 // --- Company with negative earnings ---

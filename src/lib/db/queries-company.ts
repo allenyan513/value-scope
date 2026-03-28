@@ -48,7 +48,8 @@ export async function upsertCompany(company: Partial<Company> & { ticker: string
 export async function getPeersByIndustry(
   industry: string,
   excludeTicker: string,
-  limit = 10
+  limit = 10,
+  sector?: string,
 ): Promise<Company[]> {
   const { data } = await db()
     .from("companies")
@@ -57,7 +58,21 @@ export async function getPeersByIndustry(
     .neq("ticker", excludeTicker)
     .order("market_cap", { ascending: false })
     .limit(limit);
-  return (data ?? []) as Company[];
+  const peers = (data ?? []) as Company[];
+
+  // Fallback to sector peers when industry has too few matches
+  if (peers.length < 3 && sector) {
+    const { data: sectorData } = await db()
+      .from("companies")
+      .select("*")
+      .eq("sector", sector)
+      .neq("ticker", excludeTicker)
+      .order("market_cap", { ascending: false })
+      .limit(limit);
+    return (sectorData ?? []) as Company[];
+  }
+
+  return peers;
 }
 
 /**
@@ -70,7 +85,7 @@ export async function getIndustryPeers(
 ): Promise<Company[]> {
   const company = await getCompany(ticker);
   if (!company) return [];
-  return getPeersByIndustry(company.industry, ticker, limit);
+  return getPeersByIndustry(company.industry, ticker, limit, company.sector);
 }
 
 /**
@@ -86,13 +101,20 @@ export async function computePeerMetricsFromDB(
 
   const peerTickers = peerCompanies.map((p) => p.ticker);
 
-  // Fetch latest annual financials for all peers in one query
-  const { data: financials } = await db()
-    .from("financial_statements")
-    .select("ticker, revenue, eps_diluted, total_equity, ebitda, total_debt, cash_and_equivalents, net_income, fiscal_year")
-    .in("ticker", peerTickers)
-    .eq("period_type", "annual")
-    .order("fiscal_year", { ascending: false });
+  // Fetch latest annual financials + analyst estimates for all peers in parallel
+  const [{ data: financials }, { data: estimates }] = await Promise.all([
+    db()
+      .from("financial_statements")
+      .select("ticker, revenue, eps_diluted, total_equity, ebitda, total_debt, cash_and_equivalents, net_income, fiscal_year")
+      .in("ticker", peerTickers)
+      .eq("period_type", "annual")
+      .order("fiscal_year", { ascending: false }),
+    db()
+      .from("analyst_estimates")
+      .select("ticker, eps_estimate, revenue_estimate, period")
+      .in("ticker", peerTickers)
+      .order("period", { ascending: true }),
+  ]);
 
   // Group by ticker, take latest year only
   const latestByTicker = new Map<string, typeof financials extends (infer T)[] | null ? T : never>();
@@ -102,20 +124,32 @@ export async function computePeerMetricsFromDB(
     }
   }
 
+  // Group estimates by ticker, take first (nearest year) estimate
+  const estimateByTicker = new Map<string, { eps_estimate: number; revenue_estimate: number }>();
+  for (const row of estimates ?? []) {
+    if (!estimateByTicker.has(row.ticker) && row.eps_estimate && row.revenue_estimate) {
+      estimateByTicker.set(row.ticker, row);
+    }
+  }
+
   return peerCompanies.map((peer) => {
     const fin = latestByTicker.get(peer.ticker);
+    const est = estimateByTicker.get(peer.ticker);
     const price = peer.price || 0;
     const mcap = peer.market_cap || 0;
 
     let trailing_pe: number | null = null;
+    let forward_pe: number | null = null;
     let price_to_book: number | null = null;
     let price_to_sales: number | null = null;
     let ev_ebitda: number | null = null;
+    let forward_ev_ebitda: number | null = null;
     let net_margin: number | null = null;
 
     if (fin) {
       if (fin.eps_diluted && fin.eps_diluted > 0 && price > 0) {
         trailing_pe = price / fin.eps_diluted;
+        if (trailing_pe > 200) trailing_pe = null; // cap extreme
       }
       if (fin.total_equity && fin.total_equity > 0 && mcap > 0) {
         price_to_book = mcap / fin.total_equity;
@@ -126,9 +160,27 @@ export async function computePeerMetricsFromDB(
       if (fin.ebitda && fin.ebitda > 0) {
         const ev = mcap + (fin.total_debt || 0) - (fin.cash_and_equivalents || 0);
         ev_ebitda = ev / fin.ebitda;
+        if (ev_ebitda > 100) ev_ebitda = null; // cap extreme
       }
       if (fin.net_income && fin.revenue && fin.revenue > 0) {
         net_margin = fin.net_income / fin.revenue;
+      }
+
+      // Forward multiples from analyst estimates
+      if (est && price > 0) {
+        if (est.eps_estimate > 0) {
+          const fpe = price / est.eps_estimate;
+          forward_pe = fpe <= 200 ? fpe : null;
+        }
+        if (fin.ebitda && fin.revenue && fin.revenue > 0 && est.revenue_estimate > 0) {
+          const ebitdaMargin = fin.ebitda / fin.revenue;
+          const forwardEBITDA = est.revenue_estimate * ebitdaMargin;
+          if (forwardEBITDA > 0) {
+            const ev = mcap + (fin.total_debt || 0) - (fin.cash_and_equivalents || 0);
+            const fevEbitda = ev / forwardEBITDA;
+            forward_ev_ebitda = fevEbitda <= 100 ? fevEbitda : null;
+          }
+        }
       }
     }
 
@@ -137,8 +189,9 @@ export async function computePeerMetricsFromDB(
       name: peer.name,
       market_cap: mcap,
       trailing_pe,
-      forward_pe: null,
+      forward_pe,
       ev_ebitda,
+      forward_ev_ebitda,
       price_to_book,
       price_to_sales,
       revenue_growth: null,
