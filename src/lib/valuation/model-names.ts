@@ -18,9 +18,6 @@ export const MODEL_NAMES: Record<string, string> = {
   // Trading multiples
   pe_multiples: "P/E",
   ev_ebitda_multiples: "EV/EBITDA",
-  pb_multiples: "P/B",
-  ps_multiples: "P/S",
-  p_fcf_multiples: "P/FCF",
   // PEG
   peg: "PEG Fair Value",
 };
@@ -33,9 +30,6 @@ export const MODEL_ORDER = [
   "dcf_fcff_ebitda_exit_10y",
   "pe_multiples",
   "ev_ebitda_multiples",
-  "pb_multiples",
-  "ps_multiples",
-  "p_fcf_multiples",
   "peg",
 ];
 
@@ -55,8 +49,5 @@ export const MODEL_LINKS: Record<string, string> = {
   dcf_3stage: "/valuation/dcf",
   pe_multiples: "/valuation/trading-multiples",
   ev_ebitda_multiples: "/valuation/trading-multiples",
-  pb_multiples: "/valuation/trading-multiples",
-  ps_multiples: "/valuation/trading-multiples",
-  p_fcf_multiples: "/valuation/trading-multiples",
   peg: "/valuation/peg",
 };

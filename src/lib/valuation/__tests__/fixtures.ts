@@ -57,9 +57,6 @@ export function generateHistoricalMultiples(
   days: number,
   basePE: number,
   baseEVEBITDA?: number,
-  basePB?: number,
-  basePS?: number,
-  basePFCF?: number
 ): HistoricalMultiplesPoint[] {
   const result: HistoricalMultiplesPoint[] = [];
   const startDate = new Date("2024-01-01");
@@ -74,9 +71,6 @@ export function generateHistoricalMultiples(
       date: date.toISOString().split("T")[0],
       pe: Math.round((basePE * (1 + noise)) * 100) / 100,
       ev_ebitda: baseEVEBITDA ? Math.round((baseEVEBITDA * (1 + noise * 0.7)) * 100) / 100 : null,
-      pb: basePB ? Math.round((basePB * (1 + noise * 0.5)) * 100) / 100 : null,
-      ps: basePS ? Math.round((basePS * (1 + noise * 0.6)) * 100) / 100 : null,
-      p_fcf: basePFCF ? Math.round((basePFCF * (1 + noise * 0.8)) * 100) / 100 : null,
     });
   }
   return result;

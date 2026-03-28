@@ -6,22 +6,19 @@ paths:
 
 # Valuation Models
 
-9 models in `src/lib/valuation/`, organized in 3 pillars:
+6 models in `src/lib/valuation/`, organized in 3 pillars:
 
 ### DCF (3 models)
 1. **DCF 3-Stage Perpetual Growth 10Y** — 10Y projection (Y1–5 analyst, Y6–10 fade), Gordon Growth TV. Primary DCF model.
 2. **DCF P/E Exit 10Y** — TV = Year 10 Net Income × 5Y avg P/E.
 3. **DCF EV/EBITDA Exit 10Y** — TV = Year 10 EBITDA × 5Y avg EV/EBITDA − net debt.
 
-### Trading Multiples (5 models)
+### Trading Multiples (2 models)
 4. **P/E** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
 5. **EV/EBITDA** — Historical 5Y avg EV/EBITDA × EBITDA → equity per share (same fallback)
-6. **P/B** — Historical 5Y avg P/B × Book Value per Share (same fallback)
-7. **P/S** — Historical 5Y avg P/S × Revenue per Share (same fallback)
-8. **P/FCF** — Historical 5Y avg P/FCF × FCF per Share (same fallback)
 
 ### PEG (1 model)
-9. **PEG Fair Value** (`src/lib/valuation/peg.ts`) — Fair Value = (EPS Growth + Div Yield) × 100 × NTM EPS. Growth: forward analyst EPS CAGR (≥3 analysts), fallback historical EPS CAGR. Clamped 8%–25%.
+6. **PEG Fair Value** (`src/lib/valuation/peg.ts`) — Fair Value = (EPS Growth + Div Yield) × 100 × NTM EPS. Growth: forward analyst EPS CAGR (≥3 analysts), fallback historical EPS CAGR. Clamped 8%–25%.
 
 ## Consensus Strategies
 
@@ -48,7 +45,7 @@ Users can switch strategies via `?strategy=median` query param on the summary pa
 - Terminal Growth Rate: dynamic by archetype (2.5%–4.0%), defined in `company-classifier.ts`
 
 ## Trading Multiples
-- All 5 multiples use the same pattern: historical self-comparison (5Y avg), peer fallback (<100 data points)
+- Both multiples (P/E, EV/EBITDA) use the same pattern: historical self-comparison (5Y avg), peer fallback (<100 data points)
 - Shared logic in `historical-multiples.ts`
 - Low/High estimates use p25/p75 of historical distribution
 - Trading Multiples detail page (`trading-multiples/data.ts`) computes its own consensus independently

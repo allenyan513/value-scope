@@ -25,9 +25,6 @@ import { calculateDCFFCFF, calculateDCFFCFF10Y, calculateDCFFCFFEBITDAExit, calc
 import {
   calculatePEMultiples,
   calculateEVEBITDAMultiples,
-  calculatePBMultiples,
-  calculatePSMultiples,
-  calculatePFCFMultiples,
   type TradingMultiplesInputs,
 } from "./trading-multiples";
 import { calculatePEG } from "./peg";
@@ -62,9 +59,6 @@ const DCF_MODEL_TYPES = new Set([
 const TRADING_MULTIPLES_MODEL_TYPES = new Set([
   "pe_multiples",
   "ev_ebitda_multiples",
-  "pb_multiples",
-  "ps_multiples",
-  "p_fcf_multiples",
 ]);
 
 /**
@@ -240,9 +234,6 @@ export function computeFullValuation(
 
   models.push(calculatePEMultiples(tradingInputs));
   models.push(calculateEVEBITDAMultiples(tradingInputs));
-  models.push(calculatePBMultiples(tradingInputs));
-  models.push(calculatePSMultiples(tradingInputs));
-  models.push(calculatePFCFMultiples(tradingInputs));
 
   // PEG Fair Value
   models.push(

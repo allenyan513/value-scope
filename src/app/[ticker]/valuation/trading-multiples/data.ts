@@ -4,16 +4,13 @@ import { computeMultiplesStats } from "@/lib/valuation/historical-multiples";
 import {
   calculatePEMultiples,
   calculateEVEBITDAMultiples,
-  calculatePBMultiples,
-  calculatePSMultiples,
-  calculatePFCFMultiples,
   type TradingMultiplesInputs,
 } from "@/lib/valuation/trading-multiples";
 import type { PeerComparison, MultipleStats, ValuationResult } from "@/types";
 
 // --- Public types ---
 
-export type MultipleKey = "pe" | "ev_ebitda" | "pb" | "ps" | "p_fcf";
+export type MultipleKey = "pe" | "ev_ebitda";
 
 export interface MultipleSummary {
   key: MultipleKey;
@@ -40,8 +37,6 @@ export interface CompanyRow {
   market_cap: number;
   pe: number | null;
   ev_ebitda: number | null;
-  pb: number | null;
-  ps: number | null;
   revenue_growth: number | null;
   net_margin: number | null;
   roe: number | null;
@@ -146,20 +141,14 @@ export const getRelativeValuationData = cache(async (ticker: string): Promise<Re
     historicalMultiples,
   };
 
-  // Run all 5 models
+  // Run trading multiples models
   const peResult = calculatePEMultiples(tradingInputs);
   const evResult = calculateEVEBITDAMultiples(tradingInputs);
-  const pbResult = calculatePBMultiples(tradingInputs);
-  const psResult = calculatePSMultiples(tradingInputs);
-  const pfcfResult = calculatePFCFMultiples(tradingInputs);
 
   // Build summaries
   const multiples: MultipleSummary[] = [
     buildMultipleSummary("pe", "P/E", stats.pe, peResult, peers, (p) => p.trailing_pe, "TTM EPS", false, null),
     buildMultipleSummary("ev_ebitda", "EV/EBITDA", stats.ev_ebitda, evResult, peers, (p) => p.ev_ebitda, "EBITDA", true, netDebt),
-    buildMultipleSummary("pb", "P/B", stats.pb, pbResult, peers, (p) => p.price_to_book, "Book Value/Share", false, null),
-    buildMultipleSummary("ps", "P/S", stats.ps, psResult, peers, (p) => p.price_to_sales, "Revenue/Share", false, null),
-    buildMultipleSummary("p_fcf", "P/FCF", stats.p_fcf, pfcfResult, peers, () => null, "FCF/Share", false, null),
   ];
 
   // Consensus: median of available fair values (robust against outliers)
@@ -192,8 +181,6 @@ export const getRelativeValuationData = cache(async (ticker: string): Promise<Re
     market_cap: currentPrice * shares,
     pe: stats.pe?.current ?? null,
     ev_ebitda: stats.ev_ebitda?.current ?? null,
-    pb: stats.pb?.current ?? null,
-    ps: stats.ps?.current ?? null,
     revenue_growth: revenueGrowth,
     net_margin: netMargin,
     roe,

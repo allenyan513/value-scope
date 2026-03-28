@@ -13,10 +13,8 @@ export type ValuationModelType =
   | "dcf_fcff_ebitda_exit_10y"
   | "pe_multiples"
   | "ev_ebitda_multiples"
-  | "pb_multiples"
-  | "ps_multiples"
-  | "p_fcf_multiples"
-  | "peg";
+  | "peg"
+  | "epv";
 
 export interface ValuationResult {
   model_type: ValuationModelType;
@@ -261,6 +259,7 @@ export interface ValuationPillars {
   dcf: ValuationPillar;
   tradingMultiples: ValuationPillar;
   peg: ValuationPillar;
+  epv: ValuationPillar;
 }
 
 // --- Valuation Summary ---
@@ -296,9 +295,6 @@ export interface HistoricalMultiplesPoint {
   date: string;
   pe: number | null;
   ev_ebitda: number | null;
-  pb: number | null;
-  ps: number | null;
-  p_fcf: number | null;
 }
 
 export interface MultipleStats {
@@ -315,8 +311,5 @@ export interface HistoricalMultiplesResponse {
   stats: {
     pe: MultipleStats | null;
     ev_ebitda: MultipleStats | null;
-    pb: MultipleStats | null;
-    ps: MultipleStats | null;
-    p_fcf: MultipleStats | null;
   };
 }
