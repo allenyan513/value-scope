@@ -474,12 +474,16 @@ Need: Resumable seed script with checkpoint tracking (current seed has no resume
 3. Add quarterly financial refresh cron (earnings-driven)
 4. Add 10Y Treasury daily cron (replace lazy FRED calls)
 
-### Phase 4: Prepare for Auth (Month 2)
+### Phase 4: Auth + Credit-Based Monetization (Month 2) ✅ Done (PR #54)
 
-1. Add unified API layer with auth + rate limiting
-2. Add client-side caching (React Query / SWR) for logged-in pages
-3. Keep ISR for public summary pages (SEO)
-4. Remove ISR dependency from detail pages
+Pivoted from subscription to credit-based model. See `docs/credit-system.md` for full details.
+
+1. ✅ Credit system (DB tables + atomic PG functions + service layer)
+2. ✅ Stripe one-time payment checkout + webhook fulfillment
+3. ✅ Client-side AccessGate with blur paywall (ISR preserved, no CLS)
+4. ✅ Credit gating on MCP + REST API endpoints
+5. ✅ Google OAuth + cookie-based auth callback
+6. ✅ Pricing page with 3 credit packs
 
 ### Phase 5: Scale to 8,000 (Month 2-3)
 
