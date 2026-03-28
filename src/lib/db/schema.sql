@@ -117,33 +117,29 @@ CREATE TABLE analyst_estimates (
   UNIQUE(ticker, period)
 );
 
--- Valuations (latest computed valuation per model)
-CREATE TABLE valuations (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ticker TEXT NOT NULL REFERENCES companies(ticker),
-  model_type TEXT NOT NULL,
-  fair_value REAL NOT NULL,
-  upside_percent REAL,
-  low_estimate REAL,
-  high_estimate REAL,
-  assumptions JSONB,
-  details JSONB,
-  computed_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(ticker, model_type)
+-- Price Target Consensus (analyst consensus targets)
+CREATE TABLE price_target_consensus (
+  ticker TEXT PRIMARY KEY REFERENCES companies(ticker),
+  target_high REAL,
+  target_low REAL,
+  target_consensus REAL,
+  target_median REAL,
+  number_of_analysts INT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_valuations_ticker ON valuations(ticker);
-
--- Valuation History (daily snapshots for price vs intrinsic value chart)
-CREATE TABLE valuation_history (
-  ticker TEXT NOT NULL REFERENCES companies(ticker),
-  date DATE NOT NULL,
-  close_price REAL,
-  intrinsic_value REAL,
-  PRIMARY KEY (ticker, date)
+-- Valuation Snapshots (pre-computed nightly, 1 row per ticker)
+CREATE TABLE valuation_snapshots (
+  ticker         TEXT PRIMARY KEY REFERENCES companies(ticker),
+  fair_value     REAL NOT NULL,
+  upside_pct     REAL NOT NULL,
+  verdict        TEXT NOT NULL,
+  current_price  REAL NOT NULL,
+  summary        JSONB NOT NULL,   -- full ValuationSummary object
+  peers          JSONB,            -- PeerComparison[] used during computation
+  computed_at    TIMESTAMPTZ NOT NULL,
+  updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE INDEX idx_val_history_ticker_date ON valuation_history(ticker, date DESC);
 
 -- Watchlists
 CREATE TABLE watchlists (
@@ -199,12 +195,12 @@ ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE financial_statements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyst_estimates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE valuations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE valuation_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE price_target_consensus ENABLE ROW LEVEL SECURITY;
+ALTER TABLE valuation_snapshots ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public read companies" ON companies FOR SELECT USING (true);
 CREATE POLICY "Public read financials" ON financial_statements FOR SELECT USING (true);
 CREATE POLICY "Public read prices" ON daily_prices FOR SELECT USING (true);
 CREATE POLICY "Public read estimates" ON analyst_estimates FOR SELECT USING (true);
-CREATE POLICY "Public read valuations" ON valuations FOR SELECT USING (true);
-CREATE POLICY "Public read valuation_history" ON valuation_history FOR SELECT USING (true);
+CREATE POLICY "Public read price_target_consensus" ON price_target_consensus FOR SELECT USING (true);
+CREATE POLICY "Public read valuation_snapshots" ON valuation_snapshots FOR SELECT USING (true);

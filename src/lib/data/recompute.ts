@@ -19,6 +19,7 @@ import { median } from "@/lib/valuation/statistics";
 import { getAllSectorBetas } from "@/lib/data/sector-beta";
 import { toDateString } from "@/lib/format";
 import { RECOMPUTE_CONCURRENCY } from "@/lib/constants";
+import { upsertValuationSnapshot } from "@/lib/db/queries-valuation";
 import type { Company } from "@/types";
 
 export interface RecomputeResult {
@@ -90,8 +91,18 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         sectorUnleveredBeta: sectorBetaMap.get(company.sector) ?? undefined,
       });
 
-      // Valuation computed successfully (no longer persisted to DB —
-      // valuations are computed lazily on page visit)
+      // Persist to valuation_snapshots table
+      await upsertValuationSnapshot({
+        ticker: company.ticker,
+        fair_value: summary.consensus_fair_value,
+        upside_pct: summary.consensus_upside,
+        verdict: summary.verdict,
+        current_price: currentPrice,
+        summary,
+        peers,
+        computed_at: summary.computed_at,
+      });
+
       return "success";
     } catch (error) {
       console.error(`[recompute] Error for ${company.ticker}:`, error);

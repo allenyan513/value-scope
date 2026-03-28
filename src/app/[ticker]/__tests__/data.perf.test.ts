@@ -54,6 +54,7 @@ vi.mock("@/lib/db/queries", () => ({
     ])
   ),
   getPeerEVEBITDAMedianFromDB: vi.fn(() => delayed(15)),
+  getValuationSnapshot: vi.fn(() => delayed(null)),
 }));
 
 vi.mock("@/lib/data/fred", () => ({
