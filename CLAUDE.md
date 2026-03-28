@@ -16,7 +16,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 9 aut
 npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
-npm test             # Run unit tests (Vitest, 263 tests)
+npm test             # Run unit tests (Vitest, 249 tests)
 npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
@@ -71,10 +71,18 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 
 ## Cron Jobs
 Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron (Hobby plan doesn't support multiple daily jobs). GitHub Actions calls the Vercel-hosted API routes with `CRON_SECRET`.
-- **Update Prices** (`/api/cron/update-prices`): 3x weekdays — 8:30 AM, 10:30 AM, 5:30 PM ET. Also refreshes sector betas and busts ISR cache.
-- **Refresh Estimates** (`/api/cron/refresh-estimates`): 2x weekdays — 4:00 PM (slot=0), 6:00 PM ET (slot=1). Rotates 250 tickers/slot, 500/day. Busts ISR cache for processed tickers.
-- **No recompute cron** — valuations are computed lazily on page visit via `getCoreTickerData()` → `computeFullValuation()`, cached by ISR (1 hour). No `valuations` or `valuation_history` tables — all computation is ephemeral, cached only as ISR HTML.
-- Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
+
+**Scheduled (automatic, weekdays)**:
+- **Update Prices** (`/api/cron/update-prices`): 5:30 PM ET (1x). Batch quotes for all tickers, warms FRED cache, busts ISR cache.
+- **Refresh After Earnings** (`/api/cron/refresh-after-earnings`): 7:00 PM ET (1x). Event-driven: checks FMP earnings calendar for companies that reported today/yesterday, refreshes their financials + estimates + profile. Falls back to rotating batch of 50 on no-earnings days. Triggers targeted recompute (affected tickers + their peers) and sector beta refresh.
+
+**Manual-only (GitHub Actions → Run workflow)**:
+- **Refresh Estimates Full** (`/api/cron/refresh-estimates?full=true`): Bulk-refresh all estimates. For recovery/onboarding.
+- **Recompute Valuations** (`/api/cron/recompute-valuations`): Full recompute of all valuation snapshots. For recovery/model changes.
+
+**Valuation snapshots**: Pre-computed and stored in `valuation_snapshots` table (1 row per ticker, JSONB summary). `getCoreTickerData()` and `computeValuationForTicker()` read snapshots first (~5ms), falling back to live computation if stale (>25h). Upside% and verdict are recalculated dynamically at read time using the latest `companies.price`.
+
+- Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3001/api/cron/update-prices`
 - Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
 
 ## MCP Server
