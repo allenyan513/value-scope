@@ -153,6 +153,27 @@ interface FMPEarningsCalendarEntry {
   revenueEstimated: number | null;
 }
 
+/**
+ * Fetch all companies that reported earnings in a date range.
+ * Used by event-driven refresh cron to find which tickers need financial updates.
+ */
+export async function getEarningsCalendarByDateRange(
+  from: string,
+  to: string
+): Promise<FMPEarningsCalendarEntry[]> {
+  try {
+    const data = await fmpFetch<FMPEarningsCalendarEntry[]>(
+      "/earnings-calendar",
+      { from, to }
+    );
+    if (!data || data.length === 0) return [];
+    // Only return entries that have actual EPS (meaning they already reported)
+    return data.filter((e) => e.eps !== null);
+  } catch {
+    return [];
+  }
+}
+
 export async function getEarningsCalendar(
   ticker: string
 ): Promise<FMPEarningsCalendarEntry | null> {
