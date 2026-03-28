@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { getCoreTickerData } from "../../data";
+import { computePeerMetricsFromDB } from "@/lib/db/queries";
 import {
   calculatePEMultiplesDetailed,
   calculateEVEBITDAMultiplesDetailed,
@@ -96,7 +97,12 @@ function buildMultipleDetail(
 // --- Main data function ---
 
 export const getRelativeValuationData = cache(async (ticker: string): Promise<RelativePageData | null> => {
-  const { company, summary, estimates, historicals, peers } = await getCoreTickerData(ticker);
+  // Fetch core data + page-specific peers with forward multiples in parallel
+  const [coreData, peers] = await Promise.all([
+    getCoreTickerData(ticker),
+    computePeerMetricsFromDB(ticker, 15),
+  ]);
+  const { company, summary, estimates, historicals } = coreData;
 
   if (!summary) return null;
 

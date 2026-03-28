@@ -65,7 +65,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
   const currentPrice = latestPrice || company.price || 0;
 
   // Level 2: peers + computation + peer metrics + sector beta in parallel
-  const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
+  const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15, company.sector);
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
   const sectorBetaPromise = company.sector
     ? getSectorBeta(company.sector).catch(() => null)
@@ -82,6 +82,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
           trailing_pe: metrics[0].priceToEarningsRatio ?? null,
           forward_pe: null,
           ev_ebitda: null,
+          forward_ev_ebitda: null,
           price_to_book: metrics[0].priceToBookRatio ?? null,
           price_to_sales: metrics[0].priceToSalesRatio ?? null,
           revenue_growth: null,

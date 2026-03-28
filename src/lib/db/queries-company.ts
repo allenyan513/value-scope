@@ -48,7 +48,8 @@ export async function upsertCompany(company: Partial<Company> & { ticker: string
 export async function getPeersByIndustry(
   industry: string,
   excludeTicker: string,
-  limit = 10
+  limit = 10,
+  sector?: string,
 ): Promise<Company[]> {
   const { data } = await db()
     .from("companies")
@@ -57,7 +58,21 @@ export async function getPeersByIndustry(
     .neq("ticker", excludeTicker)
     .order("market_cap", { ascending: false })
     .limit(limit);
-  return (data ?? []) as Company[];
+  const peers = (data ?? []) as Company[];
+
+  // Fallback to sector peers when industry has too few matches
+  if (peers.length < 3 && sector) {
+    const { data: sectorData } = await db()
+      .from("companies")
+      .select("*")
+      .eq("sector", sector)
+      .neq("ticker", excludeTicker)
+      .order("market_cap", { ascending: false })
+      .limit(limit);
+    return (sectorData ?? []) as Company[];
+  }
+
+  return peers;
 }
 
 /**
@@ -70,7 +85,7 @@ export async function getIndustryPeers(
 ): Promise<Company[]> {
   const company = await getCompany(ticker);
   if (!company) return [];
-  return getPeersByIndustry(company.industry, ticker, limit);
+  return getPeersByIndustry(company.industry, ticker, limit, company.sector);
 }
 
 /**
