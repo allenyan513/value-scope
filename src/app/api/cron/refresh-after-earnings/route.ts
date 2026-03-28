@@ -17,7 +17,7 @@ import { createServerClient } from "@/lib/db/supabase";
 import { getEarningsCalendarByDateRange } from "@/lib/data/fmp";
 import { refreshFinancialsForTicker } from "@/lib/data/refresh-financials";
 import { refreshAllSectorBetas } from "@/lib/data/sector-beta";
-import { recomputeAllValuations } from "@/lib/data/recompute";
+import { recomputeValuationsForTickers } from "@/lib/data/recompute";
 import { CRON_EARNINGS_FALLBACK_BATCH, FMP_API_DELAY_MS } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
 
@@ -128,11 +128,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 7. Recompute valuations for affected tickers (DB-only)
+    // 7. Recompute valuations for affected tickers + their peers (DB-only)
     let recomputeResult = null;
     if (success > 0) {
-      console.log("[refresh-after-earnings] Recomputing valuations...");
-      recomputeResult = await recomputeAllValuations();
+      console.log("[refresh-after-earnings] Recomputing valuations (targeted)...");
+      recomputeResult = await recomputeValuationsForTickers(tickersToRefresh);
     }
 
     // 8. Bust ISR cache for refreshed tickers

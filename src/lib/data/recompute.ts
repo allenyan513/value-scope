@@ -30,29 +30,17 @@ export interface RecomputeResult {
   errors: number;
 }
 
-/**
- * Recompute valuations for all companies in the DB.
- * Reads all data from DB — zero external API calls (except FRED for risk-free rate).
- */
-export async function recomputeAllValuations(): Promise<RecomputeResult> {
-  const db = createServerClient();
+async function recomputeForCompanies(
+  companies: Company[],
+  riskFreeRate: number,
+  sectorBetaMap: Map<string, number>
+): Promise<RecomputeResult> {
   const today = toDateString(new Date());
 
-  const { data: companies } = await db
-    .from("companies")
-    .select("*")
-    .order("ticker");
-
-  if (!companies || companies.length === 0) {
+  if (companies.length === 0) {
     return { date: today, total: 0, success: 0, skipped: 0, errors: 0 };
   }
 
-  console.log(`[recompute] Processing ${companies.length} companies...`);
-
-  const [riskFreeRate, sectorBetaMap] = await Promise.all([
-    getTenYearTreasuryYield().catch(() => 0.0425),
-    getAllSectorBetas(),
-  ]);
   let success = 0;
   let skipped = 0;
   let errors = 0;
@@ -113,7 +101,7 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
   // Process companies in parallel batches to stay within Supabase connection limits
   let lastLogAt = 0;
   for (let i = 0; i < companies.length; i += RECOMPUTE_CONCURRENCY) {
-    const batch = (companies as Company[]).slice(i, i + RECOMPUTE_CONCURRENCY);
+    const batch = companies.slice(i, i + RECOMPUTE_CONCURRENCY);
     const results = await Promise.all(batch.map(processCompany));
     for (const r of results) {
       if (r === "success") success++;
@@ -131,4 +119,70 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
   console.log(`[recompute] Done: ${success} success, ${skipped} skipped, ${errors} errors`);
 
   return { date: today, total: companies.length, success, skipped, errors };
+}
+
+/**
+ * Recompute valuations for all companies in the DB.
+ * Reads all data from DB — zero external API calls (except FRED for risk-free rate).
+ */
+export async function recomputeAllValuations(): Promise<RecomputeResult> {
+  const db = createServerClient();
+
+  const { data: companies } = await db
+    .from("companies")
+    .select("*")
+    .order("ticker");
+
+  console.log(`[recompute] Processing ${companies?.length ?? 0} companies (full)...`);
+
+  const [riskFreeRate, sectorBetaMap] = await Promise.all([
+    getTenYearTreasuryYield().catch(() => 0.0425),
+    getAllSectorBetas(),
+  ]);
+
+  return recomputeForCompanies((companies ?? []) as Company[], riskFreeRate, sectorBetaMap);
+}
+
+/**
+ * Recompute valuations for a specific set of tickers (e.g. after earnings).
+ * Also includes their current peers so peer-comparison data stays fresh.
+ * Much cheaper than a full recompute at scale — O(tickers × peers) vs O(all).
+ */
+export async function recomputeValuationsForTickers(tickers: string[]): Promise<RecomputeResult> {
+  if (tickers.length === 0) {
+    return { date: toDateString(new Date()), total: 0, success: 0, skipped: 0, errors: 0 };
+  }
+
+  const db = createServerClient();
+
+  // Expand: also recompute peers of the changed tickers, since their peer-comparison
+  // data (EV/EBITDA multiples, P/E) is derived from the reporters' fresh financials.
+  const { data: snapshots } = await db
+    .from("valuation_snapshots")
+    .select("peers")
+    .in("ticker", tickers);
+
+  const expandedSet = new Set<string>(tickers);
+  for (const snap of snapshots ?? []) {
+    for (const peer of (snap.peers ?? []) as Array<{ ticker: string }>) {
+      if (peer.ticker) expandedSet.add(peer.ticker);
+    }
+  }
+
+  const expandedTickers = [...expandedSet];
+  console.log(
+    `[recompute] Targeted recompute: ${tickers.length} earnings tickers → ${expandedTickers.length} total (inc. peers)...`
+  );
+
+  const { data: companies } = await db
+    .from("companies")
+    .select("*")
+    .in("ticker", expandedTickers);
+
+  const [riskFreeRate, sectorBetaMap] = await Promise.all([
+    getTenYearTreasuryYield().catch(() => 0.0425),
+    getAllSectorBetas(),
+  ]);
+
+  return recomputeForCompanies((companies ?? []) as Company[], riskFreeRate, sectorBetaMap);
 }
