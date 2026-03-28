@@ -32,6 +32,8 @@ npm run test:coverage # With coverage report
 - **INP** (Interaction to Next Paint): < 200ms
 - **CLS** (Cumulative Layout Shift): < 0.1
 - **TTFB**: < 800ms (ISR hit should be < 200ms)
+- **API latency (P95)**: < 500ms — for `/api/valuation/[ticker]` and MCP server
+- **ISR cold compute**: < 3s — fallback when snapshot is missing or stale
 
 **Cron Design**: Minimize unnecessary operations. Event-driven over blind rotation. Each Vercel function must complete within 300s limit.
 
