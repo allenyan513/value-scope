@@ -9,6 +9,7 @@ const SIDEBAR_ITEMS = [
   { label: "Discounted Cash Flow", href: "/dcf/fcff-growth-5y", segment: "dcf" },
   { label: "Trading Multiples", href: "/trading-multiples", segment: "trading-multiples" },
   { label: "PEG Fair Value", href: "/peg", segment: "peg" },
+  { label: "Earnings Power Value", href: "/epv", segment: "epv" },
   { label: "Analyst Estimates", href: "/analyst-estimates", segment: "analyst-estimates" },
   { label: "Dividend Discount Model", href: "/ddm", segment: "ddm", badge: "Soon" },
   { label: "WACC", href: "/wacc", segment: "wacc" },
