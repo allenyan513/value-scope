@@ -1,45 +1,43 @@
 import { cache } from "react";
 import { getCoreTickerData } from "../../data";
-import { computeMultiplesStats } from "@/lib/valuation/historical-multiples";
 import {
-  calculatePEMultiples,
-  calculateEVEBITDAMultiples,
+  calculatePEMultiplesDetailed,
+  calculateEVEBITDAMultiplesDetailed,
   type TradingMultiplesInputs,
+  type MultipleLeg,
+  type TradingMultiplesDetailedResult,
 } from "@/lib/valuation/trading-multiples";
-import type { PeerComparison, MultipleStats, ValuationResult } from "@/types";
+import type { PeerComparison } from "@/types";
 
 // --- Public types ---
 
 export type MultipleKey = "pe" | "ev_ebitda";
 
-export interface MultipleSummary {
+/** Per-multiple detailed result for the UI */
+export interface MultipleDetail {
   key: MultipleKey;
   label: string;
-  current: number | null;
-  avg5y: number | null;
-  p25: number | null;
-  p75: number | null;
-  percentile: number | null;
-  dataPoints: number;
-  peerMedian: number | null;
+  /** Selected fair price = average of trailing + forward legs */
   fairValue: number | null;
   upside: number | null;
-  method: string | null;
-  metric: number | null;
-  metricLabel: string;
+  trailing: MultipleLeg | null;
+  forward: MultipleLeg | null;
+  peerRange: { p25: number; p75: number };
+  peerCount: number;
+  /** Is this an EV-based multiple (needs net debt bridge) */
   isEVBased: boolean;
-  netDebt: number | null;
+  netDebt: number;
+  sharesOutstanding: number;
 }
 
 export interface CompanyRow {
   ticker: string;
   name: string;
   market_cap: number;
-  pe: number | null;
+  trailing_pe: number | null;
+  forward_pe: number | null;
   ev_ebitda: number | null;
-  revenue_growth: number | null;
-  net_margin: number | null;
-  roe: number | null;
+  forward_ev_ebitda: number | null;
 }
 
 export interface RelativePageData {
@@ -48,12 +46,12 @@ export interface RelativePageData {
   currentPrice: number;
   sharesOutstanding: number;
   netDebt: number;
+  industry: string;
   consensusFairValue: number;
   consensusUpside: number;
-  multiples: MultipleSummary[];
+  multiples: MultipleDetail[];
   peers: PeerComparison[];
   companyRow: CompanyRow;
-  error?: string;
 }
 
 // --- Helpers ---
@@ -71,66 +69,59 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function buildMultipleSummary(
+function buildMultipleDetail(
   key: MultipleKey,
   label: string,
-  stats: MultipleStats | null,
-  result: ValuationResult,
-  peers: PeerComparison[],
-  peerExtractor: (p: PeerComparison) => number | null,
-  metricLabel: string,
+  detailed: TradingMultiplesDetailedResult,
   isEVBased: boolean,
-  netDebt: number | null,
-): MultipleSummary {
-  const validPeerValues = peers
-    .map(peerExtractor)
-    .filter((v): v is number => v !== null && v > 0);
-  const peerMed = validPeerValues.length > 0 ? round2(median(validPeerValues)) : null;
-
-  const method = result.fair_value > 0
-    ? ((result.assumptions as Record<string, unknown>).method as string) ?? null
-    : null;
-  const metric = result.fair_value > 0
-    ? ((result.details as Record<string, unknown>).company_metric as number) ?? null
-    : null;
-
+  netDebt: number,
+  sharesOutstanding: number,
+): MultipleDetail {
+  const { result, trailing, forward, peerRange, peerCount } = detailed;
   return {
     key,
     label,
-    current: stats?.current ?? null,
-    avg5y: stats ? round2(stats.avg5y) : null,
-    p25: stats ? round2(stats.p25) : null,
-    p75: stats ? round2(stats.p75) : null,
-    percentile: stats?.percentile ?? null,
-    dataPoints: stats?.dataPoints ?? 0,
-    peerMedian: peerMed,
     fairValue: result.fair_value > 0 ? result.fair_value : null,
     upside: result.fair_value > 0 ? result.upside_percent : null,
-    method,
-    metric,
-    metricLabel,
+    trailing,
+    forward,
+    peerRange,
+    peerCount,
     isEVBased,
     netDebt,
+    sharesOutstanding,
   };
 }
 
 // --- Main data function ---
 
 export const getRelativeValuationData = cache(async (ticker: string): Promise<RelativePageData | null> => {
-  const { company, summary, historicals, historicalMultiples, peers } = await getCoreTickerData(ticker);
+  const { company, summary, estimates, historicals, peers } = await getCoreTickerData(ticker);
 
-  if (!summary || !historicalMultiples || historicalMultiples.length === 0) {
-    return null;
-  }
+  if (!summary) return null;
 
-  const stats = computeMultiplesStats(historicalMultiples);
   const sortedHistoricals = [...historicals].sort((a, b) => b.fiscal_year - a.fiscal_year);
   const latest = sortedHistoricals[0];
-  const shares = latest?.shares_outstanding;
+  const shares = latest?.shares_outstanding || company.shares_outstanding;
   if (!latest || !shares) return null;
 
   const currentPrice = summary.current_price;
   const netDebt = (latest.total_debt || 0) - (latest.cash_and_equivalents || 0);
+
+  // Derive forward metrics from analyst estimates
+  const nextEstimate = estimates[0]; // nearest forward year
+  let forwardNetIncome: number | undefined;
+  let forwardEBITDA: number | undefined;
+
+  if (nextEstimate) {
+    if (nextEstimate.eps_estimate > 0) {
+      forwardNetIncome = nextEstimate.eps_estimate * shares;
+    }
+    if (nextEstimate.revenue_estimate > 0 && latest.ebitda && latest.revenue && latest.revenue > 0) {
+      const ebitdaMargin = latest.ebitda / latest.revenue;
+      forwardEBITDA = nextEstimate.revenue_estimate * ebitdaMargin;
+    }
+  }
 
   // Build trading multiples inputs
   const tradingInputs: TradingMultiplesInputs = {
@@ -138,52 +129,47 @@ export const getRelativeValuationData = cache(async (ticker: string): Promise<Re
     company,
     currentPrice,
     peers,
-    historicalMultiples,
+    forwardNetIncome,
+    forwardEBITDA,
   };
 
-  // Run trading multiples models
-  const peResult = calculatePEMultiples(tradingInputs);
-  const evResult = calculateEVEBITDAMultiples(tradingInputs);
+  // Run detailed trading multiples models
+  const peDetailed = calculatePEMultiplesDetailed(tradingInputs);
+  const evDetailed = calculateEVEBITDAMultiplesDetailed(tradingInputs);
 
-  // Build summaries
-  const multiples: MultipleSummary[] = [
-    buildMultipleSummary("pe", "P/E", stats.pe, peResult, peers, (p) => p.trailing_pe, "TTM EPS", false, null),
-    buildMultipleSummary("ev_ebitda", "EV/EBITDA", stats.ev_ebitda, evResult, peers, (p) => p.ev_ebitda, "EBITDA", true, netDebt),
+  // Build per-multiple details
+  const multiples: MultipleDetail[] = [
+    buildMultipleDetail("pe", "P/E", peDetailed, false, netDebt, shares),
+    buildMultipleDetail("ev_ebitda", "EV/EBITDA", evDetailed, true, netDebt, shares),
   ];
 
-  // Consensus: median of available fair values (robust against outliers)
+  // Consensus: median of available fair values
   const validFairValues = multiples
     .map((m) => m.fairValue)
     .filter((v): v is number => v !== null && v > 0);
-  const sortedFairValues = [...validFairValues].sort((a, b) => a - b);
-  const consensusFairValue = sortedFairValues.length > 0
-    ? round2(median(sortedFairValues))
-    : 0;
+  const consensusFairValue = validFairValues.length > 0 ? round2(median(validFairValues)) : 0;
   const consensusUpside = consensusFairValue > 0
     ? round2(((consensusFairValue - currentPrice) / currentPrice) * 100)
     : 0;
 
-  // Company row for peer table
-  const prevRevenue = sortedHistoricals[1]?.revenue;
-  const revenueGrowth = prevRevenue && prevRevenue > 0 && latest.revenue
-    ? round2(((latest.revenue - prevRevenue) / prevRevenue) * 100)
+  // Company row — compute company's own multiples for the peer table
+  const eps = latest.eps_diluted || latest.eps;
+  const companyTrailingPE = eps && eps > 0 && currentPrice > 0 ? currentPrice / eps : null;
+  const companyForwardPE = nextEstimate?.eps_estimate && nextEstimate.eps_estimate > 0 && currentPrice > 0
+    ? currentPrice / nextEstimate.eps_estimate
     : null;
-  const netMargin = latest.net_margin
-    ? round2(latest.net_margin * 100)
-    : null;
-  const roe = latest.total_equity && latest.total_equity > 0 && latest.net_income
-    ? round2((latest.net_income / latest.total_equity) * 100)
-    : null;
+  const companyEV = currentPrice * shares + (latest.total_debt || 0) - (latest.cash_and_equivalents || 0);
+  const companyEvEbitda = latest.ebitda && latest.ebitda > 0 ? companyEV / latest.ebitda : null;
+  const companyForwardEvEbitda = forwardEBITDA && forwardEBITDA > 0 ? companyEV / forwardEBITDA : null;
 
   const companyRow: CompanyRow = {
     ticker,
     name: summary.company_name,
     market_cap: currentPrice * shares,
-    pe: stats.pe?.current ?? null,
-    ev_ebitda: stats.ev_ebitda?.current ?? null,
-    revenue_growth: revenueGrowth,
-    net_margin: netMargin,
-    roe,
+    trailing_pe: companyTrailingPE,
+    forward_pe: companyForwardPE,
+    ev_ebitda: companyEvEbitda,
+    forward_ev_ebitda: companyForwardEvEbitda,
   };
 
   return {
@@ -192,6 +178,7 @@ export const getRelativeValuationData = cache(async (ticker: string): Promise<Re
     currentPrice,
     sharesOutstanding: shares,
     netDebt,
+    industry: company.industry || "Unknown",
     consensusFairValue,
     consensusUpside,
     multiples,

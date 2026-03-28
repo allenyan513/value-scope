@@ -232,13 +232,27 @@ export function computeFullValuation(
     /* skip if insufficient data */
   }
 
-  // Trading Multiples
+  // Trading Multiples — derive forward metrics from analyst estimates
+  const nextEstimate = estimates[0]; // nearest forward year
+  let forwardNetIncome: number | undefined;
+  let forwardEBITDA: number | undefined;
+  if (nextEstimate) {
+    if (nextEstimate.eps_estimate > 0) {
+      forwardNetIncome = nextEstimate.eps_estimate * sharesOutstanding;
+    }
+    if (nextEstimate.revenue_estimate > 0 && latestFinancial.ebitda && latestFinancial.revenue && latestFinancial.revenue > 0) {
+      const ebitdaMargin = latestFinancial.ebitda / latestFinancial.revenue;
+      forwardEBITDA = nextEstimate.revenue_estimate * ebitdaMargin;
+    }
+  }
+
   const tradingInputs: TradingMultiplesInputs = {
     financials: latestFinancial,
     company,
     currentPrice,
     peers,
-    historicalMultiples: inputs.historicalMultiples,
+    forwardNetIncome,
+    forwardEBITDA,
   };
 
   models.push(calculatePEMultiples(tradingInputs));

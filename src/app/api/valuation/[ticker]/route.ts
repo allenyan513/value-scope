@@ -97,6 +97,7 @@ export async function GET(
               trailing_pe: metrics[0].priceToEarningsRatio ?? null,
               forward_pe: null,
               ev_ebitda: evMetrics[0]?.evToEBITDA ?? null,
+              forward_ev_ebitda: null,
               price_to_book: metrics[0].priceToBookRatio ?? null,
               price_to_sales: metrics[0].priceToSalesRatio ?? null,
               revenue_growth: null,

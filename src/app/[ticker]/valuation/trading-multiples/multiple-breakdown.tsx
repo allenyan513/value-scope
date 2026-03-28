@@ -1,115 +1,162 @@
-import type { MultipleSummary } from "./data";
+import type { MultipleDetail } from "./data";
+import type { MultipleLeg } from "@/lib/valuation/trading-multiples";
 import { formatLargeNumber } from "@/lib/format";
 
 interface Props {
-  multiples: MultipleSummary[];
-  sharesOutstanding: number;
-  netDebt: number;
+  detail: MultipleDetail;
 }
 
 function fmt(n: number): string {
   return formatLargeNumber(n, { prefix: "", decimals: 1, includeK: true });
 }
 
-export function MultipleBreakdownCards({ multiples, sharesOutstanding, netDebt }: Props) {
-  const available = multiples.filter((m) => m.fairValue !== null && m.fairValue > 0);
+/** Bridge calculation for a single multiple (trailing + forward columns) */
+export function MultipleBridgeCard({ detail }: Props) {
+  const { trailing, forward, isEVBased, netDebt, sharesOutstanding } = detail;
 
-  if (available.length === 0) return null;
+  if (!trailing && !forward) return null;
 
   return (
     <div className="val-card">
-      <h3 className="val-card-title">Valuation by Multiple</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {available.map((m) => (
-          <BreakdownCard
-            key={m.key}
-            data={m}
-            sharesOutstanding={sharesOutstanding}
-            netDebt={netDebt}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BreakdownCard({
-  data,
-  sharesOutstanding,
-  netDebt,
-}: {
-  data: MultipleSummary;
-  sharesOutstanding: number;
-  netDebt: number;
-}) {
-  const methodLabel = data.method === "historical_self_comparison"
-    ? "5Y Historical Avg"
-    : "Peer Median";
-
-  const multipleValue = data.method === "historical_self_comparison"
-    ? data.avg5y
-    : data.peerMedian ?? data.avg5y;
-
-  return (
-    <div className="rounded-lg border border-border/60 bg-card/30 p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">{data.label}</span>
-        <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-          {methodLabel}
-        </span>
-      </div>
-
-      <div className="space-y-1 text-sm">
-        <CalcRow label={`${methodLabel} ${data.label}`} value={multipleValue ? `${multipleValue.toFixed(1)}x` : "—"} />
-        <CalcRow label={`× ${data.metricLabel}`} value={data.metric ? `$${fmt(data.metric)}` : "—"} />
-
-        {data.isEVBased && (
-          <>
-            <div className="border-t border-border/40 my-1" />
-            <CalcRow
-              label="Enterprise Value"
-              value={multipleValue && data.metric ? `$${fmt(multipleValue * data.metric)}` : "—"}
-              highlight
+      <h3 className="val-card-title">{detail.label} Valuation Bridge</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-muted-foreground">
+              <th className="text-left py-2 font-medium"></th>
+              {trailing && <th className="text-right py-2 font-medium px-3">Trailing</th>}
+              {forward && <th className="text-right py-2 font-medium px-3">Forward</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {/* Row 1: Industry Median Multiple */}
+            <BridgeRow
+              label={`Industry Median ${detail.label}`}
+              trailing={trailing ? `${trailing.industryMedian.toFixed(1)}x` : undefined}
+              forward={forward ? `${forward.industryMedian.toFixed(1)}x` : undefined}
             />
-            <CalcRow label="− Net Debt" value={`$${fmt(netDebt)}`} />
-            <CalcRow label="÷ Shares" value={fmt(sharesOutstanding)} />
-          </>
-        )}
 
-        <div className="border-t border-border/40 my-1" />
-        <CalcRow
-          label="Fair Value"
-          value={data.fairValue ? `$${data.fairValue.toFixed(2)}` : "—"}
-          highlight
-          primary
-        />
-        <CalcRow
-          label="vs Current"
-          value={data.upside !== null ? `${data.upside >= 0 ? "+" : ""}${data.upside.toFixed(1)}%` : "—"}
-          color={data.upside !== null ? (data.upside >= 0 ? "text-green-400" : "text-red-400") : undefined}
-        />
+            {/* Row 2: × Company Metric */}
+            <BridgeRow
+              label={trailing ? `× ${trailing.metricLabel}` : `× ${forward!.metricLabel}`}
+              trailing={trailing ? `$${fmt(trailing.companyMetric)}` : undefined}
+              forward={forward ? `$${fmt(forward.companyMetric)}` : undefined}
+              isOperator
+            />
+
+            {isEVBased ? (
+              <>
+                {/* EV bridge */}
+                <BridgeRow
+                  label="= Enterprise Value"
+                  trailing={trailing?.enterpriseValue ? `$${fmt(trailing.enterpriseValue)}` : undefined}
+                  forward={forward?.enterpriseValue ? `$${fmt(forward.enterpriseValue)}` : undefined}
+                  isSeparator
+                />
+                <BridgeRow
+                  label="− Net Debt"
+                  trailing={trailing ? `$${fmt(netDebt)}` : undefined}
+                  forward={forward ? `$${fmt(netDebt)}` : undefined}
+                  isOperator
+                />
+                <BridgeRow
+                  label="= Equity Value"
+                  trailing={trailing?.equityValue ? `$${fmt(trailing.equityValue)}` : undefined}
+                  forward={forward?.equityValue ? `$${fmt(forward.equityValue)}` : undefined}
+                  isSeparator
+                />
+                <BridgeRow
+                  label="÷ Shares Outstanding"
+                  trailing={trailing ? fmt(sharesOutstanding) : undefined}
+                  forward={forward ? fmt(sharesOutstanding) : undefined}
+                  isOperator
+                />
+              </>
+            ) : (
+              <>
+                {/* Equity bridge (P/E): median × net income = equity, ÷ shares */}
+                <BridgeRow
+                  label="= Equity Value"
+                  trailing={trailing ? `$${fmt(trailing.industryMedian * trailing.companyMetric)}` : undefined}
+                  forward={forward ? `$${fmt(forward.industryMedian * forward.companyMetric)}` : undefined}
+                  isSeparator
+                />
+                <BridgeRow
+                  label="÷ Shares Outstanding"
+                  trailing={trailing ? fmt(sharesOutstanding) : undefined}
+                  forward={forward ? fmt(sharesOutstanding) : undefined}
+                  isOperator
+                />
+              </>
+            )}
+
+            {/* Final row: Fair Price per share */}
+            <BridgeRow
+              label="= Fair Price"
+              trailing={trailing ? `$${trailing.fairPrice.toFixed(2)}` : undefined}
+              forward={forward ? `$${forward.fairPrice.toFixed(2)}` : undefined}
+              isPrimary
+              isSeparator
+            />
+          </tbody>
+        </table>
       </div>
+
+      {/* Selected value callout */}
+      {detail.fairValue !== null && (
+        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+          <div>
+            <div className="text-xs text-muted-foreground">
+              Selected Fair Value
+              {trailing && forward && (
+                <span className="ml-1">(avg of trailing + forward)</span>
+              )}
+            </div>
+            <div className="text-lg font-bold font-mono text-primary">
+              ${detail.fairValue.toFixed(2)}
+            </div>
+          </div>
+          {detail.upside !== null && (
+            <div className={`text-lg font-bold font-mono ${detail.upside >= 0 ? "text-green-400" : "text-red-400"}`}>
+              {detail.upside >= 0 ? "+" : ""}{detail.upside.toFixed(1)}%
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function CalcRow({
+function BridgeRow({
   label,
-  value,
-  highlight,
-  primary,
-  color,
+  trailing,
+  forward,
+  isOperator,
+  isSeparator,
+  isPrimary,
 }: {
   label: string;
-  value: string;
-  highlight?: boolean;
-  primary?: boolean;
-  color?: string;
+  trailing?: string;
+  forward?: string;
+  isOperator?: boolean;
+  isSeparator?: boolean;
+  isPrimary?: boolean;
 }) {
   return (
-    <div className={`flex justify-between py-0.5 ${highlight ? "font-semibold" : ""} ${primary ? "text-primary" : ""}`}>
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className={`text-xs font-mono ${color ?? ""}`}>{value}</span>
-    </div>
+    <tr className={`${isSeparator ? "border-t border-border/40" : ""} ${isPrimary ? "font-semibold text-primary" : ""}`}>
+      <td className={`py-1.5 ${isOperator ? "text-muted-foreground" : ""} text-xs`}>
+        {label}
+      </td>
+      {trailing !== undefined && (
+        <td className={`py-1.5 text-right px-3 font-mono text-xs ${isPrimary ? "" : ""}`}>
+          {trailing}
+        </td>
+      )}
+      {forward !== undefined && (
+        <td className={`py-1.5 text-right px-3 font-mono text-xs ${isPrimary ? "" : ""}`}>
+          {forward}
+        </td>
+      )}
+    </tr>
   );
 }

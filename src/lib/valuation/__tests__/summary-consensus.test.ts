@@ -15,7 +15,7 @@ const BASE_INPUTS = {
   peers: testPeers,
   currentPrice: 200,
   riskFreeRate: 0.04,
-  historicalMultiples: generateHistoricalMultiples(500, 28, 20, 40, 8, 25),
+  historicalMultiples: generateHistoricalMultiples(500, 28, 20),
 };
 
 const MEDIAN_INPUTS = { ...BASE_INPUTS, consensusStrategy: "median" as const };
