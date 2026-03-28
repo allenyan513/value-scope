@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ValuScope
 
-## Getting Started
+Stock valuation platform for S&P 500 equities. 9 automated valuation models with daily updates, available as a website and a free MCP server for AI assistants.
 
-First, run the development server:
+**Live:** [valuescope.dev](https://valuescope.dev)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Valuation Models
+
+| Model | Category | Approach |
+|-------|----------|----------|
+| FCFF Growth Exit (5Y / 10Y) | DCF | Unlevered FCF → Gordon Growth terminal value |
+| FCFF EBITDA Exit (5Y / 10Y) | DCF | Unlevered FCF → Peer EV/EBITDA terminal multiple |
+| P/E Multiples | Trading Multiples | Trailing 5Y avg + forward peer median |
+| EV/EBITDA Multiples | Trading Multiples | Trailing 5Y avg + forward peer median |
+| PEG Fair Value | Growth-Adjusted | Fair P/E = EPS growth + dividend yield |
+| Earnings Power Value (EPV) | Perpetuity | Normalized earnings / WACC, zero growth |
+
+Each model returns fair value, upside/downside %, low/high estimates, key assumptions, and full detailed breakdowns (projections, sensitivity matrices, peer comparisons).
+
+## MCP Server (Free)
+
+ValuScope exposes a free MCP endpoint — any AI assistant can query real-time stock valuations.
+
+### Setup
+
+Add to your MCP client config (Claude Desktop, Cursor, Windsurf, etc.):
+
+```json
+{
+  "mcpServers": {
+    "valuescope": {
+      "url": "https://valuescope.dev/api/mcp"
+    }
+  }
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+No API key needed. No installation required.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Tool: `get_stock_valuation`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ticker` | string | Yes | Stock ticker (e.g. `AAPL`, `NVDA`, `BRK-B`) |
+| `models` | string[] | No | Filter to specific models. Omit for all. |
 
-## Learn More
+**Model IDs:** `dcf_fcff_growth_5y`, `dcf_fcff_growth_10y`, `dcf_fcff_ebitda_exit_5y`, `dcf_fcff_ebitda_exit_10y`, `pe_multiples`, `ev_ebitda_multiples`, `peg`, `epv`
 
-To learn more about Next.js, take a look at the following resources:
+### Example Prompts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- "What's the fair value of AAPL?"
+- "Show me NVDA's DCF valuation and explain it simply"
+- "Compare MSFT's P/E and EV/EBITDA multiples"
+- "Is TSLA overvalued? Check all models"
+- "Get GOOGL's PEG ratio details"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
+- **Framework:** Next.js (App Router) + React + TypeScript
+- **Database:** Supabase (PostgreSQL)
+- **Styling:** Tailwind CSS + shadcn/ui + Recharts
+- **Deployment:** Vercel (ISR) + GitHub Actions (cron)
+- **Data:** FMP API (financials) + FRED (Treasury yields)
+- **MCP:** `@modelcontextprotocol/sdk` (Streamable HTTP, stateless)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm install
+npm run dev        # Start dev server
+npm run build      # Production build
+npm test           # Run tests
+npm run lint       # ESLint
+```
+
+## License
+
+Proprietary. All rights reserved.
