@@ -3,9 +3,7 @@ import { NextRequest } from "next/server";
 
 // --- Mocks ---
 const mockConstructEvent = vi.fn();
-const mockUpsert = vi.fn();
-const mockUpdate = vi.fn();
-const mockUpdateEq = vi.fn();
+const mockAddCredits = vi.fn();
 
 vi.mock("@/lib/stripe", () => ({
   getStripe: () => ({
@@ -13,42 +11,36 @@ vi.mock("@/lib/stripe", () => ({
   }),
 }));
 
-vi.mock("@/lib/db/supabase", () => ({
-  createServerClient: () => ({
-    from: () => ({
-      upsert: mockUpsert,
-      update: mockUpdate,
-    }),
-  }),
+vi.mock("@/lib/credits", () => ({
+  addCredits: (...args: unknown[]) => mockAddCredits(...args),
 }));
 
 import { POST } from "../route";
 
-function makeWebhookRequest(body: string, signature?: string) {
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (signature) headers["stripe-signature"] = signature;
+function makeWebhookRequest(body: string, signature = "sig_test") {
   return new NextRequest("http://localhost/api/stripe/webhook", {
     method: "POST",
-    headers,
+    headers: {
+      "stripe-signature": signature,
+      "content-type": "application/json",
+    },
     body,
   });
 }
 
-describe("POST /api/stripe/webhook", () => {
+describe("POST /api/stripe/webhook (credit system)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_123";
-    mockUpsert.mockResolvedValue({ data: null, error: null });
-    mockUpdate.mockReturnValue({ eq: mockUpdateEq });
-    mockUpdateEq.mockResolvedValue({ data: null, error: null });
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
   });
 
-  it("should return 400 if stripe-signature header is missing", async () => {
-    const res = await POST(makeWebhookRequest("{}"));
-    const json = await res.json();
-
+  it("should return 400 if signature is missing", async () => {
+    const req = new NextRequest("http://localhost/api/stripe/webhook", {
+      method: "POST",
+      body: "{}",
+    });
+    const res = await POST(req);
     expect(res.status).toBe(400);
-    expect(json.error).toBe("No signature");
   });
 
   it("should return 400 if signature verification fails", async () => {
@@ -56,168 +48,87 @@ describe("POST /api/stripe/webhook", () => {
       throw new Error("Invalid signature");
     });
 
-    const res = await POST(makeWebhookRequest("{}", "sig_invalid"));
+    const res = await POST(makeWebhookRequest("{}"));
     const json = await res.json();
 
     expect(res.status).toBe(400);
-    expect(json.error).toBe("Webhook error: Invalid signature");
+    expect(json.error).toContain("Invalid signature");
   });
 
-  it("should handle non-Error throws in signature verification", async () => {
-    mockConstructEvent.mockImplementation(() => {
-      throw "string error";
+  it("should add credits on checkout.session.completed", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_123",
+          customer: "cus_abc",
+          metadata: {
+            user_id: "user-1",
+            pack_key: "starter_30",
+          },
+        },
+      },
     });
+    mockAddCredits.mockResolvedValue(undefined);
 
-    const res = await POST(makeWebhookRequest("{}", "sig_bad"));
+    const res = await POST(makeWebhookRequest("{}"));
     const json = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(json.error).toBe("Webhook error: Unknown error");
-  });
-
-  describe("checkout.session.completed", () => {
-    it("should upsert subscription on successful checkout", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "checkout.session.completed",
-        data: {
-          object: {
-            metadata: { user_id: "user-1", plan: "pro" },
-            customer: "cus_abc123",
-            subscription: "sub_xyz789",
-          },
-        },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      const json = await res.json();
-
-      expect(res.status).toBe(200);
-      expect(json.received).toBe(true);
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          user_id: "user-1",
-          plan: "pro",
-          stripe_customer_id: "cus_abc123",
-          stripe_subscription_id: "sub_xyz789",
-          status: "active",
-          current_period_end: expect.any(String),
-        }),
-        { onConflict: "user_id" }
-      );
-    });
-
-    it("should not upsert if metadata is missing user_id", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "checkout.session.completed",
-        data: {
-          object: {
-            metadata: { plan: "pro" },
-            customer: "cus_abc",
-            subscription: "sub_xyz",
-          },
-        },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      expect(res.status).toBe(200);
-      expect(mockUpsert).not.toHaveBeenCalled();
-    });
-
-    it("should not upsert if metadata is missing plan", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "checkout.session.completed",
-        data: {
-          object: {
-            metadata: { user_id: "user-1" },
-            customer: "cus_abc",
-            subscription: "sub_xyz",
-          },
-        },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      expect(res.status).toBe(200);
-      expect(mockUpsert).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(json.received).toBe(true);
+    expect(mockAddCredits).toHaveBeenCalledWith({
+      userId: "user-1",
+      packKey: "starter_30",
+      stripeSessionId: "cs_test_123",
+      stripeCustomerId: "cus_abc",
     });
   });
 
-  describe("customer.subscription.updated", () => {
-    it("should update subscription status and period_end", async () => {
-      const periodEnd = Math.floor(Date.now() / 1000) + 30 * 86400;
-      mockConstructEvent.mockReturnValue({
-        type: "customer.subscription.updated",
-        data: {
-          object: {
-            id: "sub_xyz789",
-            status: "active",
-            items: { data: [{ current_period_end: periodEnd }] },
-          },
+  it("should skip if metadata is missing user_id", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_456",
+          customer: "cus_abc",
+          metadata: {},
         },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      expect(res.status).toBe(200);
-      expect(mockUpdate).toHaveBeenCalledWith({
-        status: "active",
-        current_period_end: new Date(periodEnd * 1000).toISOString(),
-      });
-      expect(mockUpdateEq).toHaveBeenCalledWith(
-        "stripe_subscription_id",
-        "sub_xyz789"
-      );
+      },
     });
 
-    it("should update status only when period_end is missing", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "customer.subscription.updated",
-        data: {
-          object: {
-            id: "sub_xyz789",
-            status: "past_due",
-            items: { data: [] },
-          },
-        },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      expect(res.status).toBe(200);
-      expect(mockUpdate).toHaveBeenCalledWith({ status: "past_due" });
-    });
+    const res = await POST(makeWebhookRequest("{}"));
+    expect(res.status).toBe(200);
+    expect(mockAddCredits).not.toHaveBeenCalled();
   });
 
-  describe("customer.subscription.deleted", () => {
-    it("should set subscription status to canceled", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "customer.subscription.deleted",
-        data: {
-          object: { id: "sub_canceled_123" },
+  it("should return 500 if addCredits fails", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_789",
+          customer: "cus_abc",
+          metadata: { user_id: "user-1", pack_key: "pro_500" },
         },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      expect(res.status).toBe(200);
-      expect(mockUpdate).toHaveBeenCalledWith({ status: "canceled" });
-      expect(mockUpdateEq).toHaveBeenCalledWith(
-        "stripe_subscription_id",
-        "sub_canceled_123"
-      );
+      },
     });
+    mockAddCredits.mockRejectedValue(new Error("DB error"));
+
+    const res = await POST(makeWebhookRequest("{}"));
+    expect(res.status).toBe(500);
   });
 
-  describe("unhandled events", () => {
-    it("should return received:true for unknown event types", async () => {
-      mockConstructEvent.mockReturnValue({
-        type: "invoice.payment_succeeded",
-        data: { object: {} },
-      });
-
-      const res = await POST(makeWebhookRequest("{}", "sig_valid"));
-      const json = await res.json();
-
-      expect(res.status).toBe(200);
-      expect(json.received).toBe(true);
-      expect(mockUpsert).not.toHaveBeenCalled();
-      expect(mockUpdate).not.toHaveBeenCalled();
+  it("should ignore non-checkout events", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "payment_intent.succeeded",
+      data: { object: {} },
     });
+
+    const res = await POST(makeWebhookRequest("{}"));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.received).toBe(true);
+    expect(mockAddCredits).not.toHaveBeenCalled();
   });
 });

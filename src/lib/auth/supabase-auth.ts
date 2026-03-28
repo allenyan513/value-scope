@@ -9,7 +9,7 @@ export function createAuthBrowserClient() {
   );
 }
 
-// Server-side auth client (for API routes / server components)
+// Server-side auth client (for API routes / server components) — no cookie handling
 export function createAuthServerClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -66,3 +66,18 @@ export const SNAPSHOT_MAX_AGE_MS = 25 * 60 * 60 * 1000;
 // --- Content Limits ---
 /** Max characters for company description stored in DB */
 export const DESCRIPTION_MAX_LENGTH = 1000;
+
+// --- Credit System ---
+/** Tickers accessible without login or credits (free for all visitors) */
+export const FREE_TICKERS = new Set([
+  'AAPL', 'NVDA', 'MSFT', 'GOOGL', 'AMZN',
+]);
+
+/** Credit pack definitions — source of truth for pricing page + Stripe checkout */
+export const CREDIT_PACKS = {
+  trial_5:    { credits: 5,   priceCents: 900,  label: 'Trial',   perStock: '$1.80' },
+  starter_30: { credits: 30,  priceCents: 2900, label: 'Starter', perStock: '$0.97' },
+  pro_500:    { credits: 500, priceCents: 9900, label: 'Pro',     perStock: '$0.20' },
+} as const;
+
+export type CreditPackKey = keyof typeof CREDIT_PACKS;

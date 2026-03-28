@@ -4,9 +4,10 @@ import Link from "next/link";
 import { TickerSearch } from "@/components/ticker-search";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "./user-menu";
 
 export function Header() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card">
@@ -31,14 +32,7 @@ export function Header() {
           {!loading && (
             <>
               {user ? (
-                <>
-                  <Link href="/watchlist" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Watchlist
-                  </Link>
-                  <Button variant="ghost" size="sm" onClick={signOut}>
-                    Sign Out
-                  </Button>
-                </>
+                <UserMenu />
               ) : (
                 <Link href="/auth/login">
                   <Button variant="outline" size="sm">

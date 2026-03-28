@@ -6,6 +6,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { computeValuationForTicker, ValuationError } from "./valuation-handler";
+import { isFreeTicker, hasTickerAccess } from "@/lib/credits";
 import type { ValuationModelType, ValuationResult } from "@/types";
 
 const VALID_MODELS = [
@@ -21,11 +22,18 @@ const VALID_MODELS = [
 
 type ValidModel = (typeof VALID_MODELS)[number];
 
+interface McpServerOptions {
+  /** Authenticated user ID (null = anonymous, only free tickers allowed) */
+  userId?: string | null;
+}
+
 /**
  * Creates a new MCP server instance with the get_stock_valuation tool registered.
  * Each request gets a fresh server (stateless mode).
+ * Pass userId to enable credit-gated access for non-free tickers.
  */
-export function createValuScopeMcpServer(): McpServer {
+export function createValuScopeMcpServer(options: McpServerOptions = {}): McpServer {
+  const { userId = null } = options;
   const server = new McpServer(
     {
       name: "valuescope",
@@ -68,6 +76,37 @@ export function createValuScopeMcpServer(): McpServer {
     },
     async ({ ticker, models }) => {
       const start = Date.now();
+      const upperTicker = ticker.toUpperCase();
+
+      // Credit gate: non-free tickers require authenticated user with access
+      if (!isFreeTicker(upperTicker)) {
+        if (!userId) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                error: "Authentication required for non-free tickers. Free tickers: AAPL, NVDA, MSFT, GOOGL, AMZN. Pass a Bearer token in the Authorization header to access other tickers.",
+                ticker: upperTicker,
+              }),
+            }],
+            isError: true,
+          };
+        }
+        const access = await hasTickerAccess(userId, upperTicker);
+        if (!access) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                error: `Credit required to access ${upperTicker}. Use the web app to unlock this ticker with a credit.`,
+                ticker: upperTicker,
+              }),
+            }],
+            isError: true,
+          };
+        }
+      }
+
       try {
         const { summary, company } = await computeValuationForTicker(ticker);
 

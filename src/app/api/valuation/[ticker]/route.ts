@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { computeValuationForTicker, ValuationError } from "@/mcp/valuation-handler";
+import { isFreeTicker, hasTickerAccess } from "@/lib/credits";
+import { createSupabaseWithAuth } from "@/lib/api/auth";
 
 export async function GET(
   request: NextRequest,
@@ -13,6 +15,32 @@ export async function GET(
 ) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
+
+  // Credit gate: non-free tickers require auth + unlock
+  if (!isFreeTicker(upperTicker)) {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: "Authentication required for non-free tickers", code: "AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
+    const supabase = createSupabaseWithAuth(request);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Invalid authentication token", code: "AUTH_REQUIRED" },
+        { status: 401 }
+      );
+    }
+    const access = await hasTickerAccess(user.id, upperTicker);
+    if (!access) {
+      return NextResponse.json(
+        { error: "Credit required to access this ticker", code: "CREDIT_REQUIRED" },
+        { status: 403 }
+      );
+    }
+  }
 
   try {
     const { summary } = await computeValuationForTicker(upperTicker);

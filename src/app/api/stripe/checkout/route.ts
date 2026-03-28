@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripe, PLANS, type PlanKey } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { getAuthenticatedUser } from "@/lib/api/auth";
+import { CREDIT_PACKS, type CreditPackKey } from "@/lib/constants";
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthenticatedUser(request);
@@ -8,29 +9,37 @@ export async function POST(request: NextRequest) {
   const { user } = auth;
 
   const body = await request.json();
-  const plan = body.plan as PlanKey;
+  const packKey = body.pack as CreditPackKey;
 
-  if (!plan || !PLANS[plan]) {
-    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+  if (!packKey || !(packKey in CREDIT_PACKS)) {
+    return NextResponse.json({ error: "Invalid credit pack" }, { status: 400 });
   }
 
-  const baseUrl = request.headers.get("origin") || "https://valuscope.com";
+  const pack = CREDIT_PACKS[packKey];
+  const baseUrl = request.headers.get("origin") || "https://valuescope.dev";
 
   const session = await getStripe().checkout.sessions.create({
-    mode: "subscription",
+    mode: "payment",
     customer_email: user.email,
     line_items: [
       {
-        price: PLANS[plan].priceId,
+        price_data: {
+          currency: "usd",
+          unit_amount: pack.priceCents,
+          product_data: {
+            name: `ValuScope ${pack.label} — ${pack.credits} Credits`,
+            description: `Permanently unlock ${pack.credits} stocks at ${pack.perStock}/stock`,
+          },
+        },
         quantity: 1,
       },
     ],
-    success_url: `${baseUrl}/pricing?success=true`,
-    cancel_url: `${baseUrl}/pricing?canceled=true`,
     metadata: {
       user_id: user.id,
-      plan,
+      pack_key: packKey,
     },
+    success_url: `${baseUrl}/pricing?success=true`,
+    cancel_url: `${baseUrl}/pricing?canceled=true`,
   });
 
   return NextResponse.json({ url: session.url });
