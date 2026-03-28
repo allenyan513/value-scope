@@ -6,8 +6,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
 import { getBatchQuotes } from "@/lib/data/fmp";
+import { refreshAllSectorBetas } from "@/lib/data/sector-beta";
 import { toDateString } from "@/lib/format";
 
 export const maxDuration = 300;
@@ -70,6 +72,17 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`[update-prices] Updated ${quotes.length} prices`);
+
+    // Refresh sector betas (moved from recompute-valuations cron)
+    await refreshAllSectorBetas().catch((err) =>
+      console.error("[update-prices] Sector beta refresh error:", err)
+    );
+
+    // Bust ISR cache so pages recompute valuations with new prices
+    for (const q of quotes) {
+      revalidatePath(`/${q.symbol}`, "layout");
+    }
+    console.log(`[update-prices] Invalidated ISR cache for ${quotes.length} tickers`);
 
     return NextResponse.json({
       message: "Prices updated",

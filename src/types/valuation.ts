@@ -291,13 +291,6 @@ export interface ValuationSummary {
   computed_at: string;
 }
 
-// --- Valuation History (for chart) ---
-export interface ValuationHistoryPoint {
-  date: string;
-  close_price: number;
-  intrinsic_value: number;
-}
-
 // --- Historical Multiples (for trend chart + self-comparison valuation) ---
 export interface HistoricalMultiplesPoint {
   date: string;

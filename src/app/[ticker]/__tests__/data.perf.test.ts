@@ -53,7 +53,6 @@ vi.mock("@/lib/db/queries", () => ({
       { date: "2025-01-01", close: 210 },
     ])
   ),
-  getValuationHistory: vi.fn(() => delayed([])),
   getPeerEVEBITDAMedianFromDB: vi.fn(() => delayed(15)),
 }));
 

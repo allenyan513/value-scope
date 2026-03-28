@@ -12,8 +12,6 @@ import {
   getEstimates,
   getPriceHistory,
   computePeerMetricsFromDB,
-  upsertValuation,
-  upsertValuationHistory,
 } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
@@ -92,15 +90,8 @@ export async function recomputeAllValuations(): Promise<RecomputeResult> {
         sectorUnleveredBeta: sectorBetaMap.get(company.sector) ?? undefined,
       });
 
-      await Promise.all(summary.models.map((model) => upsertValuation(company.ticker, model)));
-
-      await upsertValuationHistory(
-        company.ticker,
-        today,
-        currentPrice,
-        summary.primary_fair_value
-      );
-
+      // Valuation computed successfully (no longer persisted to DB —
+      // valuations are computed lazily on page visit)
       return "success";
     } catch (error) {
       console.error(`[recompute] Error for ${company.ticker}:`, error);

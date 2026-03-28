@@ -9,6 +9,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/db/supabase";
 import { getAnalystEstimates, getPriceTargetConsensus, getFXRateToUSD } from "@/lib/data/fmp";
 import { upsertEstimates, upsertPriceTargets } from "@/lib/db/queries";
@@ -138,6 +139,12 @@ export async function GET(request: NextRequest) {
         errors++;
       }
     }
+
+    // Bust ISR cache for processed tickers so pages recompute with new estimates
+    for (const ticker of tickersToProcess) {
+      revalidatePath(`/${ticker}`, "layout");
+    }
+    console.log(`[refresh-estimates] Invalidated ISR cache for ${tickersToProcess.length} tickers`);
 
     console.log(
       `[refresh-estimates] Done: ${estimatesRefreshed} estimates, ${priceTargetsRefreshed} price targets, ${errors} errors`
