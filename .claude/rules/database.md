@@ -17,5 +17,6 @@ paths:
 
 ## Valuation Computation
 - Valuations are computed **lazily on page visit** via `getCoreTickerData()` → `computeFullValuation()`, NOT by a batch cron
-- `valuation_history` snapshots are written fire-and-forget on each page visit
-- ISR caches the rendered page for 1 hour; crons bust the cache after updating prices/estimates
+- No `valuations` or `valuation_history` tables — results are ephemeral, cached only as ISR HTML (1 hour)
+- Crons bust the ISR cache after updating prices/estimates → next visitor triggers fresh computation
+- Chart history uses daily_prices + EMA synthetic intrinsic value (no stored valuation snapshots)

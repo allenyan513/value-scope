@@ -72,7 +72,7 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron (Hobby plan doesn't support multiple daily jobs). GitHub Actions calls the Vercel-hosted API routes with `CRON_SECRET`.
 - **Update Prices** (`/api/cron/update-prices`): 3x weekdays — 8:30 AM, 10:30 AM, 5:30 PM ET. Also refreshes sector betas and busts ISR cache.
 - **Refresh Estimates** (`/api/cron/refresh-estimates`): 2x weekdays — 4:00 PM (slot=0), 6:00 PM ET (slot=1). Rotates 250 tickers/slot, 500/day. Busts ISR cache for processed tickers.
-- **No recompute cron** — valuations are computed lazily on page visit via `getCoreTickerData()` → `computeFullValuation()`, cached by ISR (1 hour). `valuation_history` snapshots are written on page visit (fire-and-forget).
+- **No recompute cron** — valuations are computed lazily on page visit via `getCoreTickerData()` → `computeFullValuation()`, cached by ISR (1 hour). No `valuations` or `valuation_history` tables — all computation is ephemeral, cached only as ISR HTML.
 - Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
 - Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
 
