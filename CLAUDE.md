@@ -21,6 +21,11 @@ npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
 
+## Scale Targets
+- **8,000+ US stocks** (current: ~500 S&P 500). All cron, DB queries, and batch operations must be designed for 8k tickers.
+- **10,000 DAU**. Pages are ISR-cached (1h TTL) — DB/API load scales with ticker count, not user count.
+- **Zero FMP calls in user request path**. All external API calls happen in cron jobs; page visits read only from Supabase.
+
 ## Architecture Principles
 - **3 services only**: Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
 - **Frontend never calls FMP directly**. All FMP calls go through server-side API routes.
