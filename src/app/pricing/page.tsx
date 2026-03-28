@@ -1,65 +1,66 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Coins } from "lucide-react";
+import { CREDIT_PACKS } from "@/lib/constants";
+import { PricingBuyButton } from "./pricing-buy-button";
+import { CreditBalance } from "./credit-balance";
 
 export const metadata: Metadata = {
-  title: "Pricing — Free for S&P 500",
+  title: "Pricing — Buy Credits to Unlock Stocks | ValuScope",
   description:
-    "ValuScope is free for all S&P 500 stocks. Upgrade to Pro for 8,000+ US stocks, custom assumptions, and API access.",
+    "Unlock stock valuations with credits. Each credit permanently unlocks one stock. 5 popular stocks are free. Starting at $9 for 5 stocks.",
 };
 
-const plans = [
+const packs: Array<{
+  key: "trial_5" | "starter_30" | "pro_500";
+  credits: number;
+  priceCents: number;
+  label: string;
+  perStock: string;
+  description: string;
+  features: string[];
+  highlighted: boolean;
+  badge?: string;
+}> = [
   {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Full valuation for S&P 500 stocks",
+    key: "trial_5",
+    ...CREDIT_PACKS.trial_5,
+    description: "Try it out with 5 stocks",
     features: [
-      "All 7 valuation models",
-      "S&P 500 stocks (500+ companies)",
+      "5 stock unlocks",
+      "All 9 valuation models",
+      "Permanent access",
       "Daily data updates",
-      "Sensitivity analysis",
-      "Price vs Intrinsic Value chart",
     ],
-    cta: "Get Started",
-    ctaHref: "/",
     highlighted: false,
   },
   {
-    name: "Pro",
-    price: "$19",
-    period: "/month",
-    description: "For serious investors who want more coverage",
+    key: "starter_30",
+    ...CREDIT_PACKS.starter_30,
+    description: "Best value for active investors",
     features: [
-      "Everything in Free",
-      "8,000+ US stocks",
-      "Watchlist with alerts",
-      "Custom WACC & growth assumptions",
-      "CSV / PDF export",
-      "Priority data updates",
+      "30 stock unlocks",
+      "All 9 valuation models",
+      "Permanent access",
+      "Daily data updates",
+      "MCP & API access",
     ],
-    cta: "Coming Soon",
-    ctaHref: "#",
     highlighted: true,
     badge: "Popular",
   },
   {
-    name: "API",
-    price: "$49",
-    period: "/month",
-    description: "Programmatic access for quant teams",
+    key: "pro_500",
+    ...CREDIT_PACKS.pro_500,
+    description: "For professionals and quant teams",
     features: [
-      "Everything in Pro",
-      "REST API access",
-      "1,000 requests/day",
-      "Bulk valuation endpoints",
-      "Webhook notifications",
-      "Dedicated support",
+      "500 stock unlocks",
+      "All 9 valuation models",
+      "Permanent access",
+      "Daily data updates",
+      "MCP & API access",
+      "Priority support",
     ],
-    cta: "Coming Soon",
-    ctaHref: "#",
     highlighted: false,
   },
 ];
@@ -68,41 +69,55 @@ export default function PricingPage() {
   return (
     <div className="container mx-auto px-4 py-20">
       <div className="text-center mb-14">
-        <h1 className="text-4xl font-bold mb-4 tracking-tight">Simple, Transparent Pricing</h1>
+        <h1 className="text-4xl font-bold mb-4 tracking-tight">
+          Buy Credits, Unlock Stocks
+        </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Start free with full access to S&P 500 valuations. Upgrade when you
-          need broader coverage.
+          Each credit permanently unlocks full valuation analysis for one stock.
+          5 popular stocks (AAPL, NVDA, MSFT, GOOGL, AMZN) are{" "}
+          <span className="font-semibold text-foreground">free for everyone</span>.
         </p>
       </div>
 
+      {/* Credit balance (only shows when logged in) */}
+      <CreditBalance />
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        {plans.map((plan) => (
+        {packs.map((pack) => (
           <div
-            key={plan.name}
+            key={pack.key}
             className={`rounded-xl border bg-card p-8 flex flex-col transition-all ${
-              plan.highlighted
+              pack.highlighted
                 ? "border-brand shadow-lg shadow-brand/10 relative ring-1 ring-brand/20"
                 : "hover:shadow-md hover:border-brand/20"
             }`}
           >
-            {plan.badge && (
+            {pack.badge && (
               <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-brand-foreground hover:bg-brand/90">
-                {plan.badge}
+                {pack.badge}
               </Badge>
             )}
             <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2">{plan.name}</h2>
+              <h2 className="text-xl font-bold mb-2">{pack.label}</h2>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                <span className="text-muted-foreground">{plan.period}</span>
+                <span className="text-4xl font-bold tracking-tight">
+                  ${(pack.priceCents / 100).toFixed(0)}
+                </span>
+                <span className="text-muted-foreground">one-time</span>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {plan.description}
+              <div className="flex items-center gap-2 mt-2">
+                <Coins className="h-4 w-4 text-brand" />
+                <span className="text-sm font-medium">
+                  {pack.credits} stocks at {pack.perStock} each
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {pack.description}
               </p>
             </div>
 
             <ul className="space-y-3 mb-8 flex-1">
-              {plan.features.map((feature) => (
+              {pack.features.map((feature) => (
                 <li key={feature} className="flex items-start gap-2.5 text-sm">
                   <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
                   {feature}
@@ -110,35 +125,24 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            {plan.ctaHref === "#" ? (
-              <Button
-                variant={plan.highlighted ? "default" : "outline"}
-                className={`w-full ${plan.highlighted ? "bg-brand hover:bg-brand/90 text-brand-foreground" : ""}`}
-                disabled
-              >
-                {plan.cta}
-              </Button>
-            ) : (
-              <Link href={plan.ctaHref}>
-                <Button
-                  variant={plan.highlighted ? "default" : "outline"}
-                  className="w-full"
-                >
-                  {plan.cta}
-                </Button>
-              </Link>
-            )}
+            <PricingBuyButton
+              packKey={pack.key}
+              label={pack.label}
+              highlighted={pack.highlighted}
+            />
           </div>
         ))}
       </div>
 
-      <div className="text-center mt-14 text-sm text-muted-foreground">
+      <div className="text-center mt-14 text-sm text-muted-foreground space-y-2">
         <p>
-          Pro and API plans are coming soon.{" "}
+          Credits never expire. Once a stock is unlocked, it stays unlocked forever.
+        </p>
+        <p>
           <Link href="/" className="text-brand hover:underline font-medium">
-            Start free
+            Try free stocks
           </Link>{" "}
-          today with full S&P 500 coverage.
+          — AAPL, NVDA, MSFT, GOOGL, and AMZN — no account required.
         </p>
       </div>
     </div>

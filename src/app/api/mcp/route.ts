@@ -7,6 +7,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createValuScopeMcpServer } from "@/mcp/server";
 import { checkRateLimit, getClientIP } from "@/mcp/rate-limit";
+import { createSupabaseWithAuth } from "@/lib/api/auth";
 
 export const maxDuration = 30;
 
@@ -55,7 +56,21 @@ export async function POST(request: Request) {
 
   try {
     const start = Date.now();
-    const server = createValuScopeMcpServer();
+
+    // Extract user ID from auth header (optional — free tickers work without auth)
+    let userId: string | null = null;
+    const authHeader = request.headers.get("authorization");
+    if (authHeader) {
+      try {
+        const supabase = createSupabaseWithAuth(request as unknown as import("next/server").NextRequest);
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id ?? null;
+      } catch {
+        // Auth failure is non-fatal — anonymous access for free tickers
+      }
+    }
+
+    const server = createValuScopeMcpServer({ userId });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless
       enableJsonResponse: true,

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { AddToWatchlistButton } from "@/components/watchlist/add-to-watchlist-button";
 import { PrimaryNav } from "@/components/navigation/primary-nav";
+import { TickerAccessWrapper } from "@/components/paywall/ticker-access-wrapper";
 import { getCoreTickerData } from "./data";
 import { formatLargeNumber } from "@/lib/format";
 
@@ -56,8 +57,10 @@ export default async function TickerLayout({ params, children }: Props) {
       {/* Primary Category Navigation */}
       <PrimaryNav ticker={upperTicker} />
 
-      {/* Page Content */}
-      {children}
+      {/* Page Content — gated by credit system */}
+      <TickerAccessWrapper ticker={upperTicker}>
+        {children}
+      </TickerAccessWrapper>
     </div>
   );
 }

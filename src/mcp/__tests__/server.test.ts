@@ -21,6 +21,12 @@ vi.mock("../valuation-handler", () => ({
   },
 }));
 
+// Mock credit system — treat all tickers as free in tests
+vi.mock("@/lib/credits", () => ({
+  isFreeTicker: () => true,
+  hasTickerAccess: () => Promise.resolve(true),
+}));
+
 import { createValuScopeMcpServer } from "../server";
 import { computeValuationForTicker, ValuationError } from "../valuation-handler";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuthServerClient } from "@/lib/auth/supabase-auth";
+import { createCookieClient } from "@/lib/auth/supabase-auth-server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/";
 
   if (code) {
-    const supabase = createAuthServerClient();
+    const supabase = await createCookieClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 

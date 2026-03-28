@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { createServerClient } from "@/lib/db/supabase";
+import { addCredits } from "@/lib/credits";
+import { type CreditPackKey } from "@/lib/constants";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -26,55 +27,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const db = createServerClient();
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id;
+    const packKey = session.metadata?.pack_key as CreditPackKey | undefined;
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.user_id;
-      const plan = session.metadata?.plan;
-
-      if (userId && plan) {
-        await db.from("subscriptions").upsert(
-          {
-            user_id: userId,
-            plan,
-            stripe_customer_id: session.customer as string,
-            stripe_subscription_id: session.subscription as string,
-            status: "active",
-            current_period_end: new Date(
-              Date.now() + 30 * 24 * 60 * 60 * 1000
-            ).toISOString(),
-          },
-          { onConflict: "user_id" }
+    if (userId && packKey) {
+      try {
+        await addCredits({
+          userId,
+          packKey,
+          stripeSessionId: session.id,
+          stripeCustomerId: (session.customer as string) ?? null,
+        });
+        console.log(`[Stripe] Credits added: user=${userId} pack=${packKey}`);
+      } catch (error) {
+        console.error("[Stripe] Failed to add credits:", error);
+        return NextResponse.json(
+          { error: "Failed to process credits" },
+          { status: 500 }
         );
       }
-      break;
-    }
-
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      // Get period end from the first subscription item
-      const periodEnd = subscription.items?.data?.[0]?.current_period_end;
-      await db
-        .from("subscriptions")
-        .update({
-          status: subscription.status,
-          ...(periodEnd
-            ? { current_period_end: new Date(periodEnd * 1000).toISOString() }
-            : {}),
-        })
-        .eq("stripe_subscription_id", subscription.id);
-      break;
-    }
-
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      await db
-        .from("subscriptions")
-        .update({ status: "canceled" })
-        .eq("stripe_subscription_id", subscription.id);
-      break;
     }
   }
 
