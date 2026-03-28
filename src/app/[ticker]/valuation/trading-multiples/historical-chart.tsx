@@ -17,9 +17,6 @@ import { cn } from "@/lib/utils";
 const MULTIPLE_OPTIONS: { key: MultipleKey; label: string }[] = [
   { key: "pe", label: "P/E" },
   { key: "ev_ebitda", label: "EV/EBITDA" },
-  { key: "pb", label: "P/B" },
-  { key: "ps", label: "P/S" },
-  { key: "p_fcf", label: "P/FCF" },
 ];
 
 interface Props {

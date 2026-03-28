@@ -9,7 +9,6 @@ import type {
   MultipleStats,
   FinancialStatement,
 } from "@/types";
-import { MAX_PB_RATIO, MAX_PS_RATIO, MAX_PFCF_RATIO } from "@/lib/constants";
 
 interface DailyPrice {
   date: string;
@@ -52,31 +51,10 @@ export function computeHistoricalMultiples(
     const ebitda = fin.ebitda || 0;
     const evEbitda = ebitda > 0 && ev > 0 ? ev / ebitda : null;
 
-    // P/B: Price / Book Value per Share
-    const bookValue = fin.total_equity;
-    const bookPerShare = bookValue && bookValue > 0 ? bookValue / shares : null;
-    const pb = bookPerShare && bookPerShare > 0 ? price.close / bookPerShare : null;
-
-    // P/S: Price / Revenue per Share
-    const revenue = fin.revenue;
-    const revPerShare = revenue && revenue > 0 ? revenue / shares : null;
-    const ps = revPerShare && revPerShare > 0 ? price.close / revPerShare : null;
-
-    // P/FCF: Price / Free Cash Flow per Share
-    const fcf = fin.free_cash_flow;
-    const fcfPerShare = fcf && fcf > 0 ? fcf / shares : null;
-    const pFcf = fcfPerShare && fcfPerShare > 0 ? price.close / fcfPerShare : null;
-
-    const round = (v: number | null, cap: number) =>
-      v !== null && v > 0 && v < cap ? Math.round(v * 100) / 100 : null;
-
     result.push({
       date: price.date,
       pe: pe !== null && pe > 0 && pe < 200 ? Math.round(pe * 100) / 100 : null,
       ev_ebitda: evEbitda !== null && evEbitda > 0 && evEbitda < 100 ? Math.round(evEbitda * 100) / 100 : null,
-      pb: round(pb, MAX_PB_RATIO),
-      ps: round(ps, MAX_PS_RATIO),
-      p_fcf: round(pFcf, MAX_PFCF_RATIO),
     });
   }
 
@@ -85,7 +63,7 @@ export function computeHistoricalMultiples(
 
 // --- Statistics: compute avg, p25, p75, percentile for each multiple ---
 
-const CAPS: Record<string, number> = { pe: 200, ev_ebitda: 100, pb: MAX_PB_RATIO, ps: MAX_PS_RATIO, p_fcf: MAX_PFCF_RATIO };
+const CAPS: Record<string, number> = { pe: 200, ev_ebitda: 100 };
 
 function computeStats(
   values: number[],
@@ -124,18 +102,6 @@ export function computeMultiplesStats(data: HistoricalMultiplesPoint[]) {
     ev_ebitda: computeStats(
       data.map((d) => d.ev_ebitda).filter((v): v is number => v != null),
       CAPS.ev_ebitda
-    ),
-    pb: computeStats(
-      data.map((d) => d.pb).filter((v): v is number => v != null),
-      CAPS.pb
-    ),
-    ps: computeStats(
-      data.map((d) => d.ps).filter((v): v is number => v != null),
-      CAPS.ps
-    ),
-    p_fcf: computeStats(
-      data.map((d) => d.p_fcf).filter((v): v is number => v != null),
-      CAPS.p_fcf
     ),
   };
 }

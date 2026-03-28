@@ -33,8 +33,6 @@ export function PeerComparisonTable({ companyRow, peers }: Props) {
   // Compute medians from peers
   const peMedian = median(peers.map((p) => p.trailing_pe).filter((v): v is number => v !== null && v > 0));
   const evMedian = median(peers.map((p) => p.ev_ebitda).filter((v): v is number => v !== null && v > 0));
-  const pbMedian = median(peers.map((p) => p.price_to_book).filter((v): v is number => v !== null && v > 0));
-  const psMedian = median(peers.map((p) => p.price_to_sales).filter((v): v is number => v !== null && v > 0));
 
   return (
     <div className="val-card">
@@ -48,8 +46,6 @@ export function PeerComparisonTable({ companyRow, peers }: Props) {
               <th className="text-right py-2 font-medium px-2">Mkt Cap</th>
               <th className="text-right py-2 font-medium px-2">P/E</th>
               <th className="text-right py-2 font-medium px-2">EV/EBITDA</th>
-              <th className="text-right py-2 font-medium px-2">P/B</th>
-              <th className="text-right py-2 font-medium px-2">P/S</th>
               <th className="text-right py-2 font-medium px-2">Rev Growth</th>
               <th className="text-right py-2 font-medium px-2">Net Margin</th>
               <th className="text-right py-2 font-medium px-2">ROE</th>
@@ -64,8 +60,6 @@ export function PeerComparisonTable({ companyRow, peers }: Props) {
               <td className="py-2 text-right px-2">{fmt(companyRow.market_cap)}</td>
               <td className="py-2 text-right px-2">{fmtMultiple(companyRow.pe)}</td>
               <td className="py-2 text-right px-2">{fmtMultiple(companyRow.ev_ebitda)}</td>
-              <td className="py-2 text-right px-2">{fmtMultiple(companyRow.pb)}</td>
-              <td className="py-2 text-right px-2">{fmtMultiple(companyRow.ps)}</td>
               <td className="py-2 text-right px-2">{fmtPct(companyRow.revenue_growth)}</td>
               <td className="py-2 text-right px-2">{fmtPct(companyRow.net_margin)}</td>
               <td className="py-2 text-right px-2">{fmtPct(companyRow.roe)}</td>
@@ -87,8 +81,6 @@ export function PeerComparisonTable({ companyRow, peers }: Props) {
                 <td className="py-2 text-right px-2">{fmt(peer.market_cap)}</td>
                 <td className="py-2 text-right px-2">{fmtMultiple(peer.trailing_pe)}</td>
                 <td className="py-2 text-right px-2">{fmtMultiple(peer.ev_ebitda)}</td>
-                <td className="py-2 text-right px-2">{fmtMultiple(peer.price_to_book)}</td>
-                <td className="py-2 text-right px-2">{fmtMultiple(peer.price_to_sales)}</td>
                 <td className="py-2 text-right px-2">{fmtPct(peer.revenue_growth)}</td>
                 <td className="py-2 text-right px-2">{fmtPct(peer.net_margin)}</td>
                 <td className="py-2 text-right px-2">{fmtPct(peer.roe)}</td>
@@ -101,8 +93,6 @@ export function PeerComparisonTable({ companyRow, peers }: Props) {
               <td className="py-2 text-right px-2"></td>
               <td className="py-2 text-right px-2">{fmtMultiple(peMedian)}</td>
               <td className="py-2 text-right px-2">{fmtMultiple(evMedian)}</td>
-              <td className="py-2 text-right px-2">{fmtMultiple(pbMedian)}</td>
-              <td className="py-2 text-right px-2">{fmtMultiple(psMedian)}</td>
               <td className="py-2 text-right px-2">—</td>
               <td className="py-2 text-right px-2">—</td>
               <td className="py-2 text-right px-2">—</td>

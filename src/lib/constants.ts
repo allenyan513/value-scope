@@ -48,12 +48,6 @@ export const MAX_GROWTH_RATE = 0.3;
 export const MIN_HISTORY_POINTS = 100;
 /** P/E ratio upper bound filter (exclude outliers) */
 export const MAX_PE_RATIO = 200;
-/** P/B ratio upper bound filter */
-export const MAX_PB_RATIO = 50;
-/** P/S ratio upper bound filter */
-export const MAX_PS_RATIO = 100;
-/** P/FCF ratio upper bound filter */
-export const MAX_PFCF_RATIO = 200;
 
 // --- Ticker Validation ---
 /** Matches standard tickers (AAPL) and hyphenated share classes (BRK-B, BF-B) */

@@ -53,7 +53,7 @@ describe("computeFullValuation — dcf_primary strategy (default)", () => {
   it("should still populate pillars for display", () => {
     const result = computeFullValuation(BASE_INPUTS);
     expect(result.pillars.dcf.models.length).toBeGreaterThanOrEqual(1);
-    expect(result.pillars.tradingMultiples.models.length).toBe(5);
+    expect(result.pillars.tradingMultiples.models.length).toBe(2);
     expect(result.pillars.peg.models.length).toBe(1);
   });
 });
@@ -74,7 +74,7 @@ describe("computeFullValuation — median strategy", () => {
       expect(m.model_type).toMatch(/^dcf_/);
     });
 
-    expect(pillars.tradingMultiples.models.length).toBe(5);
+    expect(pillars.tradingMultiples.models.length).toBe(2);
 
     expect(pillars.peg.models.length).toBe(1);
     expect(pillars.peg.models[0].model_type).toBe("peg");
@@ -106,6 +106,7 @@ describe("computeFullValuation — median strategy", () => {
       pillars.dcf.fairValue,
       pillars.tradingMultiples.fairValue,
       pillars.peg.fairValue,
+      pillars.epv.fairValue,
     ].filter(v => v > 0).sort((a, b) => a - b);
 
     expect(pillarValues.length).toBeGreaterThanOrEqual(1);
@@ -132,7 +133,7 @@ describe("computeFullValuation — median strategy", () => {
     const result = computeFullValuation(MEDIAN_INPUTS);
     const { pillars, current_price } = result;
 
-    for (const key of ["dcf", "tradingMultiples", "peg"] as const) {
+    for (const key of ["dcf", "tradingMultiples", "peg", "epv"] as const) {
       const pillar = pillars[key];
       if (pillar.fairValue > 0) {
         const expectedUpside = ((pillar.fairValue - current_price) / current_price) * 100;
@@ -165,7 +166,7 @@ describe("computeFullValuation — weighted strategy", () => {
       consensusStrategy: "weighted",
     });
     expect(result.pillars.dcf.models.length).toBeGreaterThanOrEqual(1);
-    expect(result.pillars.tradingMultiples.models.length).toBe(5);
+    expect(result.pillars.tradingMultiples.models.length).toBe(2);
     expect(result.pillars.peg.models.length).toBe(1);
   });
 });
@@ -193,9 +194,9 @@ describe("computeFullValuation — cross-strategy comparison", () => {
 });
 
 describe("computeFullValuation — shared behavior", () => {
-  it("should run all 10 models (5 DCF + 5 multiples + PEG — some may be N/A)", () => {
+  it("should run all 7 models (4 DCF + 2 multiples + PEG — some may be N/A)", () => {
     const result = computeFullValuation(BASE_INPUTS);
-    expect(result.models.length).toBeGreaterThanOrEqual(7);
+    expect(result.models.length).toBeGreaterThanOrEqual(4);
   });
 
   it("should set verdict based on consensus upside", () => {
