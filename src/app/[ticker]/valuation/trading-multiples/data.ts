@@ -100,7 +100,7 @@ export const getRelativeValuationData = cache(async (ticker: string): Promise<Re
   // Fetch core data + page-specific peers with forward multiples in parallel
   const [coreData, peers] = await Promise.all([
     getCoreTickerData(ticker),
-    computePeerMetricsFromDB(ticker, 15),
+    computePeerMetricsFromDB(ticker, 10),
   ]);
   const { company, summary, estimates, historicals } = coreData;
 

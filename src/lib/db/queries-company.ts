@@ -2,8 +2,8 @@
 
 import { createServerClient } from "./supabase";
 import type { Company, PeerComparison, PeerEBITDARow } from "@/types";
-import { getIndustryPeers as getFMPStockPeers } from "@/lib/data/fmp-financials";
 import { median } from "@/lib/valuation/statistics";
+import { resolvePeers } from "./resolve-peers";
 
 const db = () => createServerClient();
 
@@ -96,7 +96,7 @@ export async function computePeerMetricsFromDB(
   ticker: string,
   limit = 10
 ): Promise<PeerComparison[]> {
-  const peerCompanies = await getIndustryPeers(ticker, limit);
+  const peerCompanies = await resolvePeers(ticker, limit);
   if (peerCompanies.length === 0) return [];
 
   const peerTickers = peerCompanies.map((p) => p.ticker);
@@ -210,46 +210,11 @@ export async function getPeerEVEBITDAMedianFromDB(
   ticker: string,
   limit = 10
 ): Promise<number | null> {
-  // Try DB industry peers first (fast, no FMP call)
-  const dbPeers = await computePeerMetricsFromDB(ticker, limit);
-  const dbValid = dbPeers
+  const peers = await computePeerMetricsFromDB(ticker, limit);
+  const valid = peers
     .map((p) => p.ev_ebitda)
     .filter((v): v is number => v !== null && v > 0 && v < 100);
-  if (dbValid.length > 0) return median(dbValid);
-
-  // Fallback: FMP /stock-peers → look up their financials in DB
-  try {
-    const fmpTickers = await getFMPStockPeers(ticker);
-    if (fmpTickers.length === 0) return null;
-    const peerTickers = fmpTickers.slice(0, limit);
-    const [companiesRes, finRes] = await Promise.all([
-      db().from("companies").select("ticker, market_cap").in("ticker", peerTickers),
-      db()
-        .from("financial_statements")
-        .select("ticker, ebitda, total_debt, cash_and_equivalents, fiscal_year")
-        .in("ticker", peerTickers)
-        .eq("period_type", "annual")
-        .order("fiscal_year", { ascending: false }),
-    ]);
-    const compMap = new Map((companiesRes.data ?? []).map((c) => [c.ticker, c.market_cap as number]));
-    const latestFin = new Map<string, { ebitda: number | null; total_debt: number | null; cash_and_equivalents: number | null }>();
-    for (const row of finRes.data ?? []) {
-      if (!latestFin.has(row.ticker)) latestFin.set(row.ticker, row);
-    }
-    const fmpValid: number[] = [];
-    for (const t of peerTickers) {
-      const mcap = compMap.get(t);
-      const fin = latestFin.get(t);
-      if (mcap && fin && fin.ebitda && fin.ebitda > 0) {
-        const ev = mcap + (fin.total_debt ?? 0) - (fin.cash_and_equivalents ?? 0);
-        const evEbitda = ev / fin.ebitda;
-        if (evEbitda > 0 && evEbitda < 100) fmpValid.push(evEbitda);
-      }
-    }
-    return fmpValid.length > 0 ? median(fmpValid) : null;
-  } catch {
-    return null;
-  }
+  return valid.length > 0 ? median(valid) : null;
 }
 
 /**
@@ -263,24 +228,9 @@ export async function computePeerEBITDAMultiples(
 ): Promise<PeerEBITDARow[]> {
   const db = createServerClient();
 
-  // 1. Resolve peer tickers: FMP /stock-peers first, DB industry fallback
-  let peerTickers: string[] = [];
-  try {
-    const fmpPeers = await getFMPStockPeers(ticker);
-    if (fmpPeers.length > 0) {
-      peerTickers = fmpPeers.slice(0, limit);
-    }
-  } catch { /* fall through to DB */ }
-
-  if (peerTickers.length === 0) {
-    const dbPeers = await getIndustryPeers(ticker, limit);
-    peerTickers = dbPeers.map((p) => p.ticker);
-  }
-
-  // Ensure subject ticker isn't duplicated if FMP includes it in peers
-  peerTickers = peerTickers.filter((t) => t !== ticker);
-
-  const allTickers = [ticker, ...peerTickers];
+  // Resolve peers via unified strategy (FMP first, DB fallback, market cap floor)
+  const peerCompanies = await resolvePeers(ticker, limit);
+  const allTickers = [ticker, ...peerCompanies.map((p) => p.ticker)];
 
   // 2. Fetch company data + latest financials + next-year revenue estimate in parallel
   const [companiesResult, financialsResult, estimatesResult] = await Promise.all([

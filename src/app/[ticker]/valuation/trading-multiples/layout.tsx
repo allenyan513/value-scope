@@ -1,4 +1,5 @@
 import { getCompany } from "@/lib/db/queries";
+import { TradingMultiplesNav } from "@/components/valuation/trading-multiples-nav";
 
 interface Props {
   params: Promise<{ ticker: string }>;
@@ -13,9 +14,12 @@ export default async function RelativeLayout({ params, children }: Props) {
 
   return (
     <div className="val-page">
-      <h2 className="val-h2">
-        {companyName} ({upperTicker}) Trading Multiples
-      </h2>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="val-h2">
+          {companyName} ({upperTicker}) Trading Multiples
+        </h2>
+        <TradingMultiplesNav ticker={upperTicker} />
+      </div>
       {children}
     </div>
   );

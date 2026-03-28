@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getPeersByIndustry, getPriceHistory, upsertEstimates, getPeerEVEBITDAMedianFromDB } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getPriceHistory, upsertEstimates, getPeerEVEBITDAMedianFromDB, resolvePeers } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
@@ -81,7 +81,7 @@ export async function GET(
     }
 
     // Get peer data for trading multiples
-    const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15);
+    const peerCompanies = await resolvePeers(upperTicker, 10);
     const peerResults = await Promise.all(
       peerCompanies.map(async (peer): Promise<PeerComparison | null> => {
         try {

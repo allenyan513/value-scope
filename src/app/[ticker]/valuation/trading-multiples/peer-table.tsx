@@ -1,16 +1,12 @@
 import Link from "next/link";
 import type { PeerComparison } from "@/types";
 import type { CompanyRow, MultipleKey } from "./data";
-import { formatLargeNumber } from "@/lib/format";
+import { formatMillions } from "@/lib/format";
 
 interface Props {
   companyRow: CompanyRow;
   peers: PeerComparison[];
   multipleKey: MultipleKey;
-}
-
-function fmt(n: number): string {
-  return formatLargeNumber(n, { prefix: "", decimals: 1, includeK: true });
 }
 
 function fmtMultiple(v: number | null): string {
@@ -37,8 +33,14 @@ export function PeerComparisonTable({ companyRow, peers, multipleKey }: Props) {
     ? (p: PeerComparison) => p.forward_pe
     : (p: PeerComparison) => p.forward_ev_ebitda;
 
-  const trailingValues = peers.map(trailingExtractor).filter((v): v is number => v !== null && v > 0);
-  const forwardValues = peers.map(forwardExtractor).filter((v): v is number => v !== null && v > 0);
+  // Only show peers with valid trailing data (the primary metric)
+  const filteredPeers = peers.filter((p) => {
+    const t = trailingExtractor(p);
+    return t !== null && t > 0;
+  });
+
+  const trailingValues = filteredPeers.map(trailingExtractor).filter((v): v is number => v !== null && v > 0);
+  const forwardValues = filteredPeers.map(forwardExtractor).filter((v): v is number => v !== null && v > 0);
   const trailingMedian = median(trailingValues);
   const forwardMedian = median(forwardValues);
 
@@ -51,7 +53,7 @@ export function PeerComparisonTable({ companyRow, peers, multipleKey }: Props) {
         <thead>
           <tr className="border-b text-muted-foreground">
             <th className="text-left py-2 font-medium sticky left-0 bg-card z-10">Company</th>
-            <th className="text-right py-2 font-medium px-3">Mkt Cap</th>
+            <th className="text-right py-2 font-medium px-3">Mkt Cap ($M)</th>
             <th className="text-right py-2 font-medium px-3">Trailing {multipleLabel}</th>
             <th className="text-right py-2 font-medium px-3">Forward {multipleLabel}</th>
           </tr>
@@ -63,13 +65,13 @@ export function PeerComparisonTable({ companyRow, peers, multipleKey }: Props) {
               {companyRow.name}
               <span className="text-[10px] text-primary/60 ml-1">{companyRow.ticker}</span>
             </td>
-            <td className="py-2 text-right px-3">{fmt(companyRow.market_cap)}</td>
+            <td className="py-2 text-right px-3">{formatMillions(companyRow.market_cap)}</td>
             <td className="py-2 text-right px-3">{fmtMultiple(companyTrailing)}</td>
             <td className="py-2 text-right px-3">{fmtMultiple(companyForward)}</td>
           </tr>
 
-          {/* Peer rows */}
-          {peers.map((peer) => (
+          {/* Peer rows (filtered: only peers with data for this multiple) */}
+          {filteredPeers.map((peer) => (
             <tr key={peer.ticker} className="border-b hover:bg-muted/30 transition-colors">
               <td className="py-2 sticky left-0 bg-card z-10">
                 <Link
@@ -81,7 +83,7 @@ export function PeerComparisonTable({ companyRow, peers, multipleKey }: Props) {
                 </Link>
                 <span className="text-[10px] text-muted-foreground ml-1">{peer.ticker}</span>
               </td>
-              <td className="py-2 text-right px-3">{fmt(peer.market_cap)}</td>
+              <td className="py-2 text-right px-3">{formatMillions(peer.market_cap)}</td>
               <td className="py-2 text-right px-3">{fmtMultiple(trailingExtractor(peer))}</td>
               <td className="py-2 text-right px-3">{fmtMultiple(forwardExtractor(peer))}</td>
             </tr>
