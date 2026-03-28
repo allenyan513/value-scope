@@ -7,6 +7,7 @@ import {
   getPriceTargets,
   getPriceHistory,
   getPeerEVEBITDAMedianFromDB,
+  getValuationSnapshot,
   resolvePeers,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
@@ -15,9 +16,10 @@ import { getHistoricalPrices } from "@/lib/data/fmp";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { getSectorBeta } from "@/lib/data/sector-beta";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
-import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX } from "@/lib/constants";
+import { median } from "@/lib/valuation/statistics";
+import { DEFAULT_HISTORY_DAYS, MAX_EMA_SPAN, HISTORY_SAMPLE_MAX, SNAPSHOT_MAX_AGE_MS } from "@/lib/constants";
 import { toDateString } from "@/lib/format";
-import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDowngrade } from "@/types";
+import type { PeerComparison, ValuationSummary, EarningsSurprise, AnalystRecommendation, UpgradeDowngrade } from "@/types";
 
 /**
  * Core ticker data — needed by ALL pages.
@@ -27,13 +29,13 @@ import type { PeerComparison, EarningsSurprise, AnalystRecommendation, UpgradeDo
 export const getCoreTickerData = cache(async (ticker: string) => {
   const upperTicker = ticker.toUpperCase();
 
-  // Level 1: ALL independent queries in parallel
-  const [company, historicals, estimates, riskFreeRate, prices, latestPrice] =
+  // Level 1: ALL independent queries in parallel (includes snapshot read)
+  const [company, historicals, estimates, snapshot, prices, latestPrice] =
     await Promise.all([
       getCompany(upperTicker),
       getFinancials(upperTicker, "annual", 5),
       getEstimates(upperTicker),
-      getTenYearTreasuryYield().catch(() => 0.0425),
+      getValuationSnapshot(upperTicker),
       getPriceHistory(upperTicker, 365 * 5),
       getLatestPrice(upperTicker),
     ]);
@@ -62,11 +64,27 @@ export const getCoreTickerData = cache(async (ticker: string) => {
     };
   }
 
+  const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+
+  // Snapshot path: use pre-computed valuation as-is (no FMP, no FRED)
+  // Use snapshot price for consistency — upside%, verdict, all numbers stay coherent
+  if (snapshot && (Date.now() - new Date(snapshot.computed_at).getTime()) < SNAPSHOT_MAX_AGE_MS) {
+    const summary = snapshot.summary as ValuationSummary;
+    const peers = (snapshot.peers ?? []) as PeerComparison[];
+    const validEV = peers.map(p => p.ev_ebitda).filter((v): v is number => v !== null && v > 0 && v < 100);
+    const peerEVEBITDAMedian = validEV.length > 0 ? median(validEV) : undefined;
+
+    return { company, summary, estimates, historicals, historicalMultiples, peers, peerEVEBITDAMedian };
+  }
+
+  // Fallback: full live computation (FMP calls + FRED + CPU)
   const currentPrice = latestPrice || company.price || 0;
 
-  // Level 2: peers + computation + peer metrics + sector beta in parallel
-  const peerCompanies = await resolvePeers(upperTicker, 10);
-  const historicalMultiples = computeHistoricalMultiples(historicals, prices);
+  // Level 2a: peer resolution + FRED in parallel
+  const [peerCompanies, riskFreeRate] = await Promise.all([
+    resolvePeers(upperTicker, 10),
+    getTenYearTreasuryYield().catch(() => 0.0425),
+  ]);
   const sectorBetaPromise = company.sector
     ? getSectorBeta(company.sector).catch(() => null)
     : Promise.resolve(null);

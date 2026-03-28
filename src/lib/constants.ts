@@ -55,6 +55,10 @@ export const CRON_ESTIMATES_BATCH_SIZE = 250;
  *  10 concurrent × ~4 DB queries each = 40 peak connections — conservative for Supabase connection pool. */
 export const RECOMPUTE_CONCURRENCY = 10;
 
+// --- Valuation Snapshots ---
+/** Max age for valuation snapshots before falling back to live compute (25h to cover daily cycle + buffer) */
+export const SNAPSHOT_MAX_AGE_MS = 25 * 60 * 60 * 1000;
+
 // --- Content Limits ---
 /** Max characters for company description stored in DB */
 export const DESCRIPTION_MAX_LENGTH = 1000;

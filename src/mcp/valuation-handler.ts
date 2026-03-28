@@ -3,12 +3,13 @@
 // Used by both /api/valuation/[ticker] and MCP server
 // ============================================================
 
-import { getCompany, getFinancials, getEstimates, getLatestPrice, getPriceHistory, upsertEstimates, getPeerEVEBITDAMedianFromDB, resolvePeers } from "@/lib/db/queries";
+import { getCompany, getFinancials, getEstimates, getLatestPrice, getPriceHistory, upsertEstimates, getPeerEVEBITDAMedianFromDB, getValuationSnapshot, resolvePeers } from "@/lib/db/queries";
 import { computeFullValuation } from "@/lib/valuation/summary";
 import { computeHistoricalMultiples } from "@/lib/valuation/historical-multiples";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getAnalystEstimates, getEVMetrics, getFXRateToUSD } from "@/lib/data/fmp";
 import { convertEstimateToUSD } from "@/lib/data/fx-convert";
+import { SNAPSHOT_MAX_AGE_MS } from "@/lib/constants";
 import type { PeerComparison, AnalystEstimate, ValuationSummary, Company } from "@/types";
 
 export class ValuationError extends Error {
@@ -31,9 +32,23 @@ export interface ValuationComputeResult {
 export async function computeValuationForTicker(ticker: string): Promise<ValuationComputeResult> {
   const upperTicker = ticker.toUpperCase();
 
-  // Fetch fresh data in parallel
-  const [company, historicals, dbEstimates, riskFreeRate, prices] = await Promise.all([
+  // Try pre-computed snapshot first (no FMP, no FRED — single DB read)
+  const [snapshotCompany, snapshot] = await Promise.all([
     getCompany(upperTicker),
+    getValuationSnapshot(upperTicker),
+  ]);
+
+  if (!snapshotCompany) {
+    throw new ValuationError(`Company ${upperTicker} not found`, 404);
+  }
+
+  if (snapshot && (Date.now() - new Date(snapshot.computed_at).getTime()) < SNAPSHOT_MAX_AGE_MS) {
+    return { summary: snapshot.summary as ValuationSummary, company: snapshotCompany };
+  }
+
+  // Fallback: full live computation (FMP calls + FRED + CPU)
+  const company = snapshotCompany; // already fetched above
+  const [historicals, dbEstimates, riskFreeRate, prices] = await Promise.all([
     getFinancials(upperTicker, "annual", 5),
     getEstimates(upperTicker),
     getTenYearTreasuryYield(),
@@ -46,7 +61,7 @@ export async function computeValuationForTicker(ticker: string): Promise<Valuati
     try {
       const fmpEstimates = await getAnalystEstimates(upperTicker, "annual", 3);
       if (fmpEstimates.length > 0) {
-        const currency = company?.reporting_currency || "USD";
+        const currency = company.reporting_currency || "USD";
         const fxRate = currency !== "USD" ? await getFXRateToUSD(currency) : 1.0;
         await upsertEstimates(
           fmpEstimates.map((e) =>
@@ -69,10 +84,6 @@ export async function computeValuationForTicker(ticker: string): Promise<Valuati
         estimates = await getEstimates(upperTicker);
       }
     } catch { /* non-critical: DCF falls back to historical CAGR */ }
-  }
-
-  if (!company) {
-    throw new ValuationError(`Company ${upperTicker} not found`, 404);
   }
 
   if (historicals.length === 0) {

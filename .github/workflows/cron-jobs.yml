@@ -19,6 +19,7 @@ on:
           - update-prices
           - refresh-estimates-slot0
           - refresh-estimates-slot1
+          - recompute-valuations
           - all
 
 env:
@@ -64,6 +65,21 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ env.BASE_URL }}/api/cron/refresh-estimates?slot=1")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then exit 1; fi
+
+  recompute-valuations:
+    needs: update-prices
+    if: >-
+      github.event_name == 'workflow_dispatch' && (inputs.job == 'recompute-valuations' || inputs.job == 'all') ||
+      github.event_name == 'schedule' && github.event.schedule == '30 21 * * 1-5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger recompute-valuations
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ env.BASE_URL }}/api/cron/recompute-valuations")
           echo "Response status: $STATUS"
           if [ "$STATUS" -ne 200 ]; then exit 1; fi
 
