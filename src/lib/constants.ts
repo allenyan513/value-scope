@@ -36,6 +36,10 @@ export const FMP_API_DELAY_MS = 300;
 /** Delay between companies in cron batch processing (ms) */
 export const CRON_COMPANY_DELAY_MS = 3000;
 
+// --- MCP Rate Limiting ---
+/** Max MCP requests per IP per minute (sliding window) */
+export const MCP_RATE_LIMIT_RPM = 30;
+
 // --- Database ---
 /** Max rows per upsert batch to avoid payload limits */
 export const DB_BATCH_CHUNK_SIZE = 1000;

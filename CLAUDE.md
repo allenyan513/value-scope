@@ -2,7 +2,7 @@
 
 # ValuScope - Stock Valuation SaaS
 
-Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 7 automated valuation models (4 FCFF DCF + 1 FCFE DCF + 2 Trading Multiples + PEG) with daily updates. SEO-driven organic growth.
+Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 9 automated valuation models (4 FCFF DCF + 1 FCFE DCF + 2 Trading Multiples + PEG + EPV) with daily updates. SEO-driven organic growth. Also exposed as a free MCP server (`/api/mcp`) for AI clients.
 
 ## Tech Stack
 - **Framework**: Next.js 16.2 (App Router) + React 19 + TypeScript 5
@@ -16,7 +16,7 @@ Stock valuation platform covering S&P 500 (expandable to 8000+ US stocks). 7 aut
 npm run dev          # Start dev server (default port 3001)
 npm run build        # Production build
 npm run lint         # ESLint
-npm test             # Run unit tests (Vitest, 199 tests)
+npm test             # Run unit tests (Vitest, 263 tests)
 npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
@@ -51,6 +51,7 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - **DCF Helpers** (`src/lib/valuation/dcf-helpers.ts`): Shared `cagr()`, `avg()`, `clamp()`, `projectRevenue()` — used by all DCF models. Do not redefine these.
 - **ValuationHero** (`src/components/valuation/valuation-hero.tsx`): Unified stat-row (Fair Value / Market Price / Upside / Verdict) + narrative paragraph. Used by Summary, DCF, PEG, and Relative pages. Never duplicate this pattern inline — use the component.
 - **MethodologyCard** (`src/components/valuation/methodology-card.tsx`): Shared "Methodology" section. Takes `paragraphs: string[]`. Used by all valuation model pages. Never inline methodology text — use this component.
+- **Valuation Handler** (`src/mcp/valuation-handler.ts`): Shared data-fetching + `computeFullValuation()` pipeline. Used by both `/api/valuation/[ticker]` and MCP server. Never duplicate valuation computation logic — use `computeValuationForTicker()`.
 
 ## Testing
 - Run `npm test` before and after making logic changes — ensure no regressions before committing
@@ -75,6 +76,14 @@ Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel
 - **No recompute cron** — valuations are computed lazily on page visit via `getCoreTickerData()` → `computeFullValuation()`, cached by ISR (1 hour). No `valuations` or `valuation_history` tables — all computation is ephemeral, cached only as ISR HTML.
 - Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/update-prices`
 - Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
+
+## MCP Server
+- **Endpoint**: `POST /api/mcp` — Streamable HTTP, stateless (no sessions)
+- **Transport**: `WebStandardStreamableHTTPServerTransport` with `enableJsonResponse: true`
+- **Tool**: `get_stock_valuation(ticker, models?)` — returns structured valuation data from up to 9 models
+- **Architecture**: Per-request `McpServer` + transport (stateless, Vercel-friendly). Factory in `src/mcp/server.ts`.
+- **No auth required** — free public endpoint. CORS enabled for cross-origin clients.
+- Client config: `{ "mcpServers": { "valuescope": { "url": "https://valuescope.dev/api/mcp" } } }`
 
 ## Environment Variables
 Required in `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `FMP_API_KEY`, `FRED_API_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_API_PRICE_ID`
