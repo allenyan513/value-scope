@@ -40,7 +40,7 @@ vi.mock("@/lib/db/queries", () => ({
   getFinancials: vi.fn(() => delayed(appleFinancials)),
   getEstimates: vi.fn(() => delayed(testEstimates)),
   getLatestPrice: vi.fn(() => delayed(200)),
-  getPeersByIndustry: vi.fn(() =>
+  resolvePeers: vi.fn(() =>
     delayed(testPeers.map((p) => ({ ticker: p.ticker, name: p.name, market_cap: p.market_cap })))
   ),
   getPriceTargets: mockGetPriceTargets.mockImplementation(() =>
@@ -115,7 +115,7 @@ describe("getCoreTickerData — parallelism", () => {
     const duration = performance.now() - start;
 
     // Level 1: 6 parallel queries ~100ms
-    // Level 2: getPeersByIndustry ~100ms (needs company.industry from L1)
+    // Level 2: resolvePeers ~100ms (needs company from L1)
     // Level 3: peer metrics + peerEVEBITDAMedian ~100ms
     // If any level became fully sequential: 100 * 8 = 800ms minimum
     expect(duration).toBeLessThan(400);

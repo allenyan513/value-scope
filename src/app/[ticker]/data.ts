@@ -4,10 +4,10 @@ import {
   getFinancials,
   getEstimates,
   getLatestPrice,
-  getPeersByIndustry,
   getPriceTargets,
   getPriceHistory,
   getPeerEVEBITDAMedianFromDB,
+  resolvePeers,
 } from "@/lib/db/queries";
 import { getTenYearTreasuryYield } from "@/lib/data/fred";
 import { getKeyMetrics, getEarningsSurprises, getAnalystRecommendations, getUpgradesDowngrades, getEarningsCalendar } from "@/lib/data/fmp";
@@ -65,7 +65,7 @@ export const getCoreTickerData = cache(async (ticker: string) => {
   const currentPrice = latestPrice || company.price || 0;
 
   // Level 2: peers + computation + peer metrics + sector beta in parallel
-  const peerCompanies = await getPeersByIndustry(company.industry, upperTicker, 15, company.sector);
+  const peerCompanies = await resolvePeers(upperTicker, 10);
   const historicalMultiples = computeHistoricalMultiples(historicals, prices);
   const sectorBetaPromise = company.sector
     ? getSectorBeta(company.sector).catch(() => null)

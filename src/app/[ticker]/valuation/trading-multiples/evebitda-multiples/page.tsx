@@ -18,12 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const company = await getCompany(upperTicker);
 
   return {
-    title: `${upperTicker} P/E Multiples — Relative Valuation${company ? ` | ${company.name}` : ""} | ValuScope`,
-    description: `${company?.name ?? upperTicker} P/E multiples valuation using industry peer comparison with trailing and forward P/E ratios.`,
+    title: `${upperTicker} EV/EBITDA Multiples — Relative Valuation${company ? ` | ${company.name}` : ""} | ValuScope`,
+    description: `${company?.name ?? upperTicker} EV/EBITDA multiples valuation using industry peer comparison with trailing and forward EV/EBITDA ratios.`,
   };
 }
 
-export default async function PEMultiplesPage({ params }: Props) {
+export default async function EVEBITDAMultiplesPage({ params }: Props) {
   const { ticker } = await params;
   const upperTicker = ticker.toUpperCase();
   const data = await getRelativeValuationData(upperTicker);
@@ -31,16 +31,16 @@ export default async function PEMultiplesPage({ params }: Props) {
   if (!data) {
     return (
       <p className="text-muted-foreground py-8 text-center">
-        Data not yet available for P/E multiples analysis.
+        Data not yet available for EV/EBITDA multiples analysis.
       </p>
     );
   }
 
-  const detail = data.multiples.find((m) => m.key === "pe");
+  const detail = data.multiples.find((m) => m.key === "ev_ebitda");
   if (!detail || detail.fairValue === null) {
     return (
       <p className="text-muted-foreground py-8 text-center">
-        P/E multiples not applicable — company has negative or zero net income.
+        EV/EBITDA multiples not applicable — company has negative or zero EBITDA.
       </p>
     );
   }
@@ -53,7 +53,7 @@ export default async function PEMultiplesPage({ params }: Props) {
         upside={detail.upside ?? 0}
         narrative={
           <>
-            Using the industry peer median P/E multiple (trailing + forward),{" "}
+            Using the industry peer median EV/EBITDA multiple (trailing + forward),{" "}
             {data.companyName} ({data.ticker}) has a fair value of{" "}
             {formatCurrency(detail.fairValue)} based on {detail.peerCount} comparable
             companies in the {data.industry} industry.
@@ -64,14 +64,14 @@ export default async function PEMultiplesPage({ params }: Props) {
       <PeerValuationTable
         companyRow={data.companyRow}
         peers={data.peers}
-        multipleKey="pe"
+        multipleKey="ev_ebitda"
         detail={detail}
         industry={data.industry}
       />
 
       <MethodologyCard paragraphs={[
-        "This P/E relative valuation uses the industry peer median Price-to-Earnings ratio to estimate fair value. Both trailing (last 12 months) and forward (next fiscal year analyst estimates) P/E multiples are computed independently.",
-        "The industry median trailing P/E is applied to the company's TTM net income, and the forward P/E to analyst-estimated net income. Each produces an equity value divided by shares outstanding to yield a fair price per share. The selected fair value is the average of the trailing and forward legs.",
+        "This EV/EBITDA relative valuation uses the industry peer median Enterprise Value to EBITDA ratio to estimate fair value. Both trailing (last 12 months) and forward (next fiscal year analyst estimates) EV/EBITDA multiples are computed independently.",
+        "The industry median EV/EBITDA is applied to the company's EBITDA to produce an enterprise value. Net debt (total debt minus cash) is subtracted to arrive at equity value, which is divided by shares outstanding for fair price per share. The selected fair value is the average of the trailing and forward legs.",
       ]} />
     </>
   );

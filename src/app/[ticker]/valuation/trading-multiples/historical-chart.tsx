@@ -21,10 +21,11 @@ const MULTIPLE_OPTIONS: { key: MultipleKey; label: string }[] = [
 
 interface Props {
   ticker: string;
+  defaultMultiple?: MultipleKey;
 }
 
-export function HistoricalMultiplesChart({ ticker }: Props) {
-  const [selected, setSelected] = useState<MultipleKey>("pe");
+export function HistoricalMultiplesChart({ ticker, defaultMultiple = "pe" }: Props) {
+  const [selected, setSelected] = useState<MultipleKey>(defaultMultiple);
   const [data, setData] = useState<HistoricalMultiplesResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
