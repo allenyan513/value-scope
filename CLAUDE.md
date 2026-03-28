@@ -70,20 +70,18 @@ Use Supabase MCP tool `apply_migration` for all DDL changes. Never use raw `exec
 - The `as` SQL alias syntax silently fails and returns null/empty results
 
 ## Cron Jobs
-Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron (Hobby plan doesn't support multiple daily jobs). GitHub Actions calls the Vercel-hosted API routes with `CRON_SECRET`.
+Scheduled via **GitHub Actions** (`.github/workflows/cron-jobs.yml`), not Vercel Cron. → See `docs/data-pipeline.md` for detailed flow, design decisions, and API budget.
 
-**Scheduled (automatic, weekdays)**:
-- **Update Prices** (`/api/cron/update-prices`): 5:30 PM ET (1x). Batch quotes for all tickers, warms FRED cache, busts ISR cache.
-- **Refresh After Earnings** (`/api/cron/refresh-after-earnings`): 7:00 PM ET (1x). Event-driven: checks FMP earnings calendar for companies that reported today/yesterday, refreshes their financials + estimates + profile. Falls back to rotating batch of 50 on no-earnings days. Triggers targeted recompute (affected tickers + their peers) and sector beta refresh.
+| Job | Schedule | Route |
+|-----|----------|-------|
+| Update Prices | 5:30 PM ET weekdays | `/api/cron/update-prices` |
+| Refresh After Earnings | 7:00 PM ET weekdays | `/api/cron/refresh-after-earnings` |
+| Refresh Estimates (full) | Manual only | `/api/cron/refresh-estimates?full=true` |
+| Recompute Valuations | Manual only | `/api/cron/recompute-valuations` |
 
-**Manual-only (GitHub Actions → Run workflow)**:
-- **Refresh Estimates Full** (`/api/cron/refresh-estimates?full=true`): Bulk-refresh all estimates. For recovery/onboarding.
-- **Recompute Valuations** (`/api/cron/recompute-valuations`): Full recompute of all valuation snapshots. For recovery/model changes.
-
-**Valuation snapshots**: Pre-computed and stored in `valuation_snapshots` table (1 row per ticker, JSONB summary). `getCoreTickerData()` and `computeValuationForTicker()` read snapshots first (~5ms), falling back to live computation if stale (>25h). Upside% and verdict are recalculated dynamically at read time using the latest `companies.price`.
-
+- Valuation snapshots stored in `valuation_snapshots` (JSONB). Upside%/verdict recalculated at read time from live price.
 - Manual trigger (local): `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3001/api/cron/update-prices`
-- Manual trigger (prod): Use GitHub Actions → "Cron Jobs" → Run workflow → select job
+- Manual trigger (prod): GitHub Actions → "Cron Jobs" → Run workflow → select job
 
 ## MCP Server
 - **Endpoint**: `POST /api/mcp` — Streamable HTTP, stateless (no sessions)
