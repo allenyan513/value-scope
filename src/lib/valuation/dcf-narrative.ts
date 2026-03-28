@@ -99,17 +99,6 @@ export function generateDCFNarrative(
     ].filter(Boolean).join(" ");
   }
 
-  // Default: perpetuity (Gordon Growth)
-  const isThreeStage = projYears === 10;
-  const stageDesc = isThreeStage
-    ? `The first 5 years use analyst consensus estimates${growthDesc ? ` (${growthDesc})` : ""}, while years 6–10 transition gradually to a ${pct(terminalGrowth)} terminal growth rate.`
-    : `We project ${projYears} years of free cash flows${growthDesc ? ` with ${growthDesc}` : ""}, then apply a ${pct(terminalGrowth)} perpetual growth rate.`;
-
-  return [
-    `Using a Discounted Cash Flow model with perpetual growth terminal value, we project ${companyName}'s free cash flows over ${projYears} years.`,
-    stageDesc,
-    marginDesc ? `${marginDesc}.` : "",
-    `At a ${pct(discountRate)} cost of equity, the present value of projected cash flows plus the Gordon Growth terminal value (${tvPortion}% of total) yields an intrinsic value of ${dollar(model.fair_value)} per share.`,
-    `This suggests ${ticker} is ${verdict} by ${absUpside}% at the current price of ${dollar(currentPrice)}.`,
-  ].filter(Boolean).join(" ");
+  // Fallback for unknown models
+  return `${companyName} (${ticker}) DCF valuation yields a fair value of ${dollar(model.fair_value)} per share.`;
 }

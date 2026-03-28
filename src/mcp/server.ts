@@ -159,7 +159,6 @@ function getModelDisplayName(modelType: string): string {
     dcf_fcff_growth_10y: "DCF FCFF Growth Exit (10-Year)",
     dcf_fcff_ebitda_exit_5y: "DCF FCFF EBITDA Exit (5-Year)",
     dcf_fcff_ebitda_exit_10y: "DCF FCFF EBITDA Exit (10-Year)",
-    dcf_3stage: "DCF 3-Stage Perpetual Growth",
     pe_multiples: "P/E Trading Multiples",
     ev_ebitda_multiples: "EV/EBITDA Trading Multiples",
     peg: "PEG Fair Value",

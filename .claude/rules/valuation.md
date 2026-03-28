@@ -6,38 +6,33 @@ paths:
 
 # Valuation Models
 
-6 models in `src/lib/valuation/`, organized in 3 pillars:
+9 models in `src/lib/valuation/`, organized in 4 pillars:
 
-### DCF (3 models)
-1. **DCF 3-Stage Perpetual Growth 10Y** — 10Y projection (Y1–5 analyst, Y6–10 fade), Gordon Growth TV. Primary DCF model.
-2. **DCF P/E Exit 10Y** — TV = Year 10 Net Income × 5Y avg P/E.
-3. **DCF EV/EBITDA Exit 10Y** — TV = Year 10 EBITDA × 5Y avg EV/EBITDA − net debt.
+### DCF (4 models — all FCFF-based)
+1. **FCFF Growth Exit 5Y** — 5Y FCFF projection, Gordon Growth TV.
+2. **FCFF Growth Exit 10Y** — 10Y FCFF projection, Gordon Growth TV.
+3. **FCFF EBITDA Exit 5Y** — 5Y FCFF projection, peer EV/EBITDA exit multiple TV.
+4. **FCFF EBITDA Exit 10Y** — 10Y FCFF projection, peer EV/EBITDA exit multiple TV.
 
 ### Trading Multiples (2 models)
-4. **P/E** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
-5. **EV/EBITDA** — Historical 5Y avg EV/EBITDA × EBITDA → equity per share (same fallback)
+5. **P/E** — Historical 5Y avg P/E × TTM EPS (falls back to peer median when < 100 data points)
+6. **EV/EBITDA** — Historical 5Y avg EV/EBITDA × EBITDA → equity per share (same fallback)
 
 ### PEG (1 model)
-6. **PEG Fair Value** (`src/lib/valuation/peg.ts`) — Fair Value = (EPS Growth + Div Yield) × 100 × NTM EPS. Growth: forward analyst EPS CAGR (≥3 analysts), fallback historical EPS CAGR. Clamped 8%–25%.
+7. **PEG Fair Value** (`src/lib/valuation/peg.ts`) — Fair Value = (EPS Growth + Div Yield) × 100 × NTM EPS. Growth: forward analyst EPS CAGR (≥3 analysts), fallback historical EPS CAGR. Clamped 8%–25%.
 
-## Consensus Strategies
+### EPV (1 model)
+8. **Earnings Power Value** (`src/lib/valuation/epv.ts`) — Normalized earnings / WACC, adjusted for excess returns.
 
-Three switchable strategies in `src/lib/valuation/summary.ts`, controlled by `DEFAULT_CONSENSUS_STRATEGY` in `constants.ts`:
-
-| Strategy | Default | How it works |
-|---|---|---|
-| `dcf_primary` | **Yes** | Uses DCF Perpetual Growth 10Y fair value directly. Other models shown for reference. |
-| `median` | | Three-tier: median within each pillar, then median of 3 pillar values. |
-| `weighted` | | Archetype-based weights from `company-classifier.ts` with outlier penalties. |
-
-Users can switch strategies via `?strategy=median` query param on the summary page. The `StrategySwitcher` dropdown is rendered in the page header.
+## Fair Value
+FCFF Growth Exit 5Y is the single source of truth for the headline fair value. All other models are shown on the summary page for reference and cross-validation. No strategy switcher — the approach is fixed.
 
 ## DCF Pipeline
 - **Revenue**: analyst estimates (5Y) → fade to historical CAGR → fade to 3% GDP growth
 - **Net Margin**: derived from analyst EPS × shares / revenue; fades to 5Y historical avg
 - **CapEx**: Maintenance (≈ D&A, 20% of revenue growth) + Growth (intensity × revenue increase)
-- **Terminal Value**: Gordon Growth, rate by archetype (profitable_growth=3.5%, mature_stable=3.0%)
-- **Sensitivity**: 5×5 matrix of Discount Rate × Terminal Growth
+- **Terminal Value**: Gordon Growth or peer EV/EBITDA exit multiple, rate by archetype (profitable_growth=3.5%, mature_stable=3.0%)
+- **Sensitivity**: 5×5 matrix of Discount Rate × Terminal Growth (or Exit Multiple)
 
 ## WACC
 - Cost of Equity = Risk-free rate (10Y Treasury from FRED) + Beta × ERP (4.5% default)

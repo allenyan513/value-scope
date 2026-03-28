@@ -12,7 +12,6 @@ export const MODEL_NAMES: Record<string, string> = {
   dcf_growth_exit_10y: "DCF — Growth Exit (10Y)",
   dcf_ebitda_exit_5y: "DCF — EBITDA Exit (5Y)",
   dcf_ebitda_exit_10y: "DCF — EBITDA Exit (10Y)",
-  dcf_3stage: "DCF Perpetual Growth",
   dcf_pe_exit_10y: "P/E Exit 10Y",
   dcf_ebitda_exit_fcfe_10y: "EV/EBITDA Exit 10Y",
   // Trading multiples
@@ -49,7 +48,6 @@ export const MODEL_LINKS: Record<string, string> = {
   dcf_growth_exit_10y: "/valuation/dcf",
   dcf_ebitda_exit_5y: "/valuation/dcf",
   dcf_ebitda_exit_10y: "/valuation/dcf",
-  dcf_3stage: "/valuation/dcf",
   pe_multiples: "/valuation/trading-multiples",
   ev_ebitda_multiples: "/valuation/trading-multiples",
   peg: "/valuation/peg",

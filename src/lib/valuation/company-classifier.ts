@@ -2,22 +2,17 @@
 // Company Classifier — Determines company archetype and model applicability
 // ============================================================
 
-import type { FinancialStatement, Company, AnalystEstimate, ConsensusAdjustment } from "@/types";
-import { OUTLIER_HALF_THRESHOLD, OUTLIER_QUARTER_THRESHOLD } from "@/lib/constants";
-import { median } from "./statistics";
+import type { FinancialStatement, Company, AnalystEstimate } from "@/types";
 import {
   type CompanyArchetype,
-  type CompanyClassification,
-  type ModelWeights,
   type ModelApplicability,
   ARCHETYPE_CONFIGS,
-  PRIMARY_MODEL_MAP,
 } from "./company-archetype-config";
 import { type ClassificationMetrics, computeClassificationMetrics } from "./company-metrics";
 
 // Re-export types and helpers for backward compatibility
-export type { CompanyArchetype, CompanyClassification, ModelWeights, ModelApplicability };
-export { PRIMARY_MODEL_MAP, getTerminalGrowthRate } from "./company-archetype-config";
+export type { CompanyArchetype, ModelApplicability };
+export { getTerminalGrowthRate } from "./company-archetype-config";
 
 // --- Classification Logic ---
 
@@ -81,7 +76,7 @@ function buildModelApplicability(
     : dcfConfidence === "medium" ? "DCF captures intrinsic value based on projected free cash flows"
     : "Predictable cash flows make DCF the most reliable intrinsic valuation";
 
-  for (const dcfType of ["dcf_3stage", "dcf_fcff_ebitda_exit_5y", "dcf_fcff_ebitda_exit_10y"]) {
+  for (const dcfType of ["dcf_fcff_growth_5y", "dcf_fcff_growth_10y", "dcf_fcff_ebitda_exit_5y", "dcf_fcff_ebitda_exit_10y"]) {
     applicability.push({
       model_type: dcfType,
       applicable: true,
@@ -170,7 +165,7 @@ export function classifyCompany(
   company: Company,
   historicals: FinancialStatement[],
   estimates: AnalystEstimate[]
-): CompanyClassification {
+) {
   const metrics = computeClassificationMetrics(company, historicals, estimates);
   const archetype = determineArchetype(metrics);
   const config = ARCHETYPE_CONFIGS[archetype];
@@ -182,92 +177,6 @@ export function classifyCompany(
     label: config.label,
     description: config.description,
     traits,
-    model_weights: config.weights,
     model_applicability: modelApplicability,
-  };
-}
-
-/**
- * Compute weighted consensus fair value from model results.
- * Applies outlier penalty: models deviating >50% from median get half weight,
- * >100% get quarter weight.
- */
-export function computeWeightedConsensus(
-  models: Array<{ model_type: string; fair_value: number; low_estimate: number; high_estimate: number }>,
-  weights: ModelWeights,
-  archetype?: CompanyArchetype
-): {
-  consensus: number;
-  low: number;
-  high: number;
-  primaryModel: string;
-  modelContributions: Array<{ model: string; weight: number; value: number }>;
-  adjustments: ConsensusAdjustment[];
-} {
-  const primaryModel = archetype ? PRIMARY_MODEL_MAP[archetype] : "";
-
-  const validModels = models.filter((m) => m.fair_value > 0 && (weights[m.model_type] ?? 0) > 0);
-
-  if (validModels.length === 0) {
-    return { consensus: 0, low: 0, high: 0, primaryModel, modelContributions: [], adjustments: [] };
-  }
-
-  const medianFV = median(validModels.map((m) => m.fair_value));
-  const adjustments: ConsensusAdjustment[] = [];
-
-  let totalWeight = 0;
-  let weightedSum = 0;
-  let weightedLow = 0;
-  let weightedHigh = 0;
-  const contributions: Array<{ model: string; weight: number; value: number }> = [];
-
-  for (const m of validModels) {
-    const originalWeight = weights[m.model_type] ?? 0;
-    let adjustedWeight = originalWeight;
-
-    if (medianFV > 0 && validModels.length >= 3) {
-      const deviation = Math.abs(m.fair_value - medianFV) / medianFV;
-      if (deviation > OUTLIER_QUARTER_THRESHOLD) {
-        adjustedWeight = originalWeight * 0.25;
-        adjustments.push({
-          model: m.model_type,
-          originalWeight,
-          adjustedWeight,
-          reason: `${(deviation * 100).toFixed(0)}% from median (weight quartered)`,
-        });
-      } else if (deviation > OUTLIER_HALF_THRESHOLD) {
-        adjustedWeight = originalWeight * 0.5;
-        adjustments.push({
-          model: m.model_type,
-          originalWeight,
-          adjustedWeight,
-          reason: `${(deviation * 100).toFixed(0)}% from median (weight halved)`,
-        });
-      }
-    }
-
-    totalWeight += adjustedWeight;
-    weightedSum += m.fair_value * adjustedWeight;
-    weightedLow += m.low_estimate * adjustedWeight;
-    weightedHigh += m.high_estimate * adjustedWeight;
-    contributions.push({ model: m.model_type, weight: adjustedWeight, value: m.fair_value });
-  }
-
-  if (totalWeight === 0) {
-    return { consensus: 0, low: 0, high: 0, primaryModel, modelContributions: [], adjustments };
-  }
-
-  const normalizedContributions = contributions.map((c) => ({
-    ...c,
-    weight: c.weight / totalWeight,
-  }));
-
-  return {
-    consensus: weightedSum / totalWeight,
-    low: weightedLow / totalWeight,
-    high: weightedHigh / totalWeight,
-    primaryModel,
-    modelContributions: normalizedContributions,
-    adjustments,
   };
 }
