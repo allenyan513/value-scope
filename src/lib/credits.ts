@@ -135,11 +135,13 @@ export async function unlockTicker(
   }
 
   // Auto-add to watchlist (best-effort, don't fail the unlock if this errors)
-  await db
-    .from("watchlists")
-    .upsert({ user_id: userId, ticker: upper }, { onConflict: "user_id,ticker" })
-    .then(() => {})
-    .catch(() => {});
+  try {
+    await db
+      .from("watchlists")
+      .upsert({ user_id: userId, ticker: upper }, { onConflict: "user_id,ticker" });
+  } catch {
+    // Watchlist failure is non-fatal
+  }
 
   return { success: true, remaining: data.remaining };
 }
