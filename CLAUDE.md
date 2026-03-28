@@ -21,10 +21,21 @@ npm run test:watch   # Watch mode
 npm run test:coverage # With coverage report
 ```
 
-## Scale Targets
+## Design Targets
+**Coverage & Data**:
 - **8,000+ US stocks** (current: ~500 S&P 500). All cron, DB queries, and batch operations must be designed for 8k tickers.
-- **10,000 DAU**. Pages are ISR-cached (1h TTL) — DB/API load scales with ticker count, not user count.
 - **Zero FMP calls in user request path**. All external API calls happen in cron jobs; page visits read only from Supabase.
+- **Data freshness**: Prices updated ~1.5h after market close. Financials refreshed next day after earnings. Valuation snapshots stale after 25h.
+
+**Page Performance** (Core Web Vitals — target "Good" rating):
+- **LCP** (Largest Contentful Paint): < 2.5s
+- **INP** (Interaction to Next Paint): < 200ms
+- **CLS** (Cumulative Layout Shift): < 0.1
+- **TTFB**: < 800ms (ISR hit should be < 200ms)
+
+**Cron Design**: Minimize unnecessary operations. Event-driven over blind rotation. Each Vercel function must complete within 300s limit.
+
+**Infrastructure Cost**: Minimize spend while keeping operational complexity low. One-person team — prefer managed services (Vercel, Supabase) over self-hosted alternatives even if slightly more expensive. Current: Vercel Hobby (free) + Supabase Free + FMP Starter ($19/mo).
 
 ## Architecture Principles
 - **3 services only**: Vercel + Supabase + FMP. No Redis, no message queues, no microservices.
